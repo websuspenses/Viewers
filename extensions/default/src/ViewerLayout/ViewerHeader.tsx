@@ -107,7 +107,7 @@ function ViewerHeader({ hotkeysManager, extensionManager, servicesManager }) {
       WhiteLabeling={appConfig.whiteLabeling}
     >
       <ErrorBoundary context="Primary Toolbar">
-        <div className="relative flex justify-center">
+        <div className="relative flex justify-center tools-section">
           <Toolbar servicesManager={servicesManager} />
         </div>
       </ErrorBoundary>

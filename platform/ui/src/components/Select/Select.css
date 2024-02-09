@@ -2,6 +2,7 @@
   @apply border-secondary-light w-full rounded border bg-black text-sm leading-tight text-white shadow transition duration-300;
   min-height: 28px;
 }
+
 .customSelect__wrapper .customSelect__control:hover {
   @apply border-gray-500;
 }
@@ -28,7 +29,7 @@
 }
 
 .customSelect__wrapper .customSelect__option {
-  color: #d6d6d6;
+  color: #0B7C69;
   font-size: 14px;
   display: flex;
   align-items: center;
@@ -70,27 +71,29 @@
   width: 6px;
   border-radius: 10px;
 }
+
 .ohif-select .customSelect__placeholder {
   @apply text-aqua-pale pl-1.5;
 }
 
 .ohif-select .customSelect__menu-list::-webkit-scrollbar-thumb {
-  background-color: #0944b3;
+  background-color: yellow;
   border-radius: 10px;
 }
 
 .customSelect__option--is-focused {
-  background-color: #0944b391 !important;
+  background-color: #0B7C69 !important;
+  color: #ffffff !important;
 }
 
 .ohif-select .customSelect__option:hover {
-  background-color: #0944b391;
+  background-color: yellow;
 }
 
 .ohif-select .customSelect__menu {
-  border: 2px solid #0944b3;
+  border: 2px solid #0B7C69;
   border-radius: 6px;
-  background-color: #151515 !important;
+  background-color: #ffffff !important;
 }
 
 .css-1hwfws3 {
