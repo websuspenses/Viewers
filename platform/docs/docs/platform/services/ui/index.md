@@ -208,7 +208,7 @@ function WorkList({
     {
       title: t('Header:About'),
       icon: 'info',
-      onClick: () => show({ content: AboutModal, title: 'About OHIF Viewer' }),
+      onClick: () => show({ content: AboutModal, title: 'About Tele Radiology' }),
     },
     {
       title: t('Header:Preferences'),

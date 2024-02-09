@@ -403,7 +403,7 @@ function WorkList({
       onClick: () =>
         show({
           content: AboutModal,
-          title: 'About OHIF Viewer',
+          title: 'About Tele Radiology',
           contentProps: { versionNumber, commitHash },
         }),
     },

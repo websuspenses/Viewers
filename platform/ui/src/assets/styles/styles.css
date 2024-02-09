@@ -136,6 +136,39 @@ Viewer page styles
 
 
 
+.image-viewer .hover\:bg-secondary-main:hover {
+  background-color: #d6d6d6;
+}
+
+.text-primary-light {
+  --tw-text-opacity: 1;
+  color: #0B7C69;
+}
+
+.customSelect__wrapper .customSelect__single-value {
+  color: #0B7C69;
+}
+
+.bg-customblue-30 {
+  --tw-bg-opacity: 1;
+  background-color: #ffffff;
+  border: 1px solid;
+  margin: 0 2px;
+}
+
+.hover\:bg-customblue-50:hover {
+  background-color: #0B7C69;
+  color: #ffffff;
+}
+
+.hover\:bg-customblue-80:hover {
+  --tw-bg-opacity: 1;
+  background-color: #ffffff;
+  color: #0B7C69;
+  border: 1px solid;
+}
+
+
 .ohif-scrollbar {
   scrollbar-color: #173239 transparent;
   scrollbar-gutter: stable;
