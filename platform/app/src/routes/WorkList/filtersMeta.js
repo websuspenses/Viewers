@@ -7,6 +7,20 @@ const filtersMeta = [
     gridCol: 4,
   },
   {
+    name: 'status',
+    displayName: 'Status',
+    inputType: 'MultiSelect',
+    inputProps: {
+      options: [
+        { value: 'TO DO', label: 'TO DO' },
+        { value: 'In Review', label: 'In Review' },
+        { value: 'Done', label: 'Done' },
+      ],
+    },
+    isSortable: true,
+    gridCol: 2,
+  },
+  {
     name: 'mrn',
     displayName: 'MRN',
     inputType: 'Text',

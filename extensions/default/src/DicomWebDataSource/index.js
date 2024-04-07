@@ -120,9 +120,9 @@ function createDicomWebApi(dicomWebConfig, userAuthenticationService) {
               supportsFuzzyMatching: dicomWebConfig.supportsFuzzyMatching,
               supportsWildcard: dicomWebConfig.supportsWildcard,
             }) || {};
-
+          console.log('qidoDicomWebClient', qidoDicomWebClient);
           const results = await qidoSearch(qidoDicomWebClient, undefined, undefined, mappedParams);
-
+          console.log('results', results);
           return processResults(results);
         },
         processResults: processResults.bind(),
@@ -141,6 +141,20 @@ function createDicomWebApi(dicomWebConfig, userAuthenticationService) {
         search: (studyInstanceUid, queryParameters) => {
           qidoDicomWebClient.headers = getAuthrorizationHeader();
           qidoSearch.call(undefined, qidoDicomWebClient, studyInstanceUid, null, queryParameters);
+        },
+      },
+      custom: {
+        setStatus: async (id, status) => {
+          qidoDicomWebClient.headers = getAuthrorizationHeader();
+          console.log('custom.setStatus', status, qidoDicomWebClient);
+          const url = `${qidoDicomWebClient.baseURL}/studies/${id}/update_status`;
+          const data = { status };
+          const res = await qidoDicomWebClient._httpPost(
+            url,
+            qidoDicomWebClient.headers,
+            JSON.stringify(data)
+          );
+          return res;
         },
       },
     },

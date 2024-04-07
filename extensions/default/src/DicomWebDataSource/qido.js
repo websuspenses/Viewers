@@ -26,7 +26,7 @@ import { DICOMWeb, utils } from '@ohif/core';
 import { sortStudySeries } from '@ohif/core/src/utils/sortStudy';
 
 const { getString, getName, getModalities } = DICOMWeb;
-
+console.log('dicomWeb', DICOMWeb);
 /**
  * Parses resulting data from a QIDO call into a set of Study MetaData
  *
@@ -55,6 +55,7 @@ function processResults(qidoStudies) {
       instances: Number(getString(qidoStudy['00201208'])) || 0, // number
       description: getString(qidoStudy['00081030']) || '',
       modalities: getString(getModalities(qidoStudy['00080060'], qidoStudy['00080061'])) || '',
+      dicomReviewStatus: getString(qidoStudy['00082024']) || '',
     })
   );
 
@@ -151,6 +152,8 @@ function mapParams(params, options = {}) {
   const commaSeparatedFields = [
     '00081030', // Study Description
     '00080060', // Modality
+    '00082023',
+    '00082024',
     // Add more fields here if you want them in the result
   ].join(',');
 
@@ -167,6 +170,7 @@ function mapParams(params, options = {}) {
     AccessionNumber: withWildcard(params.accessionNumber),
     StudyDescription: withWildcard(params.studyDescription),
     ModalitiesInStudy: params.modalitiesInStudy,
+    DicomReviewStatus: params.dicomReviewStatus,
     // Other
     limit: params.limit || 101,
     offset: params.offset || 0,

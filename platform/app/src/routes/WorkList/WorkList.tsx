@@ -115,6 +115,7 @@ function WorkList({
   }, [isLoadingData, expandedRows]);
 
   const setFilterValues = val => {
+    console.log('setFilterValues', val);
     if (filterValues.pageNumber === val.pageNumber) {
       val.pageNumber = 1;
     }
@@ -173,6 +174,8 @@ function WorkList({
         }
       } else if (key === 'modalities' && currValue.length) {
         queryString.modalities = currValue.join(',');
+      } else if (key === 'status' && currValue.length) {
+        queryString.status = currValue.join(',');
       } else if (currValue !== defaultValue) {
         queryString[key] = currValue;
       }
@@ -240,6 +243,7 @@ function WorkList({
       patientName,
       date,
       time,
+      dicomReviewStatus,
     } = study;
     const studyDate =
       date &&
@@ -249,7 +253,10 @@ function WorkList({
       time &&
       moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).isValid() &&
       moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).format('hh:mm A');
-
+    const handleSelectChange = id => async event => {
+      await dataSource.query.custom.setStatus(id, event.target.value);
+      onRefresh();
+    };
     return {
       row: [
         {
@@ -260,6 +267,25 @@ function WorkList({
             <span className="text-gray-700">(Empty)</span>
           ),
           gridCol: 4,
+        },
+        {
+          key: 'status',
+          content: (
+            <>
+              {
+                <select
+                  value={dicomReviewStatus || 'TO DO'}
+                  onChange={handleSelectChange(studyInstanceUid)}
+                >
+                  <option value="TO DO">TO DO</option>
+                  <option value="In Review">In Review</option>
+                  <option value="Done">Done</option>
+                </select>
+              }
+            </>
+          ),
+          title: 'New',
+          gridCol: 3,
         },
         {
           key: 'mrn',
@@ -324,13 +350,13 @@ function WorkList({
           seriesTableDataSource={
             seriesInStudiesMap.has(studyInstanceUid)
               ? seriesInStudiesMap.get(studyInstanceUid).map(s => {
-                return {
-                  description: s.description || '(empty)',
-                  seriesNumber: s.seriesNumber ?? '',
-                  modality: s.modality || '',
-                  instances: s.numSeriesInstances || '',
-                };
-              })
+                  return {
+                    description: s.description || '(empty)',
+                    seriesNumber: s.seriesNumber ?? '',
+                    modality: s.modality || '',
+                    instances: s.numSeriesInstances || '',
+                  };
+                })
               : []
           }
         >
@@ -358,8 +384,9 @@ function WorkList({
                   <Link
                     className={isValidMode ? '' : 'cursor-not-allowed'}
                     key={i}
-                    to={`${dataPath ? '../../' : ''}${mode.routeName}${dataPath || ''
-                      }?${query.toString()}`}
+                    to={`${dataPath ? '../../' : ''}${mode.routeName}${
+                      dataPath || ''
+                    }?${query.toString()}`}
                     onClick={event => {
                       // In case any event bubbles up for an invalid mode, prevent the navigation.
                       // For example, the event bubbles up when the icon embedded in the disabled button is clicked.
@@ -367,7 +394,7 @@ function WorkList({
                         event.preventDefault();
                       }
                     }}
-                  // to={`${mode.routeName}/dicomweb?StudyInstanceUIDs=${studyInstanceUid}`}
+                    // to={`${mode.routeName}/dicomweb?StudyInstanceUIDs=${studyInstanceUid}`}
                   >
                     {/* TODO revisit the completely rounded style of buttons used for launching a mode from the worklist later - for now use LegacyButton*/}
                     <LegacyButton
@@ -375,7 +402,7 @@ function WorkList({
                       variant={isValidMode ? 'contained' : 'disabled'}
                       disabled={!isValidMode}
                       endIcon={<Icon name="launch-arrow" />} // launch-arrow | launch-info
-                      onClick={() => { }}
+                      onClick={() => {}}
                     >
                       {t(`Modes:${mode.displayName}`)}
                     </LegacyButton>
@@ -451,32 +478,32 @@ function WorkList({
   const uploadProps =
     dicomUploadComponent && dataSource.getConfig()?.dicomUploadEnabled
       ? {
-        title: 'Upload files',
-        closeButton: true,
-        shouldCloseOnEsc: false,
-        shouldCloseOnOverlayClick: false,
-        content: dicomUploadComponent.bind(null, {
-          dataSource,
-          onComplete: () => {
-            hide();
-            onRefresh();
-          },
-          onStarted: () => {
-            show({
-              ...uploadProps,
-              // when upload starts, hide the default close button as closing the dialogue must be handled by the upload dialogue itself
-              closeButton: false,
-            });
-          },
-        }),
-      }
+          title: 'Upload files',
+          closeButton: true,
+          shouldCloseOnEsc: false,
+          shouldCloseOnOverlayClick: false,
+          content: dicomUploadComponent.bind(null, {
+            dataSource,
+            onComplete: () => {
+              hide();
+              onRefresh();
+            },
+            onStarted: () => {
+              show({
+                ...uploadProps,
+                // when upload starts, hide the default close button as closing the dialogue must be handled by the upload dialogue itself
+                closeButton: false,
+              });
+            },
+          }),
+        }
       : undefined;
 
   const { component: dataSourceConfigurationComponent } =
     customizationService.get('ohif.dataSourceConfigurationComponent') ?? {};
 
   return (
-    <div className="flex h-screen flex-col bg-black trad-bg-black">
+    <div className="trad-bg-black flex h-screen flex-col bg-black">
       <Header
         isSticky
         menuOptions={menuOptions}
@@ -553,6 +580,7 @@ const defaultFilterValues = {
   resultsPerPage: 25,
   datasources: '',
   configUrl: null,
+  status: [],
 };
 
 function _tryParseInt(str, defaultValue) {
@@ -575,6 +603,7 @@ function _getQueryFilterValues(params) {
     },
     description: params.get('description'),
     modalities: params.get('modalities') ? params.get('modalities').split(',') : [],
+    status: params.get('status') ? params.get('status').split(',') : [],
     accession: params.get('accession'),
     sortBy: params.get('sortby'),
     sortDirection: params.get('sortdirection'),
