@@ -115,6 +115,7 @@ function WorkList({
   }, [isLoadingData, expandedRows]);
 
   const setFilterValues = val => {
+    console.log('setFilterValues', val);
     if (filterValues.pageNumber === val.pageNumber) {
       val.pageNumber = 1;
     }
@@ -173,6 +174,8 @@ function WorkList({
         }
       } else if (key === 'modalities' && currValue.length) {
         queryString.modalities = currValue.join(',');
+      } else if (key === 'status' && currValue.length) {
+        queryString.status = currValue.join(',');
       } else if (currValue !== defaultValue) {
         queryString[key] = currValue;
       }
@@ -240,6 +243,7 @@ function WorkList({
       patientName,
       date,
       time,
+      dicomReviewStatus,
     } = study;
     const studyDate =
       date &&
@@ -249,7 +253,10 @@ function WorkList({
       time &&
       moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).isValid() &&
       moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).format('hh:mm A');
-
+    const handleSelectChange = id => async event => {
+      await dataSource.query.custom.setStatus(id, event.target.value);
+      onRefresh();
+    };
     return {
       row: [
         {
@@ -260,6 +267,25 @@ function WorkList({
             <span className="text-gray-700">(Empty)</span>
           ),
           gridCol: 4,
+        },
+        {
+          key: 'status',
+          content: (
+            <>
+              {
+                <select
+                  value={dicomReviewStatus || 'TO DO'}
+                  onChange={handleSelectChange(studyInstanceUid)}
+                >
+                  <option value="TO DO">TO DO</option>
+                  <option value="In Review">In Review</option>
+                  <option value="Done">Done</option>
+                </select>
+              }
+            </>
+          ),
+          title: 'New',
+          gridCol: 3,
         },
         {
           key: 'mrn',
@@ -404,7 +430,7 @@ function WorkList({
       onClick: () =>
         show({
           content: AboutModal,
-          title: 'About OHIF Viewer',
+          title: 'About Tele Radiology',
           contentProps: { versionNumber, commitHash },
         }),
     },
@@ -477,7 +503,7 @@ function WorkList({
     customizationService.get('ohif.dataSourceConfigurationComponent') ?? {};
 
   return (
-    <div className="flex h-screen flex-col bg-black ">
+    <div className="trad-bg-black flex h-screen flex-col bg-black">
       <Header
         isSticky
         menuOptions={menuOptions}
@@ -554,6 +580,7 @@ const defaultFilterValues = {
   resultsPerPage: 25,
   datasources: '',
   configUrl: null,
+  status: [],
 };
 
 function _tryParseInt(str, defaultValue) {
@@ -576,6 +603,7 @@ function _getQueryFilterValues(params) {
     },
     description: params.get('description'),
     modalities: params.get('modalities') ? params.get('modalities').split(',') : [],
+    status: params.get('status') ? params.get('status').split(',') : [],
     accession: params.get('accession'),
     sortBy: params.get('sortby'),
     sortDirection: params.get('sortdirection'),

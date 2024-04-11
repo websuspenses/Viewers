@@ -1,4 +1,178 @@
+<<<<<<< HEAD
 /* CUSTOM OHIF SCROLLBARs */
+=======
+/* CUSTOM OHIF SCROLLBAR */
+
+
+
+
+
+/*
+Study list page styles
+*/
+
+body.bg-black {
+  color: #ffffff !important;
+  background-color: #ffffff !important;
+  --tw-bg-opacity: 0;
+}
+
+
+.bg-black,
+.bg-primary-dark {
+  background-color: #ffffff;
+}
+
+.text-white,
+.text-common-light {
+  color: #0a7c6c;
+}
+
+.hover\:bg-secondary-main:hover {
+  background-color: #0B7C69;
+  color: #ffffff;
+}
+
+
+.bg-secondary-dark {
+  background-color: #ffffff;
+  color: #585858;
+}
+
+#SplitButton .bg-secondary-dark {
+  background-color: #0B7C69;
+}
+
+#SplitButton .text-\[\#348CFD\] {
+  color: #585858;
+}
+
+#SplitButton .text-aqua-pale {
+  color: #ffffff;
+}
+
+#SplitButton .hover\:text-primary-light:hover {
+  color: #ffffff;
+}
+
+#SplitButton .fill-current {
+  color: #ffffff;
+}
+
+.trad-bg-black>.bg-secondary-dark {
+  background-color: #ffffff;
+}
+
+.text-blue-300 {
+  color: #0a7c6c;
+}
+
+.hover\:bg-primary-light:hover {
+  color: #ffffff;
+  background-color: #585858;
+}
+
+.image-viewer .hover\:\!bg-primary-dark:hover {
+  background-color: #585858;
+}
+
+.text-aqua-pale {
+  --tw-text-opacity: 1;
+  color: #585858;
+}
+
+.tools-section>div {
+  margin: 0 10px;
+}
+
+.image-viewer .border-transparent,
+.border-primary-light {
+  border-color: #585858 !important;
+}
+
+.\!text-\[\#348CFD\] {
+  color: #0B7C69;
+}
+
+.bg-primary-light {
+  background-color: #0B7C69;
+  color: #ffffff;
+}
+
+.DateInput_input,
+.customSelect__wrapper .customSelect__control {
+  background-color: #ffffff;
+  color: #ffffff;
+}
+
+.border-black {
+  border-color: #ececec;
+  border-bottom-width: 1px;
+}
+
+.text-primary-active {
+  color: #0B7C69;
+  border-color: #0B7C69;
+}
+
+.ohif-select .customSelect__placeholder {
+  color: #0B7C69;
+}
+
+.border-secondary-light {
+  border-color: #e5e5e5;
+}
+
+.bg-primary-main {
+  background-color: #0B7C69;
+  color: #ffffff;
+}
+
+
+
+/*
+Viewer page styles
+*/
+.image-viewer.bg-secondary-dark {
+  background-color: #ffffff;
+}
+
+
+
+.image-viewer .hover\:bg-secondary-main:hover {
+  background-color: #d6d6d6;
+}
+
+.text-primary-light {
+  --tw-text-opacity: 1;
+  color: #0B7C69;
+}
+
+.customSelect__wrapper .customSelect__single-value {
+  color: #0B7C69;
+}
+
+.bg-customblue-30 {
+  --tw-bg-opacity: 1;
+  background-color: #ffffff;
+  border: 1px solid;
+  margin: 0 2px;
+}
+
+.hover\:bg-customblue-50:hover {
+  background-color: #0B7C69;
+  color: #ffffff;
+}
+
+.hover\:bg-customblue-80:hover {
+  --tw-bg-opacity: 1;
+  background-color: #ffffff;
+  color: #0B7C69;
+  border: 1px solid;
+}
+
+
+>>>>>>> d152b43bb47ce55c6f87dd7b76417b1132c75a7b
 .ohif-scrollbar {
   scrollbar-color: #173239 transparent;
   scrollbar-gutter: stable;

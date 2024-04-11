@@ -246,6 +246,7 @@ function _getQueryFilterValues(query, queryLimit) {
     patientName: query.get('patientName'),
     studyDescription: query.get('description'),
     modalitiesInStudy: query.get('modalities') && query.get('modalities').split(','),
+    dicomReviewStatus: query.get('status') && query.get('status').split(','),
     accessionNumber: query.get('accession'),
     //
     startDate: query.get('startDate'),

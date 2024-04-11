@@ -52,7 +52,11 @@ RUN mkdir /var/log/nginx
 RUN apt-get update && \
   apt-get install -y openssl libssl-dev git gcc wget unzip make&& \
   apt-get clean
-
+RUN \
+  apt-get update && \
+  apt-get install ca-certificates && \
+  apt-get clean
+RUN export HTTPS_PROXY=http://192.168.X.X:3333
 RUN apt-get install --assume-yes lua5.4 libzmq3-dev lua5.4-dev
 RUN cd /tmp && \
   wget http://luarocks.org/releases/luarocks-3.9.2.tar.gz && \

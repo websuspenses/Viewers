@@ -43,6 +43,7 @@ function Header({
               isReturnEnabled && 'cursor-pointer'
             )}
             onClick={onClickReturn}
+            data-cy="return-to-work-list"
           >
             {isReturnEnabled && (
               <Icon
@@ -51,13 +52,15 @@ function Header({
               />
             )}
             <div className="ml-4">
-              {WhiteLabeling?.createLogoComponentFn?.(React, props) || <Svg name="logo-ohif" />}
+              {/* {WhiteLabeling?.createLogoComponentFn?.(React, props) || } */}
+              <img width="250" height="140" src="./ohif-logo.svg" />
             </div>
           </div>
         </div>
         <div className="flex items-center">{children}</div>
         <div className="flex items-center">
-          <span className="text-common-light mr-3 text-lg">{t('INVESTIGATIONAL USE ONLY')}</span>
+          {/* <span className="text-common-light mr-3 text-lg">{t('INVESTIGATIONAL USE ONLY 111')}</span> */}
+          <span className="text-common-light mr-3 text-lg">{t('')}</span>
           <Dropdown
             id="options"
             showDropdownIcon={false}
