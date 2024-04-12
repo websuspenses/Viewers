@@ -1,16 +1,17 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import classnames from 'classnames';
-import PropTypes from 'prop-types';
+import PropTypes, { element, func } from 'prop-types';
 import { Link, useNavigate } from 'react-router-dom';
 import moment from 'moment';
 import qs from 'query-string';
 import isEqual from 'lodash.isequal';
 import { useTranslation } from 'react-i18next';
-//
 import filtersMeta from './filtersMeta.js';
 import { useAppConfig } from '@state';
 import { useDebounce, useSearchParams } from '@hooks';
 import { utils, hotkeys, ServicesManager } from '@ohif/core';
+// import '../../style.css';
+
 
 import {
   Icon,
@@ -29,6 +30,8 @@ import {
 } from '@ohif/ui';
 
 import i18n from '@ohif/i18n';
+
+
 
 const { sortBySeriesDate } = utils;
 
@@ -49,6 +52,7 @@ function WorkList({
   dataPath,
   onRefresh,
   servicesManager,
+  ...props
 }) {
   const { hotkeyDefinitions, hotkeyDefaults } = hotkeysManager;
   const { show, hide } = useModal();
@@ -58,6 +62,7 @@ function WorkList({
   // ~ Filters
   const searchParams = useSearchParams();
   const navigate = useNavigate();
+
   const STUDIES_LIMIT = 101;
   const queryFilterValues = _getQueryFilterValues(searchParams);
   const [filterValues, _setFilterValues] = useState({
@@ -67,6 +72,11 @@ function WorkList({
 
   const debouncedFilterValues = useDebounce(filterValues, 200);
   const { resultsPerPage, pageNumber, sortBy, sortDirection } = filterValues;
+
+  const [isActive, setIsActive] = useState(false);
+
+
+
 
   /*
    * The default sort value keep the filters synchronized with runtime conditional sorting
@@ -115,7 +125,6 @@ function WorkList({
   }, [isLoadingData, expandedRows]);
 
   const setFilterValues = val => {
-    console.log('setFilterValues', val);
     if (filterValues.pageNumber === val.pageNumber) {
       val.pageNumber = 1;
     }
@@ -133,7 +142,6 @@ function WorkList({
     if (isNextPage && !hasNextPage) {
       return;
     }
-
     setFilterValues({ ...filterValues, pageNumber: newPageNumber });
   };
 
@@ -145,6 +153,8 @@ function WorkList({
     });
   };
 
+
+
   // Set body style
   useEffect(() => {
     document.body.classList.add('bg-black');
@@ -153,11 +163,43 @@ function WorkList({
     };
   }, []);
 
+  useEffect(() => {
+    if (isActive) {
+      document.body.classList.remove('bg-black');
+      document.body.classList.add('bg-black-on');
+    } else {
+      document.body.classList.remove('bg-black-on');
+      document.body.classList.add('bg-black');
+    }
+  }, [isActive]);
+
+
+  useEffect(() => {
+    const items = JSON.parse(localStorage.getItem('active_dark'));
+    if (items) {
+      setIsActive(items);
+    }
+  }, []);
+
+
+  function handleChangeSwitch() {
+    setIsActive(!isActive);
+  }
+
+  useEffect(() => {
+    localStorage.setItem('active_dark', JSON.stringify(isActive));
+    document.body.classList.remove('bg-black');
+  }, [isActive]);
+
+
+
+
   // Sync URL query parameters with filters
   useEffect(() => {
     if (!debouncedFilterValues) {
       return;
     }
+
 
     const queryString = {};
     Object.keys(defaultFilterValues).forEach(key => {
@@ -174,8 +216,6 @@ function WorkList({
         }
       } else if (key === 'modalities' && currValue.length) {
         queryString.modalities = currValue.join(',');
-      } else if (key === 'status' && currValue.length) {
-        queryString.status = currValue.join(',');
       } else if (currValue !== defaultValue) {
         queryString[key] = currValue;
       }
@@ -186,12 +226,15 @@ function WorkList({
       skipEmptyString: true,
     });
 
+
+
     navigate({
-      pathname: '/',
+      pathname: '/workList',
       search: search ? `?${search}` : undefined,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedFilterValues]);
+
 
   // Query for series information
   useEffect(() => {
@@ -243,7 +286,6 @@ function WorkList({
       patientName,
       date,
       time,
-      dicomReviewStatus,
     } = study;
     const studyDate =
       date &&
@@ -253,43 +295,20 @@ function WorkList({
       time &&
       moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).isValid() &&
       moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).format('hh:mm A');
-    const handleSelectChange = id => async event => {
-      await dataSource.query.custom.setStatus(id, event.target.value);
-      onRefresh();
-    };
     return {
       row: [
         {
           key: 'patientName',
           content: patientName ? (
-            <TooltipClipboard>{patientName}</TooltipClipboard>
+            <TooltipClipboard ActiveMode={isActive}>{patientName}</TooltipClipboard>
           ) : (
             <span className="text-gray-700">(Empty)</span>
           ),
           gridCol: 4,
         },
         {
-          key: 'status',
-          content: (
-            <>
-              {
-                <select
-                  value={dicomReviewStatus || 'TO DO'}
-                  onChange={handleSelectChange(studyInstanceUid)}
-                >
-                  <option value="TO DO">TO DO</option>
-                  <option value="In Review">In Review</option>
-                  <option value="Done">Done</option>
-                </select>
-              }
-            </>
-          ),
-          title: 'New',
-          gridCol: 3,
-        },
-        {
           key: 'mrn',
-          content: <TooltipClipboard>{mrn}</TooltipClipboard>,
+          content: <TooltipClipboard ActiveMode={isActive}>{mrn}</TooltipClipboard>,
           gridCol: 3,
         },
         {
@@ -305,7 +324,7 @@ function WorkList({
         },
         {
           key: 'description',
-          content: <TooltipClipboard>{description}</TooltipClipboard>,
+          content: <TooltipClipboard ActiveMode={isActive}>{description}</TooltipClipboard>,
           gridCol: 4,
         },
         {
@@ -316,7 +335,7 @@ function WorkList({
         },
         {
           key: 'accession',
-          content: <TooltipClipboard>{accession}</TooltipClipboard>,
+          content: <TooltipClipboard ActiveMode={isActive}>{accession}</TooltipClipboard>,
           gridCol: 3,
         },
         {
@@ -325,7 +344,10 @@ function WorkList({
             <>
               <Icon
                 name="group-layers"
-                className={classnames('mr-2 inline-flex w-4', {
+                className={isActive ? classnames('mr-2 inline-flex w-4', {
+                  'copyIcon-expandDarkCls': isExpanded,
+                  'copyIcon-darkModeCls': !isExpanded,
+                }) : classnames('mr-2 inline-flex w-4', {
                   'text-primary-active': isExpanded,
                   'text-secondary-light': !isExpanded,
                 })}
@@ -335,6 +357,18 @@ function WorkList({
           ),
           title: (instances || 0).toString(),
           gridCol: 4,
+        },
+        {
+          key: 'status',
+          title: 'CTA Status',
+          content: 'CTA Status',
+          gridCol: 2,
+        },
+        {
+          key: 'actions',
+          title: 'CTA Viewers',
+          content: 'CTA Actions',
+          gridCol: 3,
         },
       ],
       // Todo: This is actually running for all rows, even if they are
@@ -350,15 +384,16 @@ function WorkList({
           seriesTableDataSource={
             seriesInStudiesMap.has(studyInstanceUid)
               ? seriesInStudiesMap.get(studyInstanceUid).map(s => {
-                  return {
-                    description: s.description || '(empty)',
-                    seriesNumber: s.seriesNumber ?? '',
-                    modality: s.modality || '',
-                    instances: s.numSeriesInstances || '',
-                  };
-                })
+                return {
+                  description: s.description || '(empty)',
+                  seriesNumber: s.seriesNumber ?? '',
+                  modality: s.modality || '',
+                  instances: s.numSeriesInstances || '',
+                };
+              })
               : []
           }
+          isActive={isActive}
         >
           <div className="flex flex-row gap-2">
             {appConfig.loadedModes.map((mode, i) => {
@@ -379,22 +414,26 @@ function WorkList({
                 query.append('configUrl', filterValues.configUrl);
               }
               query.append('StudyInstanceUIDs', studyInstanceUid);
+
+              const originUrl = window.location.href;
+              var path = originUrl.replace('/workList', '/');
+
               return (
                 mode.displayName && (
                   <Link
                     className={isValidMode ? '' : 'cursor-not-allowed'}
                     key={i}
-                    to={`${dataPath ? '../../' : ''}${mode.routeName}${
-                      dataPath || ''
-                    }?${query.toString()}`}
+                    to={path + `${dataPath ? '../../' : ''}${mode.routeName}${dataPath || ''
+                      }?${query.toString()}`}
                     onClick={event => {
                       // In case any event bubbles up for an invalid mode, prevent the navigation.
                       // For example, the event bubbles up when the icon embedded in the disabled button is clicked.
                       if (!isValidMode) {
                         event.preventDefault();
                       }
+
                     }}
-                    // to={`${mode.routeName}/dicomweb?StudyInstanceUIDs=${studyInstanceUid}`}
+                  // to={`${mode.routeName}/dicomweb?StudyInstanceUIDs=${studyInstanceUid}`}
                   >
                     {/* TODO revisit the completely rounded style of buttons used for launching a mode from the worklist later - for now use LegacyButton*/}
                     <LegacyButton
@@ -402,7 +441,8 @@ function WorkList({
                       variant={isValidMode ? 'contained' : 'disabled'}
                       disabled={!isValidMode}
                       endIcon={<Icon name="launch-arrow" />} // launch-arrow | launch-info
-                      onClick={() => {}}
+                      onClick={() => { }}
+                    // className={isActive ? 'bg-primary-light_dark' : ''}
                     >
                       {t(`Modes:${mode.displayName}`)}
                     </LegacyButton>
@@ -423,6 +463,7 @@ function WorkList({
   const versionNumber = process.env.VERSION_NUMBER;
   const commitHash = process.env.COMMIT_HASH;
 
+
   const menuOptions = [
     {
       title: t('Header:About'),
@@ -431,7 +472,7 @@ function WorkList({
         show({
           content: AboutModal,
           title: 'About Tele Radiology',
-          contentProps: { versionNumber, commitHash },
+          contentProps: { versionNumber, commitHash, isActive },
         }),
     },
     {
@@ -448,6 +489,7 @@ function WorkList({
             currentLanguage: currentLanguage(),
             availableLanguages,
             defaultLanguage,
+            isActive,
             onSubmit: state => {
               if (state.language.value !== currentLanguage().value) {
                 i18n.changeLanguage(state.language.value);
@@ -456,7 +498,7 @@ function WorkList({
               hide();
             },
             onReset: () => hotkeysManager.restoreDefaultBindings(),
-            hotkeysModule: hotkeys,
+            hotkeysModule: !!hotkeys,
           },
         }),
     },
@@ -478,39 +520,44 @@ function WorkList({
   const uploadProps =
     dicomUploadComponent && dataSource.getConfig()?.dicomUploadEnabled
       ? {
-          title: 'Upload files',
-          closeButton: true,
-          shouldCloseOnEsc: false,
-          shouldCloseOnOverlayClick: false,
-          content: dicomUploadComponent.bind(null, {
-            dataSource,
-            onComplete: () => {
-              hide();
-              onRefresh();
-            },
-            onStarted: () => {
-              show({
-                ...uploadProps,
-                // when upload starts, hide the default close button as closing the dialogue must be handled by the upload dialogue itself
-                closeButton: false,
-              });
-            },
-          }),
-        }
+        title: 'Upload files',
+        closeButton: true,
+        shouldCloseOnEsc: false,
+        shouldCloseOnOverlayClick: false,
+        content: dicomUploadComponent.bind(null, {
+          dataSource,
+          onComplete: () => {
+            hide();
+            onRefresh();
+          },
+          onStarted: () => {
+            show({
+              ...uploadProps,
+              // when upload starts, hide the default close button as closing the dialogue must be handled by the upload dialogue itself
+              closeButton: false,
+            });
+          },
+        }),
+      }
       : undefined;
 
   const { component: dataSourceConfigurationComponent } =
     customizationService.get('ohif.dataSourceConfigurationComponent') ?? {};
 
+
   return (
-    <div className="trad-bg-black flex h-screen flex-col bg-black">
+    <div className={isActive ? "flex h-screen flex-col bg-black-on trad-bg-black" : "flex h-screen flex-col bg-black trad-bg-black"}>
       <Header
         isSticky
         menuOptions={menuOptions}
         isReturnEnabled={false}
         WhiteLabeling={appConfig.whiteLabeling}
+        isActive={isActive}
+        handleChange={handleChangeSwitch}
+        screen="WorkList"
       />
-      <div className="ohif-scrollbar flex grow flex-col overflow-y-auto">
+
+      <div className={isActive ? "ohif-scrollbar_darkMode flex grow flex-col overflow-y-auto" : "ohif-scrollbar flex grow flex-col overflow-y-auto"}>
         <StudyListFilter
           numOfStudies={pageNumber * resultsPerPage > 100 ? 101 : numOfStudies}
           filtersMeta={filtersMeta}
@@ -522,6 +569,7 @@ function WorkList({
           getDataSourceConfigurationComponent={
             dataSourceConfigurationComponent ? () => dataSourceConfigurationComponent() : undefined
           }
+          isActive={isActive}
         />
         {hasStudies ? (
           <div className="flex grow flex-col">
@@ -530,6 +578,7 @@ function WorkList({
               numOfStudies={numOfStudies}
               querying={querying}
               filtersMeta={filtersMeta}
+              isActive={isActive}
             />
             <div className="grow">
               <StudyListPagination
@@ -537,6 +586,7 @@ function WorkList({
                 onChangePerPage={onResultsPerPageChange}
                 currentPage={pageNumber}
                 perPage={resultsPerPage}
+                isActive={isActive}
               />
             </div>
           </div>
@@ -545,7 +595,7 @@ function WorkList({
             {appConfig.showLoadingIndicator && isLoadingData ? (
               <LoadingIndicatorProgress className={'h-full w-full bg-black'} />
             ) : (
-              <EmptyStudies />
+              <EmptyStudies isActive={isActive} />
             )}
           </div>
         )}
@@ -580,7 +630,6 @@ const defaultFilterValues = {
   resultsPerPage: 25,
   datasources: '',
   configUrl: null,
-  status: [],
 };
 
 function _tryParseInt(str, defaultValue) {
@@ -603,7 +652,6 @@ function _getQueryFilterValues(params) {
     },
     description: params.get('description'),
     modalities: params.get('modalities') ? params.get('modalities').split(',') : [],
-    status: params.get('status') ? params.get('status').split(',') : [],
     accession: params.get('accession'),
     sortBy: params.get('sortby'),
     sortDirection: params.get('sortdirection'),

@@ -25,15 +25,19 @@
   background-position: 10px center;
   @apply bg-no-repeat;
 }
+
 .DateInput_input {
   @apply border-primary-main mt-2 w-full cursor-pointer appearance-none rounded border-t border-l border-r border-b border-solid bg-black py-2 px-3 pl-8 text-sm font-light leading-tight text-white shadow transition duration-300;
 }
+
 .DateInput_input:hover {
   @apply border-gray-500;
 }
+
 .DateInput_input:focus {
   @apply border-gray-500 outline-none;
 }
+
 /** FIRST INPUT STYLES **/
 .DateInput:first-child .DateInput_input {
   @apply rounded-r-none;
@@ -49,14 +53,18 @@
   @apply rounded-l-none;
   margin-left: -1px;
 }
+
 /** ARROW STYLES **/
 .DateRangePickerInput_arrow {
   @apply hidden;
 }
 
+
+
 /* SELECT MONTH PICKER */
 .DateRangePicker_select {
-  @apply text-secondary-active border-common-dark cursor-pointer appearance-none rounded border bg-white py-1 pl-2 pr-5 text-base; /* NEEDED FOR ARROW DOWN */
+  @apply text-secondary-active border-common-dark cursor-pointer appearance-none rounded border bg-white py-1 pl-2 pr-5 text-base;
+  /* NEEDED FOR ARROW DOWN */
   background-image: linear-gradient(45deg, transparent 50%, gray 50%),
     linear-gradient(135deg, gray 50%, transparent 50%);
   background-position:
@@ -67,6 +75,7 @@
     5px 5px;
   background-repeat: no-repeat;
 }
+
 /* CALENDAR DAYS */
 .CalendarDay {
   @apply rounded-full border-0;
@@ -94,6 +103,7 @@
   top: 24px;
   padding: 3px 9px;
 }
+
 .DayPickerNavigation_svg__horizontal {
   @apply fill-current;
 }

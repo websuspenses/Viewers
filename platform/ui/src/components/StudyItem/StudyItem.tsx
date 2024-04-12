@@ -16,6 +16,7 @@ const StudyItem = ({
   isActive,
   onClick,
 }) => {
+
   return (
     <div
       className={classnames(
