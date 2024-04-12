@@ -74,7 +74,7 @@ const StudyListTableRow = props => {
                         // style={{
                         //   maxWidth: 0,
                         // }}
-                        style={title === 'CTA Status' ? dynamicWidth : title === 'CTA Actions' ? dynamicWidth : defaultWidth}
+                        style={title === 'CTA Status' ? dynamicWidth : title === 'CTA Viewers' ? dynamicWidth : defaultWidth}
                         title={title}
                       >
                         <div className="flex">
