@@ -7,20 +7,6 @@ const filtersMeta = [
     gridCol: 4,
   },
   {
-    name: 'status',
-    displayName: 'Status',
-    inputType: 'MultiSelect',
-    inputProps: {
-      options: [
-        { value: 'TO DO', label: 'TO DO' },
-        { value: 'In Review', label: 'In Review' },
-        { value: 'Done', label: 'Done' },
-      ],
-    },
-    isSortable: true,
-    gridCol: 2,
-  },
-  {
     name: 'mrn',
     displayName: 'MRN',
     inputType: 'Text',
@@ -135,6 +121,28 @@ const filtersMeta = [
     inputType: 'None',
     isSortable: false,
     gridCol: 2,
+  },
+  {
+    name: 'status',
+    displayName: 'Status',
+    inputType: 'None',
+    isSortable: false,
+    gridCol: 2,
+  },
+  {
+    name: 'actions',
+    displayName: 'Actions',
+    inputType: 'MultiSelect',
+    inputProps: {
+      options: [
+        { value: 'AR', label: 'AR' },
+        { value: 'ASMT', label: 'ASMT' },
+        { value: 'AU', label: 'AU' },
+        { value: 'RTINTENT', label: 'RTINTENT' },
+      ],
+    },
+    isSortable: false,
+    gridCol: 3,
   },
 ];
 

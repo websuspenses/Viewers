@@ -19,6 +19,7 @@ const Dropdown = ({
   // By default the max characters per line is the longest title
   // if you wish to override this, you can pass in a number
   maxCharactersPerLine,
+  isActive,
 }) => {
   const [open, setOpen] = useState(false);
   const element = useRef(null);
@@ -34,7 +35,7 @@ const Dropdown = ({
   maxCharactersPerLine = maxCharactersPerLine ?? longestTitle;
 
   const DropdownItem = useCallback(
-    ({ id, title, icon, onClick }) => {
+    ({ id, title, icon, onClick, isActive }) => {
       // Split the title into lines of length maxCharactersPerLine
       const lines = [];
       for (let i = 0; i < title.length; i += maxCharactersPerLine) {
@@ -58,7 +59,7 @@ const Dropdown = ({
           {!!icon && (
             <Icon
               name={icon}
-              className="mr-2 w-4 text-white"
+              className={isActive ? "mr-2 w-4 text-white-darkMode" : "mr-2 w-4 text-white"}
             />
           )}
           <div
@@ -79,7 +80,7 @@ const Dropdown = ({
               </div>
             )}
             {title.length <= maxCharactersPerLine && (
-              <Typography className={itemsClassName}>{title}</Typography>
+              <Typography className={isActive ? 'text-white-label-dark-mode' : itemsClassName}>{title}</Typography>
             )}
           </div>
         </div>
@@ -115,7 +116,15 @@ const Dropdown = ({
   const renderList = () => {
     return (
       <div
-        className={classnames(
+        className={isActive ? classnames(
+          'top-100 border-secondary-main absolute z-10 mt-2 transform rounded border bg-settings-dark shadow transition duration-300',
+          {
+            'right-0 origin-top-right': alignment === 'right',
+            'left-0 origin-top-left': alignment === 'left',
+            'scale-0': !open,
+            'scale-100': open,
+          }
+        ) : classnames(
           'top-100 border-secondary-main absolute z-10 mt-2 transform rounded border bg-black shadow transition duration-300',
           {
             'right-0 origin-top-right': alignment === 'right',
@@ -133,6 +142,7 @@ const Dropdown = ({
             icon={item.icon}
             onClick={item.onClick}
             key={idx}
+            isActive={isActive}
           />
         ))}
       </div>
