@@ -48,6 +48,7 @@ const variants = {
     black:
       'text-white hover:bg-primary-main focus:bg-primary-main hover:border-black focus:border-black',
     primaryActive: 'text-primary-active hover:opacity-80 active:opacity-100 focus:opacity-80',
+    primaryActive_dark_color: 'text-primary-active_dark hover:opacity-80 active:opacity-100 focus:opacity-80',
     primaryLight:
       'border bg-transparent border-primary-main text-white hover:opacity-80 active:opacity-100 focus:opacity-80',
   },
@@ -119,6 +120,7 @@ const borderClasses = {
   light: 'border border-primary-light',
   primary: 'border border-primary-main',
   primaryActive: 'border border-primary-active',
+  primaryActive_dark_border: 'border border-dark-primary-active',
   secondary: 'border border-secondary-light',
   white: 'border border-white',
   black: 'border border-black',
@@ -210,7 +212,7 @@ LegacyButton.defaultProps = {
   color: defaults.color,
   disabled: false,
   children: '',
-  onClick: () => {},
+  onClick: () => { },
 };
 
 LegacyButton.propTypes = {
@@ -229,6 +231,7 @@ LegacyButton.propTypes = {
     'primary',
     'primaryDark',
     'primaryActive',
+    'primaryActive_dark_color',
     'secondary',
     'white',
     'black',
@@ -242,6 +245,7 @@ LegacyButton.propTypes = {
     'default',
     'primary',
     'primaryActive',
+    'primaryActive_dark_border',
     'secondary',
     'white',
     'black',

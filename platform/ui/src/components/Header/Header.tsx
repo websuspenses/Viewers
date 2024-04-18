@@ -9,6 +9,9 @@ import Icon from '../Icon';
 import IconButton from '../IconButton';
 import Dropdown from '../Dropdown';
 
+
+import { ToggleSwitch } from '@ohif/ui';
+
 function Header({
   children,
   menuOptions,
@@ -16,9 +19,14 @@ function Header({
   onClickReturnButton,
   isSticky,
   WhiteLabeling,
+  isActive,
+  handleChange,
+  screen,
   ...props
 }): ReactNode {
   const { t } = useTranslation('Header');
+
+
 
   // TODO: this should be passed in as a prop instead and the react-router-dom
   // dependency should be dropped
@@ -32,8 +40,13 @@ function Header({
     <NavBar
       className="justify-between border-b-4 border-black"
       isSticky={isSticky}
+      isActive={isActive}
+      screen={screen}
     >
-      <div className="flex flex-1 justify-between">
+      <div
+        //className="flex flex-1 justify-between"
+        className={isActive ? "flex flex-1 justify-between navbarAlignCls" : "flex flex-1 justify-between"}
+      >
         <div className="flex items-center">
           {/* // TODO: Should preserve filter/sort
               // Either injected service? Or context (like react router's `useLocation`?) */}
@@ -53,39 +66,50 @@ function Header({
             )}
             <div className="ml-4">
               {/* {WhiteLabeling?.createLogoComponentFn?.(React, props) || } */}
-              <img width="250" height="140" src="./ohif-logo.svg" />
+              {isActive ?
+                <img width="250" height="140" src="./ohif-logo.svg" /> :
+                <img width="250" height="140" src="./ohif-whitebg-logo.svg" />
+              }
             </div>
           </div>
         </div>
         <div className="flex items-center">{children}</div>
+        {/* <div ><ToggleSwitch handleChange={handleChange} IsActive={isActive}  /></div> */}
+
         <div className="flex items-center">
           {/* <span className="text-common-light mr-3 text-lg">{t('INVESTIGATIONAL USE ONLY 111')}</span> */}
-          <span className="text-common-light mr-3 text-lg">{t('')}</span>
-          <Dropdown
-            id="options"
-            showDropdownIcon={false}
-            list={menuOptions}
-            alignment="right"
-          >
-            <IconButton
-              id={'options-settings-icon'}
-              variant="text"
-              color="inherit"
-              size="initial"
-              className="text-primary-active"
+          <span className="text-common-light mr-3 text-lg">{t('')}
+            {screen === 'WorkList' ? <div><ToggleSwitch handleChange={handleChange} IsActive={isActive} screen={screen} /></div> : ""}
+          </span>
+
+          {screen !== 'Login' ?
+            <Dropdown
+              id="options"
+              showDropdownIcon={false}
+              list={menuOptions}
+              alignment="right"
+              isActive={isActive}
             >
-              <Icon name="settings" />
-            </IconButton>
-            <IconButton
-              id={'options-chevron-down-icon'}
-              variant="text"
-              color="inherit"
-              size="initial"
-              className="text-primary-active"
-            >
-              <Icon name="chevron-down" />
-            </IconButton>
-          </Dropdown>
+              <IconButton
+                id={'options-settings-icon'}
+                variant="text"
+                color="inherit"
+                size="initial"
+                className={isActive ? "text-primary-active-dark" : "text-primary-active"}
+              >
+                <Icon name="settings" />
+              </IconButton>
+              <IconButton
+                id={'options-chevron-down-icon'}
+                variant="text"
+                color="inherit"
+                size="initial"
+                className={isActive ? "text-primary-active-dark" : "text-primary-active"}
+              >
+                <Icon name="chevron-down" />
+              </IconButton>
+            </Dropdown> : ""
+          }
         </div>
       </div>
     </NavBar>

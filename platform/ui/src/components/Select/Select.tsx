@@ -40,6 +40,8 @@ const Option = props => {
   );
 };
 
+
+
 const Select = ({
   id,
   className,
@@ -56,6 +58,7 @@ const Select = ({
   menuPlacement,
   components,
   value,
+  isActive
 }) => {
   const _noIconComponents = {
     DropdownIndicator: () => null,
@@ -138,6 +141,7 @@ Select.propTypes = {
   ),
   placeholder: PropTypes.string,
   value: PropTypes.oneOfType([PropTypes.arrayOf(PropTypes.string), PropTypes.any]),
+  isActive: PropTypes.bool,
 };
 
 export default Select;

@@ -4,6 +4,7 @@ import classnames from 'classnames';
 
 const baseClasses = 'm-0 leading-tight';
 
+
 const defaultVariantMapping = {
   h1: 'h1',
   h2: 'h2',
@@ -47,6 +48,8 @@ const classes = {
     primary: 'text-primary-main',
     primaryActive: 'text-primary-active',
     primaryLight: 'text-primary-light',
+    primaryLight_darkMode: 'text-primary-light_darkMode',
+    aboutHeader_darkMode: 'aboutTitle_darkMode',
     secondary: 'text-common-light',
     error: 'text-red-600',
   },
@@ -134,6 +137,8 @@ Typography.propTypes = {
     'secondary',
     'error',
     'primaryLight',
+    'primaryLight_darkMode',
+    'aboutHeader_darkMode',
   ]),
   className: PropTypes.string,
   children: PropTypes.node,

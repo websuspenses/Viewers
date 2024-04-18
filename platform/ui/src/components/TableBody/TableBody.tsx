@@ -2,16 +2,16 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import classnames from 'classnames';
 
-const TableBody = ({ children, className, style }) => {
+const TableBody = ({ children, className, style, isActive }) => {
   return (
     <div
-      className={classnames('ohif-scrollbar mt-2 max-h-48 overflow-y-scroll', className)}
+      className={isActive ? classnames('ohif-scrollbar_expandDarkMode mt-2 max-h-48 overflow-y-scroll', className) : classnames('ohif-scrollbar mt-2 max-h-48 overflow-y-scroll', className)}
       style={style}
     >
       {React.isValidElement(children)
         ? React.cloneElement(children, {
-            isTableHead: false,
-          })
+          isTableHead: false,
+        })
         : children}
     </div>
   );
