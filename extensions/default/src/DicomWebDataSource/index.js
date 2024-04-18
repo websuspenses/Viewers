@@ -149,11 +149,7 @@ function createDicomWebApi(dicomWebConfig, userAuthenticationService) {
           console.log('custom.setStatus', status, qidoDicomWebClient);
           const url = `${qidoDicomWebClient.baseURL}/studies/${id}/update_status`;
           const data = { status };
-          const res = await qidoDicomWebClient._httpPost(
-            url,
-            qidoDicomWebClient.headers,
-            JSON.stringify(data)
-          );
+          const res = await qidoDicomWebClient._httpPost(url, {}, JSON.stringify(data));
           return res;
         },
       },

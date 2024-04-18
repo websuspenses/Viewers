@@ -113,7 +113,7 @@ function WorkList({
   const querying = useMemo(() => {
     return isLoadingData || expandedRows.length > 0;
   }, [isLoadingData, expandedRows]);
-
+  const [statusUpdated, setStatusUpdated] = useState(true);
   const setFilterValues = val => {
     console.log('setFilterValues', val);
     if (filterValues.pageNumber === val.pageNumber) {
@@ -254,6 +254,7 @@ function WorkList({
       moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).isValid() &&
       moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).format('hh:mm A');
     const handleSelectChange = id => async event => {
+      setStatusUpdated(false);
       await dataSource.query.custom.setStatus(id, event.target.value);
       onRefresh();
     };
@@ -523,7 +524,7 @@ function WorkList({
             dataSourceConfigurationComponent ? () => dataSourceConfigurationComponent() : undefined
           }
         />
-        {hasStudies ? (
+        {hasStudies && statusUpdated ? (
           <div className="flex grow flex-col">
             <StudyListTable
               tableDataSource={tableDataSource.slice(offset, offsetAndTake)}
@@ -542,7 +543,7 @@ function WorkList({
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center pt-48">
-            {appConfig.showLoadingIndicator && isLoadingData ? (
+            {appConfig.showLoadingIndicator && (isLoadingData || !statusUpdated) ? (
               <LoadingIndicatorProgress className={'h-full w-full bg-black'} />
             ) : (
               <EmptyStudies />
