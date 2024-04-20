@@ -2,10 +2,13 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import classnames from 'classnames';
 
-const TableHead = ({ children, className, style }) => {
+const TableHead = ({ children, className, style, isActive }) => {
   return (
     <div
-      className={classnames(
+      className={isActive ? classnames(
+        'bg-secondary-darkMode border-secondary-light flex border-b pr-2 font-bold',
+        className
+      ) : classnames(
         'bg-secondary-dark border-secondary-light flex border-b pr-2 font-bold',
         className
       )}
@@ -13,8 +16,8 @@ const TableHead = ({ children, className, style }) => {
     >
       {React.isValidElement(children)
         ? React.cloneElement(children, {
-            isTableHead: true,
-          })
+          isTableHead: true,
+        })
         : children}
     </div>
   );

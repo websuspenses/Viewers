@@ -6,7 +6,8 @@ import Icon from '../Icon';
 import Typography from '../Typography';
 
 // TODO: Add loading spinner to OHIF + use it here.
-const EmptyStudies = ({ className }) => {
+const EmptyStudies = ({ className, isActive }) => {
+
   return (
     <div className={classnames('inline-flex flex-col items-center', className)}>
       <Icon
@@ -14,7 +15,7 @@ const EmptyStudies = ({ className }) => {
         className="mb-4"
       />
       <Typography
-        className="text-primary-light"
+        className={isActive ? "noStudentAvailCls" : "text-primary-light"}
         variant="h5"
       >
         {'No studies available'}
@@ -29,6 +30,7 @@ EmptyStudies.defaultProps = {
 
 EmptyStudies.propTypes = {
   className: PropTypes.string,
+  isActive: PropTypes.bool,
 };
 
 export default EmptyStudies;

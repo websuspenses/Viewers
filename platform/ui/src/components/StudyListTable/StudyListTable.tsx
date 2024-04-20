@@ -3,11 +3,11 @@ import PropTypes from 'prop-types';
 
 import StudyListTableRow from './StudyListTableRow';
 
-const StudyListTable = ({ tableDataSource, querying }) => {
+const StudyListTable = ({ tableDataSource, querying, isActive }) => {
   return (
-    <div className="bg-black">
+    <div className={isActive ? "bg-black-on bg-primary-dark-on" : "bg-black"}>
       <div className="container relative m-auto">
-        <table className="w-full text-white">
+        <table className={isActive ? "w-full text-white-On" : "w-full text-white"}>
           <tbody
             data-cy="study-list-results"
             data-querying={querying}
@@ -17,6 +17,7 @@ const StudyListTable = ({ tableDataSource, querying }) => {
                 <StudyListTableRow
                   tableData={tableData}
                   key={i}
+                  isActive={isActive}
                 />
               );
             })}

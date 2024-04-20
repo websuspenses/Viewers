@@ -30,10 +30,12 @@ const Modal = ({
   const renderHeader = () => {
     return (
       title && (
-        <header className="bg-primary-dark flex items-center rounded-tl rounded-tr px-[20px] py-[13px]">
+        <header className={children?.props?.isActive ? "bg-primary_aboutModal flex items-center rounded-tl rounded-tr px-[20px] py-[13px]" : "bg-primary-dark flex items-center rounded-tl rounded-tr px-[20px] py-[13px]"}>
           <Typography
             variant="h6"
-            color="primaryLight"
+            // color="primaryLight"
+            color={children?.props?.isActive ? "aboutHeader_darkMode" : "primaryLight"}
+
             className="flex grow !leading-[1.2]"
             data-cy="modal-header"
           >
@@ -43,7 +45,7 @@ const Modal = ({
             <Icon
               onClick={onClose}
               name="close"
-              className="text-primary-active cursor-pointer"
+              className={children?.props?.isActive ? "closeIcon_aboutdarkMode cursor-pointer" : "text-primary-active cursor-pointer"}
             />
           )}
         </header>
@@ -62,7 +64,7 @@ const Modal = ({
       shouldCloseOnOverlayClick={shouldCloseOnOverlayClick}
     >
       {renderHeader()}
-      <section className="ohif-scrollbar modal-content bg-primary-dark overflow-y-auto rounded-bl rounded-br px-[20px] pt-2 pb-[20px]">
+      <section className={children?.props?.isActive ? "ohif-scrollbar_dark_aboutModal modal-content bg-primary_aboutModal overflow-y-auto rounded-bl rounded-br px-[20px] pt-2 pb-[20px]" : "ohif-scrollbar modal-content bg-primary-dark overflow-y-auto rounded-bl rounded-br px-[20px] pt-2 pb-[20px]"}>
         {children}
       </section>
     </ReactModal>

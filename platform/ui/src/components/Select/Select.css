@@ -96,6 +96,20 @@
   background-color: #ffffff !important;
 }
 
+.bg-black-on .ohif-select .customSelect__menu {
+  border: 2px solid #b7b7b7;
+  border-radius: 6px;
+  background-color: rgb(28, 28, 20) !important;
+}
+
+.bg-black-on .customSelect__wrapper .customSelect__option {
+  color: #b7b7b7;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  @apply flex flex-row items-center;
+}
+
 .css-1hwfws3 {
   all: unset !important;
 }
