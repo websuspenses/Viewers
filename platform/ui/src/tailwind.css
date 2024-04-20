@@ -32,3 +32,10 @@ body {
   user-select: none;
   opacity: 0.5;
 }
+
+
+@media (min-width: 768px) {
+	.md\:grid-cols-4 {
+	  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+	}
+  }

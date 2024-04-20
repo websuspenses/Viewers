@@ -7,7 +7,8 @@ import LegacyButtonGroup from '../LegacyButtonGroup';
 import Typography from '../Typography';
 import Select from '../Select';
 
-const StudyListPagination = ({ onChangePage, currentPage, perPage, onChangePerPage }) => {
+const StudyListPagination = ({ onChangePage, currentPage, perPage, onChangePerPage, isActive
+}) => {
   const { t } = useTranslation('StudyList');
 
   const navigateToPage = page => {
@@ -27,7 +28,7 @@ const StudyListPagination = ({ onChangePage, currentPage, perPage, onChangePerPa
   };
 
   return (
-    <div className="bg-black py-10">
+    <div className={isActive ? "bg-black-on py-10" : "bg-black py-10"}>
       <div className="container relative m-auto px-8">
         <div className="flex justify-between">
           <div className="flex items-center">
@@ -43,11 +44,11 @@ const StudyListPagination = ({ onChangePage, currentPage, perPage, onChangePerPa
               hideSelectedOptions={true}
               onChange={onSelectedRange}
             />
-            <Typography className="text-base opacity-60">{t('Results per page')}</Typography>
+            <Typography className={isActive ? "resultsPerPage_dark" : "text-base opacity-60"}>{t('ResultsPerPage')}</Typography>
           </div>
           <div className="">
             <div className="flex items-center">
-              <Typography className="mr-4 text-base opacity-60">
+              <Typography className={isActive ? "resultsPerPage_dark" : "mr-4 text-base opacity-60"}>
                 {t('Page')} {currentPage}
               </Typography>
               {/* TODO Revisit design of LegacyButtonGroup later - for now use LegacyButton for its children.*/}
@@ -55,8 +56,10 @@ const StudyListPagination = ({ onChangePage, currentPage, perPage, onChangePerPa
                 <LegacyButton
                   size="initial"
                   className="px-4 py-2 text-base"
-                  color="translucent"
-                  border="primary"
+                  //color="translucent"
+                  //border="primary"
+                  color={isActive ? "primaryActive_dark_color" : "translucent"}
+                  border={isActive ? "primaryActive_dark_border" : "primary"}
                   variant="outlined"
                   onClick={() => navigateToPage(1)}
                 >
@@ -65,8 +68,10 @@ const StudyListPagination = ({ onChangePage, currentPage, perPage, onChangePerPa
                 <LegacyButton
                   size="initial"
                   className="py-2 px-2 text-base"
-                  color="translucent"
-                  border="primary"
+                  // color="translucent"
+                  // border="primary"
+                  color={isActive ? "primaryActive_dark_color" : "translucent"}
+                  border={isActive ? "primaryActive_dark_border" : "primary"}
                   variant="outlined"
                   onClick={() => navigateToPage(currentPage - 1)}
                 >
@@ -75,8 +80,10 @@ const StudyListPagination = ({ onChangePage, currentPage, perPage, onChangePerPa
                 <LegacyButton
                   size="initial"
                   className="py-2 px-4 text-base"
-                  color="translucent"
-                  border="primary"
+                  // color="translucent"
+                  // border="primary"
+                  color={isActive ? "primaryActive_dark_color" : "translucent"}
+                  border={isActive ? "primaryActive_dark_border" : "primary"}
                   variant="outlined"
                   onClick={() => navigateToPage(currentPage + 1)}
                 >

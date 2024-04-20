@@ -4,13 +4,14 @@ import PropTypes from 'prop-types';
 import Input from '../Input';
 import InputLabelWrapper from '../InputLabelWrapper';
 
-const InputText = ({ id, label, isSortable, sortDirection, onLabelClick, value, onChange }) => {
+const InputText = ({ id, label, isSortable, sortDirection, onLabelClick, value, onChange, isActive }) => {
   return (
     <InputLabelWrapper
       label={label}
       isSortable={isSortable}
       sortDirection={sortDirection}
       onLabelClick={onLabelClick}
+      isActive={isActive}
     >
       <Input
         id={id}
@@ -21,6 +22,7 @@ const InputText = ({ id, label, isSortable, sortDirection, onLabelClick, value, 
         onChange={event => {
           onChange(event.target.value);
         }}
+        isActive={isActive}
       />
     </InputLabelWrapper>
   );
@@ -29,7 +31,7 @@ const InputText = ({ id, label, isSortable, sortDirection, onLabelClick, value, 
 InputText.defaultProps = {
   value: '',
   isSortable: false,
-  onLabelClick: () => {},
+  onLabelClick: () => { },
   sortDirection: 'none',
 };
 

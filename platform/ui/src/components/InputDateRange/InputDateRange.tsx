@@ -1,6 +1,5 @@
 import React from 'react';
 import PropTypes from 'prop-types';
-
 import DateRange from '../DateRange';
 import InputLabelWrapper from '../InputLabelWrapper';
 
@@ -12,6 +11,7 @@ const InputDateRange = ({
   onLabelClick,
   value,
   onChange,
+  isActive,
 }) => {
   const { startDate, endDate } = value;
 
@@ -26,20 +26,22 @@ const InputDateRange = ({
       isSortable={isSortable}
       sortDirection={sortDirection}
       onLabelClick={onClickHandler}
+      isActive={isActive}
     >
-      <div className="relative">
+      <div className='relative'>
         <DateRange
           id={id}
           startDate={startDate}
           endDate={endDate}
           onChange={onChange}
+          isActive={isActive}
         />
       </div>
     </InputLabelWrapper>
   );
 };
 
-const noop = () => {};
+const noop = () => { };
 
 InputDateRange.defaultProps = {
   value: {},

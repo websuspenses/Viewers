@@ -19,6 +19,7 @@ const UserPreferences = ({
   onSubmit,
   onReset,
   hotkeysModule,
+  isActive,
 }) => {
   const { t } = useTranslation('UserPreferencesModal');
   const [state, setState] = useState({
@@ -69,13 +70,18 @@ const UserPreferences = ({
       <div className="mb-2 border-b-2 border-black">
         <Typography
           variant="inherit"
-          color="primaryLight"
+          // color="primaryLight"
+          color={isActive ? 'primaryLight_darkMode' : 'primaryLight'}
           className="flex pb-2 text-[16px] font-semibold !leading-[1.2]"
         >
           {title}
         </Typography>
       </div>
-      <div className="mt-4 mb-8">{children}</div>
+      <div
+        className="mt-4 mb-8"
+        className={isActive ? "mt-4 mb-8 text-white-aboutCls" : "mt-4 mb-8"}
+
+      >{children}</div>
     </>
   );
 
@@ -85,7 +91,8 @@ const UserPreferences = ({
         <div className="flex w-72 flex-row items-center justify-center">
           <Typography
             variant="subtitle"
-            className="mr-5 h-full text-right"
+            //className="mr-5 h-full text-right"
+            className={isActive ? "mr-5 h-full text-white-aboutCls" : "mr-5 h-full text-right"}
           >
             {t('Language')}
           </Typography>
@@ -94,6 +101,7 @@ const UserPreferences = ({
             onChange={onLanguageChangeHandler}
             options={availableLanguages}
             value={state.language}
+            className="SelectCls"
           />
         </div>
       </Section>
@@ -111,13 +119,15 @@ const UserPreferences = ({
           type={ButtonEnums.type.secondary}
           onClick={onResetHandler}
           disabled={disabled}
+          className={isActive ? "bg-customblue-50_prefernceModal" : ""}
         >
-          {t('Reset to defaults')}
+          {t('Reset to Defaults')}
         </Button>
         <div className="flex flex-row">
           <Button
             type={ButtonEnums.type.secondary}
             onClick={onCancelHandler}
+            className={isActive ? "bg-customblue-50_prefernceModal" : ""}
           >
             {t('Cancel')}
           </Button>
@@ -134,7 +144,7 @@ const UserPreferences = ({
   );
 };
 
-const noop = () => {};
+const noop = () => { };
 
 UserPreferences.propTypes = {
   disabled: PropTypes.bool,
@@ -156,6 +166,7 @@ UserPreferences.propTypes = {
     startRecording: PropTypes.func.isRequired,
     record: PropTypes.func.isRequired,
   }).isRequired,
+  isActive: PropTypes.bool,
 };
 
 UserPreferences.defaultProps = {

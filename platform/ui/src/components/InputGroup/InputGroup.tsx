@@ -15,6 +15,8 @@ const InputGroup = ({
   sorting,
   onSortingChange,
   isSortingEnabled,
+  isActive,
+  ...props
 }) => {
   const { sortBy, sortDirection } = sorting;
 
@@ -73,6 +75,7 @@ const InputGroup = ({
             onLabelClick={onLabelClick}
             value={values[name]}
             onChange={handleFieldChange}
+            isActive={isActive}
           />
         );
       case 'MultiSelect':
@@ -87,6 +90,7 @@ const InputGroup = ({
             value={values[name]}
             onChange={handleFieldChange}
             options={inputProps.options}
+            isActive={isActive}
           />
         );
       case 'DateRange':
@@ -100,6 +104,7 @@ const InputGroup = ({
             onLabelClick={onLabelClick}
             value={values[name]}
             onChange={handleDateRangeFieldChange}
+            isActive={isActive}
           />
         );
       case 'None':
@@ -110,14 +115,16 @@ const InputGroup = ({
             isSortable={_isSortable}
             sortDirection={_sortDirection}
             onLabelClick={onLabelClick}
+            isActive={isActive}
           />
         );
       default:
         break;
     }
   };
+
   return (
-    <div className="container relative m-auto flex flex-col">
+    <div className={isActive ? "container relative m-auto flex flex-col worklist_tableHeader" : "container relative m-auto flex flex-col"}>
       <div className="flex w-full flex-row">
         {inputMeta.map(inputMeta => {
           return (
@@ -158,6 +165,7 @@ InputGroup.propTypes = {
   }).isRequired,
   onSortingChange: PropTypes.func.isRequired,
   isSortingEnabled: PropTypes.bool.isRequired,
+  isActive: PropTypes.bool,
 };
 
 export default InputGroup;
