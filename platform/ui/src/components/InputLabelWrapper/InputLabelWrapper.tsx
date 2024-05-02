@@ -1,16 +1,20 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import classnames from 'classnames';
+import { useTranslation } from 'react-i18next';
 
 import Icon from '../Icon';
 
 const baseLabelClassName = 'flex flex-col flex-1 text-white text-lg pl-1 select-none';
+const baseLabelClassNameForSwitch = 'flex flex-col flex-1 text-white-On text-lg pl-1 select-none';
 const spanClassName = 'flex flex-row items-center cursor-pointer focus:outline-none';
 const sortIconMap = {
   descending: 'sorting-active-up',
   ascending: 'sorting-active-down',
   none: 'sorting',
 };
+
+
 
 const InputLabelWrapper = ({
   label,
@@ -19,7 +23,12 @@ const InputLabelWrapper = ({
   onLabelClick,
   className,
   children,
+  isActive,
+  ...props
 }) => {
+  const { t } = useTranslation('StudyList');
+
+
   const onClickHandler = e => {
     if (!isSortable) {
       return;
@@ -29,7 +38,7 @@ const InputLabelWrapper = ({
   };
 
   return (
-    <label className={classnames(baseLabelClassName, className)}>
+    <label className={isActive && label ? classnames(baseLabelClassNameForSwitch, className) : classnames(baseLabelClassName, className)}>
       <span
         role="button"
         className={spanClassName}
@@ -37,11 +46,14 @@ const InputLabelWrapper = ({
         onKeyDown={onClickHandler}
         tabIndex="0"
       >
-        {label}
+        {t(label)}
         {isSortable && (
           <Icon
             name={sortIconMap[sortDirection]}
-            className={classnames(
+            className={isActive ? classnames(
+              'mx-2 w-2',
+              sortDirection !== 'none' || isActive ? 'headericonCls' : 'text-primary-light'
+            ) : classnames(
               'mx-2 w-2',
               sortDirection !== 'none' ? 'text-primary-light' : 'text-primary-main'
             )}
@@ -64,6 +76,7 @@ InputLabelWrapper.propTypes = {
   onLabelClick: PropTypes.func.isRequired,
   className: PropTypes.string,
   children: PropTypes.node,
+  isActive: PropTypes.bool,
 };
 
 export default InputLabelWrapper;

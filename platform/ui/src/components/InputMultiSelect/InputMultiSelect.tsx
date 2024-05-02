@@ -14,6 +14,8 @@ const InputMultiSelect = ({
   placeholder,
   options,
   onChange,
+  isActive,
+  ...props
 }) => {
   return (
     <InputLabelWrapper
@@ -21,6 +23,7 @@ const InputMultiSelect = ({
       isSortable={isSortable}
       sortDirection={sortDirection}
       onLabelClick={onLabelClick}
+      isActive={isActive}
     >
       <Select
         id={id}
@@ -64,6 +67,8 @@ InputMultiSelect.propTypes = {
   onLabelClick: PropTypes.func.isRequired,
   onChange: PropTypes.func.isRequired,
   placeholder: PropTypes.string,
+  isActive: PropTypes.bool,
+
   /** Array of options to list as options */
   options: PropTypes.arrayOf(
     PropTypes.shape({

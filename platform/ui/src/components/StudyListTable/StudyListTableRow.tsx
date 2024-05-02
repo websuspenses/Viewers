@@ -6,24 +6,34 @@ import getGridWidthClass from '../../utils/getGridWidthClass';
 import Icon from '../Icon';
 
 const StudyListTableRow = props => {
-  const { tableData } = props;
-  const { row, expandedContent, onClickRow, isExpanded, dataCY } = tableData;
+  const { tableData, isActive } = props;
+  const { row, expandedContent, onClickRow, isExpanded } = tableData;
+
+  const dynamicWidth = {
+    maxWidth: 'max-content',
+  };
+  const defaultWidth = {
+    maxWidth: 0,
+  };
   return (
     <>
-      <tr
-        className="select-none"
-        data-cy={dataCY}
-      >
+      <tr className="select-none">
         <td
-          className={classnames('border-0 p-0', {
-            'border-secondary-light bg-primary-dark border-b': isExpanded,
-          })}
+          className={
+            isActive
+              ? classnames('border-0 p-0', {
+                'border-secondary-light bg-primary-dark-on border-b': isExpanded,
+              })
+              : classnames('border-0 p-0', {
+                'border-secondary-light bg-primary-dark border-b': isExpanded,
+              })
+          }
         >
           <div
             className={classnames(
               'w-full transition duration-300',
               {
-                'border-primary-light hover:border-secondary-light mb-2 overflow-visible rounded border':
+                'border-primary-light hover:border-secondary-light mb-2 overflow-hidden rounded border':
                   isExpanded,
               },
               {
@@ -34,28 +44,54 @@ const StudyListTableRow = props => {
             <table className={classnames('w-full p-4')}>
               <tbody>
                 <tr
-                  className={classnames(
-                    'hover:bg-secondary-main cursor-pointer transition duration-300',
-                    {
-                      'bg-primary-dark': !isExpanded,
-                    },
-                    { 'bg-secondary-dark': isExpanded }
-                  )}
+                  className={
+                    isActive
+                      ? classnames(
+                        'truncate-dark bg-secondary-main-darkMode cursor-pointer transition duration-300',
+                        {
+                          'bg-primary-dark-on': !isExpanded,
+                        },
+                        { 'bg-secondary-dark-on': isExpanded }
+                      )
+                      : classnames(
+                        'hover:bg-secondary-main cursor-pointer transition duration-300',
+                        {
+                          'bg-primary-dark': !isExpanded,
+                        },
+                        { 'bg-secondary-dark': isExpanded }
+                      )
+                  }
                   onClick={onClickRow}
                 >
                   {row.map((cell, index) => {
                     const { content, title, gridCol } = cell;
+
                     return (
                       <td
                         key={index}
-                        className={classnames(
-                          'truncate px-4 py-2 text-base',
-                          { 'border-secondary-light border-b': !isExpanded },
-                          getGridWidthClass(gridCol) || ''
-                        )}
-                        style={{
-                          maxWidth: 0,
-                        }}
+                        className={
+                          isActive
+                            ? classnames(
+                              'px-4 py-2 text-base',
+                              { 'border-secondary-light-darkMode border-b': !isExpanded },
+                              getGridWidthClass(gridCol) || ''
+                            )
+                            : classnames(
+                              'truncate px-4 py-2 text-base',
+                              { 'border-secondary-light border-b': !isExpanded },
+                              getGridWidthClass(gridCol) || ''
+                            )
+                        }
+                        // style={{
+                        //   maxWidth: 0,
+                        // }}
+                        style={
+                          title === 'CTA Status'
+                            ? dynamicWidth
+                            : title === 'CTA Viewers'
+                              ? dynamicWidth
+                              : defaultWidth
+                        }
                         title={title}
                       >
                         <div className="flex">
@@ -78,7 +114,13 @@ const StudyListTableRow = props => {
                   })}
                 </tr>
                 {isExpanded && (
-                  <tr className="max-h-0 w-full select-text overflow-hidden bg-black">
+                  <tr
+                    className={
+                      isActive
+                        ? 'bg-black-on max-h-0 w-full select-text overflow-hidden'
+                        : 'max-h-0 w-full select-text overflow-hidden bg-black'
+                    }
+                  >
                     <td colSpan={row.length}>{expandedContent}</td>
                   </tr>
                 )}
@@ -107,7 +149,6 @@ StudyListTableRow.propTypes = {
     expandedContent: PropTypes.node.isRequired,
     onClickRow: PropTypes.func.isRequired,
     isExpanded: PropTypes.bool.isRequired,
-    dataCY: PropTypes.string,
   }),
 };
 

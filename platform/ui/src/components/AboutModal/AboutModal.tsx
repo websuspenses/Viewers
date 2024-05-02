@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import Typography from '../Typography';
 import Icon from '../Icon';
 
-const Link = ({ href, children, showIcon = false }) => {
+const Link = ({ href, children, showIcon = false, isActive }) => {
   return (
     <a
       href={href}
@@ -16,14 +16,13 @@ const Link = ({ href, children, showIcon = false }) => {
       <Typography
         variant="subtitle"
         component="p"
-        color="primaryActive"
-        className="flex items-center"
+        className={isActive ? "flex items-center text-white-aboutCls" : "flex items-center"}
       >
         {children}
         {!!showIcon && (
           <Icon
             name="external-link"
-            className="ml-2 w-5 text-white"
+            className={isActive ? "ml-2 w-5 text-white-aboutCls" : "ml-2 w-5 text-white"}
           />
         )}
       </Typography>
@@ -31,24 +30,25 @@ const Link = ({ href, children, showIcon = false }) => {
   );
 };
 
-const Row = ({ title, value, link }) => {
+const Row = ({ title, value, link, isActive }) => {
   return (
     <div className="mb-4 flex">
       <Typography
         variant="subtitle"
         component="p"
-        className="w-48 text-white"
+        className={isActive ? "w-48 text-white-aboutCls" : "w-48 text-white"}
       >
         {title}
       </Typography>
 
       {link ? (
-        <Link href={link}>{value}</Link>
+        <Link href={link} isActive={isActive}>{value}</Link>
+
       ) : (
         <Typography
           variant="subtitle"
           component="p"
-          className="w-48 text-white"
+          className={isActive ? "w-48 text-white-aboutCls" : "w-48 text-white"}
         >
           {value}
         </Typography>
@@ -57,7 +57,7 @@ const Row = ({ title, value, link }) => {
   );
 };
 
-const AboutModal = ({ buildNumber, versionNumber, commitHash }) => {
+const AboutModal = ({ buildNumber, versionNumber, commitHash, isActive }) => {
   const { os, version, name } = detect();
   const browser = `${name[0].toUpperCase()}${name.substr(1)} ${version}`;
   const { t } = useTranslation('AboutModal');
@@ -66,7 +66,7 @@ const AboutModal = ({ buildNumber, versionNumber, commitHash }) => {
     <div className="mb-3 border-b-2 border-black pb-3">
       <Typography
         variant="inherit"
-        color="primaryLight"
+        color={isActive ? 'primaryLight_darkMode' : 'primaryLight'}
         className="text-[16px] font-semibold !leading-[1.2]"
       >
         {title}
@@ -78,25 +78,29 @@ const AboutModal = ({ buildNumber, versionNumber, commitHash }) => {
       {renderRowTitle(t('Important links'))}
       <div className="mb-8 flex">
         <Link
-          href="https://community.ohif.org/"
+          href="#"
           showIcon={true}
+          isActive={isActive}
         >
-            {t('Visit the forum')}
+          {'Visit the forum'}
         </Link>
         <span className="ml-4">
           <Link
-            href="https://github.com/OHIF/Viewers/issues/new/choose"
+            href="#"
             showIcon={true}
+            isActive={isActive}
+
           >
             {t('Report an issue')}
           </Link>
         </span>
         <span className="ml-4">
           <Link
-            href="https://ohif.org/"
+            href="#"
             showIcon={true}
+            isActive={isActive}
           >
-          {t('More details')}
+            {t('More details')}
           </Link>
         </span>
       </div>
@@ -105,42 +109,50 @@ const AboutModal = ({ buildNumber, versionNumber, commitHash }) => {
       <div className="flex flex-col">
         <Row
           title={t('Repository URL')}
-          value="https://github.com/OHIF/Viewers/"
-          link="https://github.com/OHIF/Viewers/"
+          value="#"
+          link="#"
+          isActive={isActive}
         />
         <Row
           title={t('Data citation')}
-          value="https://github.com/OHIF/Viewers/blob/master/DATACITATION.md"
-          link="https://github.com/OHIF/Viewers/blob/master/DATACITATION.md"
+          value="#"
+          link="#"
+          isActive={isActive}
         />
-        {/* <Row
-          title={t('Last master commits')}
-          value="https://github.com/OHIF/Viewers/"
-          link="https://github.com/OHIF/Viewers/"
-        /> */}
+        {/* */}
         <Row
           title={t('Version number')}
           value={versionNumber}
+          isActive={isActive}
+
         />
         {buildNumber && (
           <Row
             title={t('Build number')}
             value={buildNumber}
+            isActive={isActive}
+
           />
         )}
         {commitHash && (
           <Row
             title={t('Commit hash')}
             value={commitHash}
+            isActive={isActive}
+
           />
         )}
         <Row
           title={t('Browser')}
           value={browser}
+          isActive={isActive}
+
         />
         <Row
           title={t('OS')}
           value={os}
+          isActive={isActive}
+
         />
       </div>
     </div>
@@ -150,6 +162,7 @@ const AboutModal = ({ buildNumber, versionNumber, commitHash }) => {
 AboutModal.propTypes = {
   buildNumber: PropTypes.string,
   versionNumber: PropTypes.string,
+  isActive: PropTypes.bool,
 };
 
 export default AboutModal;

@@ -16,6 +16,7 @@ const StudyListFilter = ({
   numOfStudies,
   onUploadClick,
   getDataSourceConfigurationComponent,
+  isActive,
 }) => {
   const { t } = useTranslation('StudyList');
   const { sortBy, sortDirection } = filterValues;
@@ -28,19 +29,23 @@ const StudyListFilter = ({
   };
   const isSortingEnabled = numOfStudies > 0 && numOfStudies <= 100;
 
+
   return (
     <React.Fragment>
       <div>
-        <div className="bg-black">
+        <div
+          className={isActive ? "bg-black-on" : "bg-black"} id='containerId'
+        >
           <div className="container relative mx-auto flex flex-col pt-5">
             <div className="mb-5 flex flex-row justify-between">
               <div className="flex min-w-[1px] shrink flex-row items-center gap-6">
-                <Typography
+                {/* <Typography
                   variant="h6"
-                  className="text-white"
+                  className={isActive ? "text-white-On" : "text-white"}
+                    id="StudyList"
                 >
                   {t('StudyList')}
-                </Typography>
+                </Typography> */}
                 {getDataSourceConfigurationComponent && getDataSourceConfigurationComponent()}
                 {onUploadClick && (
                   <div
@@ -48,18 +53,18 @@ const StudyListFilter = ({
                     onClick={onUploadClick}
                   >
                     <Icon name="icon-upload"></Icon>
-                    <span>{t('Upload')}</span>
+                    <span>Upload</span>
                   </div>
                 )}
               </div>
-              <div className="flex h-[34px] flex-row items-center">
+              <div className="flex flex-row">
                 {/* TODO revisit the completely rounded style of button used for clearing the study list filter - for now use LegacyButton*/}
                 {isFiltering && (
                   <LegacyButton
                     rounded="full"
                     variant="outlined"
-                    color="primaryActive"
-                    border="primaryActive"
+                    color={isActive ? "primaryActive_dark_color" : "primaryActive"}
+                    border={isActive ? "primaryActive_dark_border" : "primaryActive"}
                     className="mx-8"
                     startIcon={<Icon name="cancel" />}
                     onClick={clearFilters}
@@ -67,26 +72,26 @@ const StudyListFilter = ({
                     {t('ClearFilters')}
                   </LegacyButton>
                 )}
-                <Typography
+                {/* <Typography
                   variant="h6"
-                  className="text-primary-light"
-                >
-                  {`${t('Number of studies')}: `}
-                </Typography>
-                <Typography
-                  variant="h6"
-                  className="mr-2"
+                  className={isActive ? "mr-2 numberOfStudiesCls" :"mr-2"}
                   data-cy={'num-studies'}
                 >
                   {numOfStudies > 100 ? '>100' : numOfStudies}
                 </Typography>
+                <Typography
+                  variant="h6"
+                  className={isActive ? "text-white-On" :"text-primary-light self-end pb-1"}
+                >
+                  {t('Studies')}
+                </Typography> */}
               </div>
             </div>
           </div>
         </div>
       </div>
       <div className="sticky -top-1 z-10 mx-auto border-b-4 border-black">
-        <div className="bg-primary-dark pt-3 pb-3">
+        <div className={isActive ? "bg-primary-dark-on pt-3 headContentCls" : "bg-primary-dark pt-3 pb-3"}>
           <InputGroup
             inputMeta={filtersMeta}
             values={filterValues}
@@ -94,12 +99,13 @@ const StudyListFilter = ({
             sorting={filterSorting}
             onSortingChange={setFilterSorting}
             isSortingEnabled={isSortingEnabled}
+            isActive={isActive}
           />
         </div>
         {numOfStudies > 100 && (
           <div className="container m-auto">
             <div className="bg-primary-main rounded-b py-1 text-center text-base">
-              <p className="text-white">{t('Filter list to 100 studies or less to enable sorting')}</p>
+              <p className="text-white">{t('NumOfStudiesHiggerThan100Message')}</p>
             </div>
           </div>
         )}

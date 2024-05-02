@@ -6,9 +6,17 @@ import classnames from 'classnames';
 const baseInputClasses =
   'shadow transition duration-300 appearance-none border border-inputfield-main focus:border-inputfield-focus focus:outline-none disabled:border-inputfield-disabled rounded w-full py-2 px-3 text-sm text-white placeholder-inputfield-placeholder leading-tight';
 
+const baseInputClasses_darkMode =
+  'shadow transition duration-300 appearance-none border border-inputfield-main focus:border-inputfield-focus focus:outline-none disabled:border-inputfield-disabled rounded w-full py-2 px-3 text-sm text-InputCls placeholder-inputfield-placeholder leading-tight';
+
 const transparentClasses = {
   true: 'bg-transparent',
   false: 'bg-black',
+};
+
+const transparentClssesSWitch = {
+  true: 'bg-transparent',
+  false: 'bg-black-on',
 };
 
 const smallInputClasses = {
@@ -33,19 +41,26 @@ const Input = ({
   onKeyDown,
   readOnly,
   disabled,
-  labelChildren,
+  isActive,
   ...otherProps
 }) => {
+
   return (
     <div className={classnames('flex flex-1 flex-col', containerClassName)}>
       <Label
-        className={labelClassName}
+        className={labelClassName + 'msm'}
         text={label}
-        children={labelChildren}
       ></Label>
       <input
         data-cy={`input-${id}`}
-        className={classnames(
+        className={isActive ? classnames(
+          label && 'mt-2',
+          className,
+          baseInputClasses_darkMode,
+          transparentClssesSWitch[transparent],
+          smallInputClasses[smallInput],
+          { 'cursor-not-allowed': disabled }
+        ) : classnames(
           label && 'mt-2',
           className,
           baseInputClasses,
@@ -85,7 +100,6 @@ Input.propTypes = {
   onKeyPress: PropTypes.func,
   onKeyDown: PropTypes.func,
   disabled: PropTypes.bool,
-  labelChildren: PropTypes.node,
 };
 
 export default Input;

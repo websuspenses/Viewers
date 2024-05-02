@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, Link } from 'react-router-dom';
 import { ErrorBoundary } from '@ohif/ui';
 
 // Route Components
@@ -12,6 +12,11 @@ import buildModeRoutes from './buildModeRoutes';
 import PrivateRoute from './PrivateRoute';
 import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
+import Login from './Login';
+import DashBoard from '../components/AdminPanel/DashBoard';
+import Users from '../components/AdminPanel/Users';
+import ReportTemplatesList from '../components/ReportTemplates/ReportTemplatesList';
+import CreateTemplate from '../components/ReportTemplates/CreateTemplate';
 
 const NotFoundServer = ({
   message = 'Unable to query for studies at this time. Check your data source configuration or network connection',
@@ -74,6 +79,30 @@ const bakedInRoutes = [
     path: '/localbasic',
     children: Local.bind(null, { modePath: 'viewer/dicomlocal' }),
   },
+  {
+    path: '/',
+    children: Login,
+  },
+  {
+    path: '/workList',
+    children: WorkList,
+  },
+  {
+    path: '/dashboard',
+    children: DashBoard,
+  },
+  {
+    path: '/users',
+    children: Users,
+  },
+  {
+    path: '/report-templates',
+    children: ReportTemplatesList,
+  },
+  {
+    path: '/create-template',
+    children: CreateTemplate,
+  },
 ];
 
 // NOT FOUND (404)
@@ -102,17 +131,24 @@ const createRoutes = ({
   const { customizationService } = servicesManager.services;
 
   const WorkListRoute = {
-    path: '/',
+    path: '/workList',
     children: DataSourceWrapper,
     private: true,
     props: { children: WorkList, servicesManager, extensionManager },
+  };
+
+  const LoginRoute = {
+    path: '/',
+    children: DataSourceWrapper,
+    private: true,
+    props: { children: Login, servicesManager, extensionManager },
   };
 
   const customRoutes = customizationService.getGlobalCustomization('customRoutes');
   const allRoutes = [
     ...routes,
     ...(showStudyList ? [WorkListRoute] : []),
-    ...(customRoutes?.routes || []),
+    ...(customRoutes?.routes || [LoginRoute]),
     ...bakedInRoutes,
     customRoutes?.notFoundRoute || notFoundRoute,
   ];

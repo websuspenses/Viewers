@@ -1,37 +1,35 @@
-import i18n from 'i18next';
-
 const filtersMeta = [
   {
     name: 'patientName',
-    displayName: i18n.t('StudyList:PatientName'),
+    displayName: 'PatientName',
     inputType: 'Text',
     isSortable: true,
     gridCol: 4,
   },
   {
     name: 'mrn',
-    displayName: i18n.t('StudyList:MRN'),
+    displayName: 'MRN',
     inputType: 'Text',
     isSortable: true,
     gridCol: 3,
   },
   {
     name: 'studyDate',
-    displayName: i18n.t('StudyList:StudyDate'),
+    displayName: 'StudyDate',
     inputType: 'DateRange',
     isSortable: true,
     gridCol: 5,
   },
   {
     name: 'description',
-    displayName: i18n.t('StudyList:Description'),
+    displayName: 'StudyDescription',
     inputType: 'Text',
     isSortable: true,
     gridCol: 4,
   },
   {
     name: 'modalities',
-    displayName: i18n.t('StudyList:Modality'),
+    displayName: 'Modality',
     inputType: 'MultiSelect',
     inputProps: {
       options: [
@@ -112,17 +110,39 @@ const filtersMeta = [
   },
   {
     name: 'accession',
-    displayName: i18n.t('StudyList:AccessionNumber'),
+    displayName: 'AccessionNumber',
     inputType: 'Text',
     isSortable: true,
     gridCol: 3,
   },
   {
     name: 'instances',
-    displayName: i18n.t('StudyList:Instances'),
+    displayName: 'Instances',
     inputType: 'None',
     isSortable: false,
     gridCol: 2,
+  },
+  {
+    name: 'status',
+    displayName: 'Status',
+    inputType: 'None',
+    isSortable: false,
+    gridCol: 2,
+  },
+  {
+    name: 'actions',
+    displayName: 'Actions',
+    inputType: 'MultiSelect',
+    inputProps: {
+      options: [
+        { value: 'AR', label: 'AR' },
+        { value: 'ASMT', label: 'ASMT' },
+        { value: 'AU', label: 'AU' },
+        { value: 'RTINTENT', label: 'RTINTENT' },
+      ],
+    },
+    isSortable: false,
+    gridCol: 3,
   },
 ];
 

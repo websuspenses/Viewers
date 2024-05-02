@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
 import PropTypes from 'prop-types';
 import classnames from 'classnames';
 
@@ -9,9 +8,7 @@ const DELAY_TO_SHOW = 1000;
 const DELAY_TO_HIDE = 10; // it needs at least a little delay to prevent tooltip to suddenly hide
 const DELAY_TO_HIDE_AFTER_COPYING = 1000;
 
-const TooltipClipboard = ({ children, text }) => {
-  const { t } = useTranslation('TooltipClipboard');
-
+const TooltipClipboard = ({ children, text, ActiveMode }) => {
   const [isActive, setIsActive] = useState(false);
   const [message, setMessage] = useState(null);
   const [isCopying, setIsCopying] = useState(false);
@@ -24,10 +21,10 @@ const TooltipClipboard = ({ children, text }) => {
     setIsCopying(true);
     try {
       await navigator.clipboard.writeText(text);
-      setMessage(t('Copied'));
+      setMessage('Copied!');
     } catch (err) {
       console.error('Failed to copy: ', err);
-      setMessage(t('Failed to copy'));
+      setMessage('Failed to copy!');
     } finally {
       refreshElementPosition();
 
@@ -137,7 +134,9 @@ const TooltipClipboard = ({ children, text }) => {
         onClick={onClickHandler}
       >
         <div
-          className={classnames(
+          className={ActiveMode ? classnames(
+            'bg-primary-dark relative flex items-center rounded border px-2 py-2 text-base text-white_ActiveTooltip'
+          ) : classnames(
             'bg-primary-dark border-secondary-main relative flex items-center rounded border px-2 py-2 text-base text-white'
           )}
         >
@@ -147,7 +146,7 @@ const TooltipClipboard = ({ children, text }) => {
               <div className="border-secondary-light ml-2 border-l pl-2">
                 <Icon
                   name="clipboard"
-                  className="w-4 text-white"
+                  className={ActiveMode ? "w-4 toolTip_SvgDark" : "w-4 text-white"}
                 />
               </div>
             </>
