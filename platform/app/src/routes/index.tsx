@@ -11,7 +11,6 @@ import NotFound from './NotFound';
 import buildModeRoutes from './buildModeRoutes';
 import PrivateRoute from './PrivateRoute';
 import PropTypes from 'prop-types';
-import { Link } from 'react-router-dom';
 import Login from './Login';
 import DashBoard from '../components/AdminPanel/DashBoard';
 import Users from '../components/AdminPanel/Users';
