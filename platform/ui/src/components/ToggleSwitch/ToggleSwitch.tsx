@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import classnames from 'classnames';
 import { ReactComponent as Sun } from './Sun.svg';
 import { ReactComponent as Moon } from './Moon.svg';
-import './toggleSwitch.css';
+import './ToggleSwitch.css';
 
 const stickyClasses = 'sticky top-0';
 const notStickyClasses = 'relative';

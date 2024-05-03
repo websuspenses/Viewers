@@ -51,7 +51,7 @@ function ReportTemplatesList() {
         isSticky
         menuOptions={[]}
         isReturnEnabled={false}
-        WhiteLabeling={[]}
+        WhiteLabeling={{}}
         isActive={isActive}
         handleChange={handleChangeSwitch}
         screen="ReportTemplateList"
@@ -106,11 +106,14 @@ function ReportTemplatesList() {
                   </Button>
                 </Stack>
               </div>
-              <li>{item.Date}</li>
-              <li>{item.Type}</li>
-              <li>{item.Name}</li>
-              <li>{item.Referring}</li>
-              <li>{item.Relevantresults}</li>
+              <ul>
+                {' '}
+                <li>{item.Date}</li>
+                <li>{item.Type}</li>
+                <li>{item.Name}</li>
+                <li>{item.Referring}</li>
+                <li>{item.Relevantresults}</li>
+              </ul>
             </li>
           ))}
         </ul>

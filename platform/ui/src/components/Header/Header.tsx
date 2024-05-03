@@ -33,8 +33,6 @@ function Header({
     }
   };
 
-  console.log('screen', screen);
-
   return (
     <NavBar
       className="justify-between border-b-4 border-black"
