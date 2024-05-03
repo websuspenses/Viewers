@@ -14,8 +14,10 @@ function ReportTemplatesList() {
   // Set body style
   useEffect(() => {
     document.body.classList.add('bg-black');
+    document.body.classList.add('reportsList_ContainerCls');
     return () => {
       document.body.classList.remove('bg-black');
+      document.body.classList.add('reportsList_ContainerCls');
     };
   }, []);
 

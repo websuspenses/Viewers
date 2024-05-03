@@ -1,13 +1,13 @@
 import React, { useMemo } from 'react';
 
 function WorkflowPanel({ servicesManager, extensionManager }) {
-  const ProgressDropdownWithService = useMemo(() => {
+  const ProgressDropdownWithNewService = useMemo(() => {
     const defaultComponents = extensionManager.getModuleEntry(
       '@ohif/extension-default.customizationModule.default'
     ).value;
 
     return defaultComponents.find(
-      component => component.id === 'progressDropdownWithServiceComponent'
+      component => component.id === 'progressDropdownWithNewServiceComponent'
     ).component;
   }, [extensionManager]);
 
@@ -18,7 +18,7 @@ function WorkflowPanel({ servicesManager, extensionManager }) {
     >
       <div className="mb-1">Workflow</div>
       <div>
-        <ProgressDropdownWithService servicesManager={servicesManager} />
+        <ProgressDropdownWithNewService servicesManager={servicesManager} />
       </div>
     </div>
   );

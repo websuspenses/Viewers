@@ -11,8 +11,7 @@ body.bg-black {
   background-color: #ffffff !important;
   --tw-bg-opacity: 0;
 }
-body {
-  color: #ffffff !important;
+.reportsList_ContainerCls {
   background-color: #ffffff !important;
   --tw-bg-opacity: 0;
 }

@@ -3,7 +3,7 @@ import ToolbarLayoutSelectorWithServices from './Toolbar/ToolbarLayoutSelector';
 import ToolbarSplitButtonWithServices from './Toolbar/ToolbarSplitButtonWithServices';
 import ToolbarButtonGroupWithServices from './Toolbar/ToolbarButtonGroupWithServices';
 import { ToolbarButton } from '@ohif/ui';
-import ProgressDropdownWithService from './components/ProgressDropdownWithService';
+import ProgressDropdownWithNewService from './Components/ProgressDropdownWithNewService';
 
 const getClassName = isToggled => {
   return {
@@ -39,7 +39,7 @@ export default function getToolbarModule({ commandsManager, servicesManager }) {
     },
     {
       name: 'ohif.progressDropdown',
-      defaultComponent: ProgressDropdownWithService,
+      defaultComponent: ProgressDropdownWithNewService,
     },
     {
       name: 'evaluate.group.promoteToPrimary',
