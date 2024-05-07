@@ -102,6 +102,10 @@ const bakedInRoutes = [
     path: '/create-template',
     children: CreateTemplate,
   },
+  {
+    path: '/create-template/:modality',
+    children: CreateTemplate,
+  },
 ];
 
 // NOT FOUND (404)

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import '../ReportTemplates/report.css';
-import { data } from './reportdata';
+//import { data } from './reportdata';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -10,6 +10,21 @@ import { Header } from '@ohif/ui';
 
 function ReportTemplatesList() {
   const [isActive, setIsActive] = useState(false);
+  const [templateData, setData] = useState([]);
+  let labName = 'Test CT Scan Center';
+
+  labName = labName.replace(/ /g, "_") + '.json';
+  useEffect(() => {
+    fetch(`http://localhost:3300/read_json/${labName}`)
+      .then((response) => response.json())
+      .then((actualData) => {
+        console.log("actualData ", actualData)
+        setData(actualData);
+      })
+      .catch((err) => {
+        console.log(err.message);
+      });
+  }, []);
 
   // Set body style
   useEffect(() => {
@@ -75,49 +90,49 @@ function ReportTemplatesList() {
           </Link>
         </div>
         <ul className="templatesList">
-          {data.map(item => (
-            <li
-              key={item.id}
-              className={isActive ? 'templatesList_dark' : 'templates-item'}
-            >
-              <strong className={isActive ? 'templateTitleCls' : 'templateTitleCls_dark'}>
-                {item.title}
-              </strong>
-              <div className="reports-justify-between items-center sm:flex">
-                <Stack
-                  direction="row"
-                  spacing={2}
-                >
-                  <Button
-                    variant="contained"
-                    color="success"
-                    className="createUserCls"
-                    startIcon={<EditIcon />}
-                  //onClick={() => setShowEditMode(true)}
+          {/* {templateData[0]} */}
+          {
+            templateData.map(item => (
+              <li
+                key={item.labName}
+                className={isActive ? 'templatesList_dark' : 'templates-item'}
+              >
+                <strong className={isActive ? 'templateTitleCls' : 'templateTitleCls_dark'}>
+                  {item.modality}
+                </strong>
+                <div className="reports-justify-between items-center sm:flex">
+                  <Stack
+                    direction="row"
+                    spacing={2}
                   >
-                    Edit
-                  </Button>
-                  <Button
-                    variant="contained"
-                    color="success"
-                    className="createUserCls"
-                    startIcon={<DeleteIcon />}
-                  // onClick={handleClick}
-                  >
-                    Delete
-                  </Button>
-                </Stack>
-              </div>
-              <ul>
-                {' '}
-                <li>{item.Date}</li>
-                <li>{item.Type}</li>
-                <li>{item.Name}</li>
-                <li>{item.Referring}</li>
-                <li>{item.Relevantresults}</li>
-              </ul>
-            </li>
-          ))}
+                    <Link
+                      to={`/create-template/${item.modality}`}
+                      style={{ textDecoration: 'none' }}
+                    >
+                      <Button
+                        variant="contained"
+                        color="success"
+                        className="createUserCls"
+                        startIcon={<EditIcon />}
+                      //onClick={() => setShowEditMode(true)}
+                      >
+                        Edit
+                      </Button>
+                    </Link>
+                    <Button
+                      variant="contained"
+                      color="success"
+                      className="createUserCls"
+                      startIcon={<DeleteIcon />}
+                    // onClick={handleClick}
+                    >
+                      Delete
+                    </Button>
+                  </Stack>
+                </div>
+              </li>
+            ))
+          }
         </ul>
       </div>
     </div>
