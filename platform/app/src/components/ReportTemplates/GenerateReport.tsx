@@ -42,9 +42,9 @@ const editorOptions = {
   imageGalleryUrl: 'http://localhost:3006/orders/gallery',
 };
 
-const CreateTemplate = () => {
+const GenerateReport = () => {
   let labName = 'Test CT Scan Center';
-
+  let hostName = 'http://ciaiteleradiology.com/pacs/dicom-web/';
   labName = labName.replace(/ /g, "_") + '.json';
   const params = useParams();
   console.log("Default param ", params);
@@ -54,7 +54,7 @@ const CreateTemplate = () => {
   const [isActive, setIsActive] = useState(false);
 
 
-  const modalityValue = params.modality;
+  const modalityValue = params.mrn;
   const [modalityInfo, getModalityData] = useState('');
   const [modalityParam, setModalityParam] = useState('');
   const [selectedOption, setSelectedOption] = useState(modalityValue ? modalityValue : '');
@@ -63,11 +63,11 @@ const CreateTemplate = () => {
 
 
   useEffect(() => {
-    fetch(`http://localhost:3300/read_modality/${modalityValue}/${labName}`)
+    fetch(`${hostName}studies/1.3.6.1.4.1.5962.1.1.0.0.0.1196533885.18148.0.1/metadata/reportRaw`)
       .then((response) => response.json())
       .then((actualData) => {
         console.log("Modality Info ", actualData)
-        getModalityData(actualData.contentRef);
+        getModalityData(actualData.reportRaw);
 
       })
       .catch((err) => {
@@ -138,13 +138,10 @@ const CreateTemplate = () => {
     // Handle form submission with selectedOption
     let contentValue = '';
     console.log("contentRef.current.innerHTML", value);
-    if (contentRef.current) {
-      contentValue = contentRef.current.innerHTML;
-    }
     console.log('labName', labName, 'Selected option:', selectedOption, "contentRef ", value);
 
-    const url = 'http://localhost:3300/create_template';
-    let data = { "labName": labName, "modality": selectedOption, "contentRef": value }
+    const url = `${hostName}/dicom-web/studies/${modalityValue}/addmetadata/reportRaw`;
+    let data = { "data": value }
     const options = {
       method: 'POST',
       headers: {
@@ -207,4 +204,4 @@ const CreateTemplate = () => {
   );
 };
 
-export default CreateTemplate;
+export default GenerateReport;

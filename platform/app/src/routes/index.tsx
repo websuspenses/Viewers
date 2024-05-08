@@ -16,6 +16,7 @@ import DashBoard from '../components/AdminPanel/DashBoard';
 import Users from '../components/AdminPanel/Users';
 import ReportTemplatesList from '../components/ReportTemplates/ReportTemplatesList';
 import CreateTemplate from '../components/ReportTemplates/CreateTemplate';
+import GenerateReport from '../components/ReportTemplates/GenerateReport';
 
 const NotFoundServer = ({
   message = 'Unable to query for studies at this time. Check your data source configuration or network connection',
@@ -105,6 +106,10 @@ const bakedInRoutes = [
   {
     path: '/create-template/:modality',
     children: CreateTemplate,
+  },
+  {
+    path: '/generate-report/:mrn',
+    children: GenerateReport,
   },
 ];
 

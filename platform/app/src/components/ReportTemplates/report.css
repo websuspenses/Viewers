@@ -11,6 +11,7 @@ body.bg-black {
   background-color: #ffffff !important;
   --tw-bg-opacity: 0;
 }
+
 .reportsList_ContainerCls {
   background-color: #ffffff !important;
   --tw-bg-opacity: 0;
@@ -33,6 +34,7 @@ body.bg-black {
 .bg-black-on .closeIconCls:hover {
   color: red !important;
 }
+
 .bg-black-on .closeIconCls {
   color: #ffffff !important;
 }
@@ -48,11 +50,13 @@ body.bg-black-on {
   font-family: sans-serif;
   text-align: center;
 }
+
 .reportcontainer {
   margin: 0 auto;
   width: 100%;
   max-width: 1280px;
 }
+
 .templatesList {
   list-style: none;
 }
@@ -110,6 +114,7 @@ body.bg-black-on {
   color: #ffffff !important;
   border-radius: 4px !important;
 }
+
 .createUserCls:hover {
   background-color: #1a594e !important;
   border-radius: 4px !important;
@@ -122,6 +127,7 @@ body.bg-black-on {
   font-weight: bold;
   color: #0a7c6c !important;
 }
+
 .templateTitleCls {
   color: #d8d4d4 !important;
 }
@@ -204,4 +210,59 @@ body.bg-black-on {
   font-size: 10px;
   line-height: 1.5;
   background: #0a7c6c;
+}
+
+.modalityDropdown {
+  margin-bottom: 10px;
+}
+
+.modalityDropdown label {
+  color: #0a7c6c;
+  padding: 10px 5px;
+}
+
+.modalityDropdown select {
+  font-weight: 400;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+  border: 1px solid transparent;
+  padding: .375rem .75rem;
+  font-size: 1rem;
+  line-height: 1.5;
+  border-radius: .25rem;
+  background-color: #343434;
+  color: #0a7c6c;
+}
+
+.modalityDropdown select option {
+  font-weight: 400;
+  background-color: #343434;
+  color: #0a7c6c;
+}
+
+.templateForm {
+  /* background-color: #ffffff; */
+}
+
+.templateForm .submitButton {
+  margin-top: 10px;
+  background-color: #343434 !important;
+  color: #0a7c6c;
+  width: 150px;
+  float: right;
+  border-radius: 4px;
+  padding: 5px 0;
+}
+
+.bg-secondary-main-darkMode:hover svg {
+  fill: #ffffff;
+}
+
+.hover\:bg-secondary-main:hover svg {
+  fill: #ffffff;
 }

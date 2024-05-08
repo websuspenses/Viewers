@@ -92,9 +92,9 @@ function ReportTemplatesList() {
         <ul className="templatesList">
           {/* {templateData[0]} */}
           {
-            templateData.map(item => (
+            templateData.map((item, index) => (
               <li
-                key={item.labName}
+                key={index}
                 className={isActive ? 'templatesList_dark' : 'templates-item'}
               >
                 <strong className={isActive ? 'templateTitleCls' : 'templateTitleCls_dark'}>
