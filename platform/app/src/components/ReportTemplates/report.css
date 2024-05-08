@@ -16,6 +16,28 @@ body.bg-black {
   --tw-bg-opacity: 0;
 }
 
+.bg-black-on .css-1t1j96h-MuiPaper-root-MuiDialog-paper {
+  background-color: rgb(28, 28, 20) !important;
+  color: #ffff !important;
+  border-radius: 10px !important;
+}
+
+.bg-black-on .dividerCls {
+  border-color: #343435 !important;
+}
+
+.bg-black-on .dialogContentCls {
+  color: #d8d4d4 !important;
+}
+
+.bg-black-on .closeIconCls:hover {
+  color: red !important;
+}
+.bg-black-on .closeIconCls {
+  color: #ffffff !important;
+}
+
+
 body.bg-black-on {
   color: black !important;
   background-color: rgb(28, 28, 20) !important;

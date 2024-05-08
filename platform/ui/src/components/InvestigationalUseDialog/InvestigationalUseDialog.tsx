@@ -73,7 +73,8 @@ const InvestigationalUseDialog = ({ dialogConfiguration }) => {
             <div className="text-[13px] text-white">
               <span
                 className="text-primary-active cursor-pointer"
-                onClick={() => window.open('https://ohif.org/', '_blank')}
+                // onClick={() => window.open('https://ohif.org/', '_blank')}
+                onClick={() => window.open('#', '_blank')}
               >
                 Learn more about OHIF Viewer
               </span>

@@ -221,6 +221,7 @@ import tab4D from './../../assets/icons/tab-4d.svg';
 
 /** New investigational use */
 import investigationalUse from './../../assets/icons/illustration-investigational-use.svg';
+import templates from './../../assets/icons/report-templates-list.svg';
 
 const ICONS = {
   'arrow-down': arrowDown,
@@ -270,6 +271,7 @@ const ICONS = {
   pencil: pencil,
   'power-off': powerOff,
   profile: profile,
+  templates: templates,
   'push-left': pushLeft,
   'push-right': pushRight,
   settings: settings,

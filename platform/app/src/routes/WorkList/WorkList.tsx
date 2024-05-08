@@ -490,6 +490,13 @@ function WorkList({
           },
         }),
     },
+    {
+      title: t('Header:Predefined Templates'),
+      icon: 'templates',
+      onClick: () => {
+        navigate(`/report-templates`);
+      },
+    },
   ];
 
   if (appConfig.oidc) {

@@ -11,19 +11,19 @@ import CloseIcon from '@mui/icons-material/Close';
 import { styled } from '@mui/material/styles';
 
 export default function ConfirmationDialog(props) {
-  const { open, handleClose } = props;
+  const { open, handleClose, screen } = props;
 
   const BootstrapDialog = styled(Dialog)(({ theme }) => ({
-	'& .MuiDialogContent-root': {
-	  padding: theme.spacing(2),
-	},
-	'& .MuiDialogActions-root': {
-	  padding: theme.spacing(1),
-	},
-	'& .MuiPaper-root': {
-		width:'495px !important',
-	  },
-	
+    '& .MuiDialogContent-root': {
+      padding: theme.spacing(2),
+    },
+    '& .MuiDialogActions-root': {
+      padding: theme.spacing(1),
+    },
+    '& .MuiPaper-root': {
+      width: '495px !important',
+    },
+
   }));
 
   return (
@@ -33,30 +33,32 @@ export default function ConfirmationDialog(props) {
       aria-describedby="alert-dialog-description"
     >
       <DialogTitle id="alert-dialog-title">{'Delete Confirmation'}</DialogTitle>
-	  <IconButton
-          aria-label="close"
-          onClick={handleClose}
-          sx={{
-            position: 'absolute',
-            right: 8,
-            top: 8,
-            color: (theme) => theme.palette.grey[500],
-          }}
-        >
-          <CloseIcon className='closeIconCls' />
-        </IconButton>
-	  <Divider className='dividerCls'/>
+      <IconButton
+        aria-label="close"
+        onClick={handleClose}
+        sx={{
+          position: 'absolute',
+          right: 8,
+          top: 8,
+          color: (theme) => theme.palette.grey[500],
+        }}
+      >
+        <CloseIcon className='closeIconCls' />
+      </IconButton>
+      <Divider className='dividerCls' />
       <DialogContent>
         <DialogContentText id="alert-dialog-description" className='dialogContentCls'>
-          Are you sure you want to delete this user?
+          {screen === 'ReportTemplatesList'
+            ? 'Are you sure you want to delete this report template ? '
+            : 'Are you sure you want to delete this user ? '}
         </DialogContentText>
       </DialogContent>
       <DialogActions>
-        <Button 
-		 className='noBtnDialogCls'
-		 onClick={handleClose}>No</Button>
         <Button
-		  className='okBtnDialogCls'
+          className='noBtnDialogCls'
+          onClick={handleClose}>No</Button>
+        <Button
+          className='okBtnDialogCls'
           onClick={handleClose}
           autoFocus
         >
