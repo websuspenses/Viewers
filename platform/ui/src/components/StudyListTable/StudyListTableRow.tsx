@@ -86,11 +86,13 @@ const StudyListTableRow = props => {
                         //   maxWidth: 0,
                         // }}
                         style={
-                          title === 'CTA Status'
+                          title === 'In-Progress'
                             ? dynamicWidth
-                            : title === 'CTA Viewers'
+                            : title === 'Refer'
                               ? dynamicWidth
-                              : defaultWidth
+                              : title === 'Generate Reports'
+                                ? dynamicWidth
+                                : defaultWidth
                         }
                         title={title}
                       >

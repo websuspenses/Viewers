@@ -1,5 +1,5 @@
 import React from 'react';
-import { Routes, Route, Link } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import { ErrorBoundary } from '@ohif/ui';
 
 // Route Components
@@ -11,12 +11,16 @@ import NotFound from './NotFound';
 import buildModeRoutes from './buildModeRoutes';
 import PrivateRoute from './PrivateRoute';
 import PropTypes from 'prop-types';
+import { Link } from 'react-router-dom';
 import Login from './Login';
 import DashBoard from '../components/AdminPanel/DashBoard';
 import Users from '../components/AdminPanel/Users';
 import ReportTemplatesList from '../components/ReportTemplates/ReportTemplatesList';
 import CreateTemplate from '../components/ReportTemplates/CreateTemplate';
 import GenerateReport from '../components/ReportTemplates/GenerateReport';
+import DoctorReferralsList from '../components/DoctorReferrals/DoctorReferralsList';
+import CreateDoctorReferral from '../components/DoctorReferrals/CreateDoctorReferral';
+import GenerateReferral from '../components/DoctorReferrals/GenerateReferral';
 
 const NotFoundServer = ({
   message = 'Unable to query for studies at this time. Check your data source configuration or network connection',
@@ -104,12 +108,16 @@ const bakedInRoutes = [
     children: CreateTemplate,
   },
   {
-    path: '/create-template/:modality',
+    path: '/create-template/:modality/:template_id',
     children: CreateTemplate,
   },
   {
-    path: '/generate-report/:mrn',
+    path: '/generate-report/:mrn/:modality',
     children: GenerateReport,
+  },
+  {
+    path: '/doctor-referrals',
+    children: DoctorReferralsList,
   },
 ];
 

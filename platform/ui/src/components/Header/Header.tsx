@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ReactNode, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
@@ -21,6 +21,7 @@ function Header({
   isActive,
   handleChange,
   screen,
+  modalityValue,
   ...props
 }): ReactNode {
   const { t } = useTranslation('Header');
@@ -32,6 +33,9 @@ function Header({
       onClickReturnButton();
     }
   };
+
+  const originUrl = window.location.href;
+  const path = originUrl.replace(`/generate-report/${modalityValue}`, '/');
 
   return (
     <NavBar
@@ -58,10 +62,12 @@ function Header({
             data-cy="return-to-work-list"
           >
             {isReturnEnabled && (
-              <Icon
-                name="chevron-left"
-                className="text-primary-active w-8"
-              />
+              <a href="/workList">
+                <Icon
+                  name="chevron-left"
+                  className="text-primary-active w-8"
+                />
+              </a>
             )}
             <div className="ml-4">
               {/* {WhiteLabeling?.createLogoComponentFn?.(React, props) || } */}
@@ -69,13 +75,21 @@ function Header({
                 <img
                   width="250"
                   height="140"
-                  src="./ohif-logo.svg"
+                  // src="./ohif-logo.svg"
+                  src={screen === 'GenerateReport' ? path + './ohif-logo.svg' : '/ohif-logo.svg'}
+                  id="imgsource"
                 />
               ) : (
                 <img
                   width="250"
                   height="140"
-                  src="./ohif-whitebg-logo.svg"
+                  id="imgsource_dark"
+                  // src="./ohif-whitebg-logo.svg"
+                  src={
+                    screen === 'GenerateReport'
+                      ? path + './ohif-whitebg-logo.svg'
+                      : '/ohif-whitebg-logo.svg'
+                  }
                 />
               )}
             </div>
@@ -88,7 +102,9 @@ function Header({
           {/* <span className="text-common-light mr-3 text-lg">{t('INVESTIGATIONAL USE ONLY 111')}</span> */}
           <span className="text-common-light mr-3 text-lg">
             {t('')}
-            {screen === 'WorkList' || screen === 'ReportTemplateList' ? (
+            {screen === 'WorkList' ||
+              screen === 'ReportTemplateList' ||
+              screen === 'GenerateReport' ? (
               <div>
                 <ToggleSwitch
                   handleChange={handleChange}

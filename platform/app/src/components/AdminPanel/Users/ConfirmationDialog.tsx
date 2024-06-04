@@ -23,7 +23,6 @@ export default function ConfirmationDialog(props) {
     '& .MuiPaper-root': {
       width: '495px !important',
     },
-
   }));
 
   return (
@@ -40,25 +39,33 @@ export default function ConfirmationDialog(props) {
           position: 'absolute',
           right: 8,
           top: 8,
-          color: (theme) => theme.palette.grey[500],
+          color: theme => theme.palette.grey[500],
         }}
       >
-        <CloseIcon className='closeIconCls' />
+        <CloseIcon className="closeIconCls" />
       </IconButton>
-      <Divider className='dividerCls' />
+      <Divider className="dividerCls" />
       <DialogContent>
-        <DialogContentText id="alert-dialog-description" className='dialogContentCls'>
+        <DialogContentText
+          id="alert-dialog-description"
+          className="dialogContentCls"
+        >
           {screen === 'ReportTemplatesList'
             ? 'Are you sure you want to delete this report template ? '
-            : 'Are you sure you want to delete this user ? '}
+            : screen === 'DoctorReferralsList'
+              ? 'Are you sure you want to delete this record ?'
+              : 'Are you sure you want to delete this user ? '}
         </DialogContentText>
       </DialogContent>
       <DialogActions>
         <Button
-          className='noBtnDialogCls'
-          onClick={handleClose}>No</Button>
+          className="noBtnDialogCls"
+          onClick={handleClose}
+        >
+          No
+        </Button>
         <Button
-          className='okBtnDialogCls'
+          className="okBtnDialogCls"
           onClick={handleClose}
           autoFocus
         >

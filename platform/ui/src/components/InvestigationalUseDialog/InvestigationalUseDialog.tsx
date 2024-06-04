@@ -58,38 +58,39 @@ const InvestigationalUseDialog = ({ dialogConfiguration }) => {
   }
 
   return (
-    <div className="fixed bottom-2 z-50 flex h-[86px] w-full justify-center">
-      <div className="bg-secondary-dark border-primary-dark flex w-[90%] items-center justify-between rounded-lg border-2 pl-[22px] pr-[22px] pt-[10px] pb-[10px] shadow-lg">
-        <div className="flex items-center gap-4">
-          <Icon
-            name="illustration-investigational-use"
-            className="h-18 w-18"
-          />
-          <div className="flex flex-col">
-            <div className="text-[19px] text-white">
-              OHIF Viewer is{' '}
-              <span className="text-primary-light">for investigational use only</span>
-            </div>
-            <div className="text-[13px] text-white">
-              <span
-                className="text-primary-active cursor-pointer"
-                // onClick={() => window.open('https://ohif.org/', '_blank')}
-                onClick={() => window.open('#', '_blank')}
-              >
-                Learn more about OHIF Viewer
-              </span>
-            </div>
-          </div>
-        </div>
-        <Button
-          type={ButtonEnums.type.primary}
-          onClick={handleConfirmAndHide}
-          className="bg-primary-main"
-        >
-          Confirm and Hide
-        </Button>
-      </div>
-    </div>
+    // <div className="fixed bottom-2 z-50 flex h-[86px] w-full justify-center">
+    //   <div className="bg-secondary-dark border-primary-dark flex w-[90%] items-center justify-between rounded-lg border-2 pl-[22px] pr-[22px] pt-[10px] pb-[10px] shadow-lg">
+    //     <div className="flex items-center gap-4">
+    //       <Icon
+    //         name="illustration-investigational-use"
+    //         className="h-18 w-18"
+    //       />
+    //       <div className="flex flex-col">
+    //         <div className="text-[19px] text-white">
+    //           OHIF Viewer is{' '}
+    //           <span className="text-primary-light">for investigational use only</span>
+    //         </div>
+    //         <div className="text-[13px] text-white">
+    //           <span
+    //             className="text-primary-active cursor-pointer"
+    //             // onClick={() => window.open('https://ohif.org/', '_blank')}
+    //             onClick={() => window.open('#', '_blank')}
+    //           >
+    //             Learn more about OHIF Viewer
+    //           </span>
+    //         </div>
+    //       </div>
+    //     </div>
+    //     <Button
+    //       type={ButtonEnums.type.primary}
+    //       onClick={handleConfirmAndHide}
+    //       className="bg-primary-main"
+    //     >
+    //       Confirm and Hide
+    //     </Button>
+    //   </div>
+    // </div>
+	<div></div>
   );
 };
 

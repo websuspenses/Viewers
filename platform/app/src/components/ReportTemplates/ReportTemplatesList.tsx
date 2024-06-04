@@ -7,21 +7,24 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { Link } from 'react-router-dom';
 import { Header } from '@ohif/ui';
+import ConfirmationDialog from '../AdminPanel/Users/ConfirmationDialog';
 
 function ReportTemplatesList() {
   const [isActive, setIsActive] = useState(false);
   const [templateData, setData] = useState([]);
-  let labName = 'Test CT Scan Center';
+  const [showconfirm, setShowConfirm] = useState(false);
 
-  labName = labName.replace(/ /g, "_") + '.json';
+  const labId = 2;
+  const nodeAppHost = 'http://localhost:3300';
+
   useEffect(() => {
-    fetch(`http://localhost:3300/read_json/${labName}`)
-      .then((response) => response.json())
-      .then((actualData) => {
-        console.log("actualData ", actualData)
-        setData(actualData);
+    fetch(`${nodeAppHost}/read_templates/${labId}`)
+      .then(response => response.json())
+      .then(actualData => {
+        console.log('actualData ', actualData);
+        setData(actualData.data);
       })
-      .catch((err) => {
+      .catch(err => {
         console.log(err.message);
       });
   }, []);
@@ -62,6 +65,13 @@ function ReportTemplatesList() {
     document.body.classList.remove('bg-black');
   }, [isActive]);
 
+  const handleDeleteTemplate = () => {
+    setShowConfirm(true);
+  };
+  const handleCloseConfirmation = () => {
+    setShowConfirm(false);
+  };
+
   return (
     <div>
       <Header
@@ -91,50 +101,55 @@ function ReportTemplatesList() {
         </div>
         <ul className="templatesList">
           {/* {templateData[0]} */}
-          {
-            templateData.map((item, index) => (
-              <li
-                key={index}
-                className={isActive ? 'templatesList_dark' : 'templates-item'}
-              >
-                <strong className={isActive ? 'templateTitleCls' : 'templateTitleCls_dark'}>
-                  {item.modality}
-                </strong>
-                <div className="reports-justify-between items-center sm:flex">
-                  <Stack
-                    direction="row"
-                    spacing={2}
+          {templateData.map(item => (
+            <li
+              key={item.labName}
+              className={isActive ? 'templatesList_dark' : 'templates-item'}
+            >
+              <strong className={isActive ? 'templateTitleCls' : 'templateTitleCls_dark'}>
+                {item.modality}
+              </strong>
+              <div className="reports-justify-between items-center sm:flex">
+                <Stack
+                  direction="row"
+                  spacing={2}
+                >
+                  <Link
+                    to={`/create-template/${item.modality}/${item.template_id}`}
+                    style={{ textDecoration: 'none' }}
                   >
-                    <Link
-                      to={`/create-template/${item.modality}`}
-                      style={{ textDecoration: 'none' }}
-                    >
-                      <Button
-                        variant="contained"
-                        color="success"
-                        className="createUserCls"
-                        startIcon={<EditIcon />}
-                      //onClick={() => setShowEditMode(true)}
-                      >
-                        Edit
-                      </Button>
-                    </Link>
                     <Button
                       variant="contained"
                       color="success"
                       className="createUserCls"
-                      startIcon={<DeleteIcon />}
-                    // onClick={handleClick}
+                      startIcon={<EditIcon />}
+                    //onClick={() => setShowEditMode(true)}
                     >
-                      Delete
+                      Edit
                     </Button>
-                  </Stack>
-                </div>
-              </li>
-            ))
-          }
+                  </Link>
+                  <Button
+                    variant="contained"
+                    color="success"
+                    className="createUserCls"
+                    startIcon={<DeleteIcon />}
+                    onClick={handleDeleteTemplate}
+                  >
+                    Delete
+                  </Button>
+                </Stack>
+              </div>
+            </li>
+          ))}
         </ul>
       </div>
+      {showconfirm && (
+        <ConfirmationDialog
+          open={showconfirm}
+          handleClose={handleCloseConfirmation}
+          screen="ReportTemplatesList"
+        />
+      )}
     </div>
   );
 }

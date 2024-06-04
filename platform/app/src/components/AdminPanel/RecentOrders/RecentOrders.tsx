@@ -13,7 +13,7 @@ const RecentOrders = () => {
             className='bg-gray-50 hover:bg-gray-100 rounded-lg my-3 p-2 flex items-center cursor-pointer'
           >
             <div className='bg-purple-100 rounded-lg p-3'>
-              <FaShoppingBag className='text-purple-800' />
+              <FaShoppingBag className='text-purple-800-recentOrder' />
             </div>
             <div className='pl-4'>
               <p className='text-gray-800 font-bold'>${order.total}</p>

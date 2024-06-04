@@ -1,0 +1,83 @@
+.bg-black-on ._add-view p input {
+  font-size: 14px;
+  height: 35px;
+  width: 62%;
+  background-color: rgb(28, 28, 20) !important;
+  color: #ffff !important;
+  border: 1px solid #6c757d !important;
+}
+
+.bg-black-on .user-view .box {
+  padding: 30px;
+  margin-bottom: auto;
+  border: 1px solid #343435;
+  border-radius: 5px;
+}
+
+.bg-black-on .form-control::placeholder {
+  color: #6c757d !important;
+  padding: 5px !important;
+}
+
+.bg-black-on .doctorsListCls {
+  width: 70%;
+  height: 40px;
+  background-color: #000;
+  color: #fff;
+  border-radius: 4px;
+  border: none !important;
+  text-align: center;
+  margin-left: 5px;
+}
+
+.doctorsListCls {
+  width: 70%;
+  height: 40px;
+  color: #ffffff;
+  background-color: #0a7c6c;
+  border: 1px solid #ccc !important;
+  border-radius: 4px;
+  text-align: center;
+  margin-left: 5px;
+}
+
+.doctorsListCls option {
+  font-weight: 400;
+  background-color: #ffffff;
+  color: #0a7c6c;
+}
+
+.submitBtnMuiRefCls {
+  /* margin-left: 16px !important;
+  margin-right: 155px !important; */
+  background-color: #0a7c6c !important;
+  color: #ffffff !important;
+}
+
+.bg-black-on .PatientNameCls {
+  color: #626060 !important;
+  font-weight: 900;
+}
+
+.PatientNameCls {
+  color: #0a7c6c !important;
+}
+
+.box-AlignCls {
+  padding: 30px !important;
+  margin-bottom: auto;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+}
+
+.bg-black-on .box-AlignCls {
+  padding: 30px !important;
+  margin-bottom: auto;
+  border: 1px solid #353434;
+  border-radius: 5px;
+}
+
+.buttonAdjustCls {
+  float: right;
+  margin-top: -69px;
+}
