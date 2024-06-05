@@ -15,7 +15,7 @@ function ReportTemplatesList() {
   const [showconfirm, setShowConfirm] = useState(false);
 
   const labId = 2;
-  const nodeAppHost = 'http://localhost:3300';
+  const nodeAppHost = 'http://ciaiteleradiology.com/teleapp';
 
   useEffect(() => {
     fetch(`${nodeAppHost}/read_templates/${labId}`)
@@ -93,7 +93,7 @@ function ReportTemplatesList() {
               variant="contained"
               color="success"
               className="createUserCls"
-            //</div>onClick={() => setShowAddMode(true)
+              //</div>onClick={() => setShowAddMode(true)
             >
               Create Template
             </Button>
@@ -123,7 +123,7 @@ function ReportTemplatesList() {
                       color="success"
                       className="createUserCls"
                       startIcon={<EditIcon />}
-                    //onClick={() => setShowEditMode(true)}
+                      //onClick={() => setShowEditMode(true)}
                     >
                       Edit
                     </Button>

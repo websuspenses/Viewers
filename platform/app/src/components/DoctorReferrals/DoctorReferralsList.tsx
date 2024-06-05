@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import '../ReportTemplates/report.css';
 import Stack from '@mui/material/Stack';
@@ -20,7 +19,7 @@ function DoctorReferralsList() {
   const [doctorsList, setDoctorsList] = useState([]);
   const [editItem, setEachItem] = useState('');
   // const [editItemId, setEachItemID] = useState('');
-  const nodeAppHost = 'http://localhost:3300';
+  const nodeAppHost = 'http://ciaiteleradiology.com/teleapp';
   // Set body style
   useEffect(() => {
     document.body.classList.add('bg-black');

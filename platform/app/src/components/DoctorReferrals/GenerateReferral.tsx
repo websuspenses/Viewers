@@ -37,7 +37,7 @@ function GenerateReferral(props) {
   // console.log('object', object, value);
 
   useEffect(() => {
-    fetch(`http://localhost:3300/get_referral_doctors`)
+    fetch(`http://ciaiteleradiology.com/teleapp/get_referral_doctors`)
       .then(response => response.json())
       .then(actualData => {
         console.log('actualData ', actualData);
@@ -50,7 +50,7 @@ function GenerateReferral(props) {
 
   function sendStudyReferral(event) {
     event.preventDefault();
-    const url = 'http://localhost:3300/send_study_referral';
+    const url = 'http://ciaiteleradiology.com/teleapp/send_study_referral';
 
     const viewerUrl = 'http://localhost:3000';
 

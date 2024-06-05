@@ -34,7 +34,7 @@ function CreateDoctorReferral(props) {
     email: '',
   });
 
-  const nodeAppHost = 'http://localhost:3300';
+  const nodeAppHost = 'http://ciaiteleradiology.com/teleapp';
 
   const handelChangeInput = event => {
     event.preventDefault();

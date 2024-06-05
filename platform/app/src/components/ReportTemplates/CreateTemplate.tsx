@@ -69,7 +69,7 @@ const CreateTemplate = () => {
   const navigate = useNavigate();
 
   let labName = 'Test CT Scan Center';
-  const nodeAppHost = 'http://localhost:3300';
+  const nodeAppHost = 'http://ciaiteleradiology.com/teleapp';
 
   labName = labName.replace(/ /g, '_') + '.json';
   const params = useParams();
