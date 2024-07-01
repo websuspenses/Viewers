@@ -70,8 +70,8 @@ const editorOptions = {
 const GenerateReport = () => {
   const navigate = useNavigate();
   const labId = 2;
-  const hostName = 'http://ciaiteleradiology.com/pacs/dicom-web/';
-  const nodeAppHost = 'http://localhost/teleapp';
+  const hostName = '/pacs/dicom-web/';
+  const nodeAppHost = '/teleapp';
   // labName = labName.replace(/ /g, '_') + '.json';
   const params = useParams();
   console.log('Default param ', params);
@@ -100,12 +100,12 @@ const GenerateReport = () => {
 
   useEffect(() => {
     //fetch(`${hostName}studies/${modalityValue}/metadata/reportRaw`);
-    let authHeaders = localStorage.getItem('auth-t');
-    console.log("local headers --> read_study_template ", authHeaders);
+    const authHeaders = localStorage.getItem('auth-t');
+    console.log('local headers --> read_study_template ', authHeaders);
     fetch(`${hostName}studies/${modalityValue}/metadata/reportRaw`, {
       method: 'GET',
       headers: {
-        'Authorization': authHeaders
+        Authorization: authHeaders,
       },
     })
       .then(response => response.json())
@@ -121,12 +121,12 @@ const GenerateReport = () => {
 
   useEffect(() => {
     //fetch(`${nodeAppHost}/read_study_template_for_generate/${labId}/${modality}`)
-    let authHeaders = localStorage.getItem('auth-t');
-    console.log("local headers --> read_study_template ", authHeaders);
+    const authHeaders = localStorage.getItem('auth-t');
+    console.log('local headers --> read_study_template ', authHeaders);
     fetch(`${nodeAppHost}/read_study_template_for_generate/${labId}/${modality}`, {
       method: 'GET',
       headers: {
-        'Authorization': authHeaders
+        Authorization: authHeaders,
       },
     })
       .then(response => response.json())
@@ -178,14 +178,17 @@ const GenerateReport = () => {
 
   function GetStudyData() {
     //fetch(`${hostName}studies?StudyInstanceUID=${modalityValue}&&includefield=00101010,00101040,00081030`);
-    let authHeaders = localStorage.getItem('auth-t');
-    console.log("local headers --> read_study_template ", authHeaders);
-    fetch(`${hostName}studies?StudyInstanceUID=${modalityValue}&&includefield=00101010,00101040,00081030`, {
-      method: 'GET',
-      headers: {
-        'Authorization': authHeaders
-      },
-    })
+    const authHeaders = localStorage.getItem('auth-t');
+    console.log('local headers --> read_study_template ', authHeaders);
+    fetch(
+      `${hostName}studies?StudyInstanceUID=${modalityValue}&&includefield=00101010,00101040,00081030`,
+      {
+        method: 'GET',
+        headers: {
+          Authorization: authHeaders,
+        },
+      }
+    )
       .then(response => response.json())
       .then(actualData => {
         setModalityData(actualData[0]);
@@ -276,14 +279,14 @@ const GenerateReport = () => {
     // Handle form submission with selectedOption
     const contentValue = '';
     console.log('contentRef.current.innerHTML', value);
-    let authHeaders = localStorage.getItem('auth-t');
+    const authHeaders = localStorage.getItem('auth-t');
     const url = `${hostName}studies/${modalityValue}/addmetadata/reportRaw`;
     const data = { data: value };
     const options = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': authHeaders
+        Authorization: authHeaders,
       },
       body: JSON.stringify(data),
     };
@@ -305,17 +308,14 @@ const GenerateReport = () => {
     console.log('contentRef.current.innerHTML', value);
     // console.log('labName', labName, 'Selected option:', selectedOption, 'contentRef ', value);
 
-
-
-
-    let authHeaders = localStorage.getItem('auth-t');
+    const authHeaders = localStorage.getItem('auth-t');
     const url = `${hostName}/studies/${modalityValue}/addmetadata/reportRaw`;
     const data = { data: data + value };
     const options = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': authHeaders
+        Authorization: authHeaders,
       },
       body: JSON.stringify(data),
     };
