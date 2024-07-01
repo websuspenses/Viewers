@@ -134,6 +134,8 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
         mapParams: mapParams.bind(),
         search: async function (origParams) {
           qidoDicomWebClient.headers = getAuthrorizationHeader();
+          console.log("qidoDicomWebClient.headers ", qidoDicomWebClient.headers);
+          localStorage.setItem('auth-t', qidoDicomWebClient.headers.Authorization);
           const { studyInstanceUid, seriesInstanceUid, ...mappedParams } =
             mapParams(origParams, {
               supportsFuzzyMatching: dicomWebConfig.supportsFuzzyMatching,
@@ -143,6 +145,20 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
           const results = await qidoSearch(qidoDicomWebClient, undefined, undefined, mappedParams);
 
           return processResults(results);
+        },
+
+        sendToCloud: async function (studyInstanceUid) {
+          qidoDicomWebClient.headers = getAuthrorizationHeader();
+          const url = dicomWebConfig.wadoRoot + '/studies/' + studyInstanceUid + '/send_to_cloud';
+          console.log("URL ", url);
+          await fetch(url, qidoDicomWebClient)
+            .then(response => response.json())
+            .then(actualData => {
+              console.log('actualData ', actualData);
+            })
+            .catch(err => {
+              console.log(err.message);
+            });
         },
         processResults: processResults.bind(),
       },

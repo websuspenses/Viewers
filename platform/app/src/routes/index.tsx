@@ -85,7 +85,7 @@ const bakedInRoutes = [
   },
   {
     path: '/',
-    children: Login,
+    children: WorkList,
   },
   {
     path: '/workList',
@@ -157,7 +157,7 @@ const createRoutes = ({
     path: '/',
     children: DataSourceWrapper,
     private: true,
-    props: { children: Login, servicesManager, extensionManager },
+    props: { children: WorkList, servicesManager, extensionManager },
   };
 
   const customRoutes = customizationService.getGlobalCustomization('customRoutes');

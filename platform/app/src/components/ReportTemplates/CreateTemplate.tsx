@@ -69,7 +69,7 @@ const CreateTemplate = () => {
   const navigate = useNavigate();
 
   let labName = 'Test CT Scan Center';
-  const nodeAppHost = 'http://ciaiteleradiology.com/teleapp';
+  const nodeAppHost = 'http://localhost/teleapp';
 
   labName = labName.replace(/ /g, '_') + '.json';
   const params = useParams();
@@ -91,7 +91,15 @@ const CreateTemplate = () => {
   const labId = 2;
 
   useEffect(() => {
-    fetch(`${nodeAppHost}/read_modalities`)
+    //fetch(`${nodeAppHost}/read_modalities`)
+    let authHeaders = localStorage.getItem('auth-t');
+    console.log("local headers ", authHeaders);
+    fetch(`${nodeAppHost}/read_modalities`, {
+      method: 'GET',
+      headers: {
+        'Authorization': authHeaders
+      },
+    })
       .then(response => response.json())
       .then(actualData => {
         console.log('Modality Info ', actualData);
@@ -104,7 +112,15 @@ const CreateTemplate = () => {
 
   useEffect(() => {
     if (modalityValue) {
-      fetch(`${nodeAppHost}/read_study_template/${labId}/${templateValue}`)
+     // fetch(`${nodeAppHost}/read_study_template/${labId}/${templateValue}`)
+      let authHeaders = localStorage.getItem('auth-t');
+      console.log("local headers --> read_study_template ", authHeaders);
+      fetch(`${nodeAppHost}/read_study_template/${labId}/${templateValue}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': authHeaders
+        },
+      })
         .then(response => response.json())
         .then(actualData => {
           console.log('Modality Info ', actualData);
@@ -186,6 +202,7 @@ const CreateTemplate = () => {
     console.log('labName', labName, 'Selected option:', selectedOption, 'contentRef ', value);
 
     if (!modalityValue && !templateValue) {
+      let authHeaders = localStorage.getItem('auth-t');
       const url = `${nodeAppHost}/create_template`;
 
       const data = { modality: selectedOption, template_content: value, lab_id: 2 };
@@ -193,7 +210,7 @@ const CreateTemplate = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // Add any additional headers if needed
+          'Authorization': authHeaders
         },
         body: JSON.stringify(data),
       };
@@ -211,12 +228,13 @@ const CreateTemplate = () => {
       }
     } else {
       const url = `${nodeAppHost}/update_template`;
-
+      let authHeaders = localStorage.getItem('auth-t');
       const data = { modality: selectedOption, template_content: value };
       const options = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': authHeaders
           // Add any additional headers if needed
         },
         body: JSON.stringify(data),

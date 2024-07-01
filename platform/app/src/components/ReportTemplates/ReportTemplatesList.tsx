@@ -15,10 +15,18 @@ function ReportTemplatesList() {
   const [showconfirm, setShowConfirm] = useState(false);
 
   const labId = 2;
-  const nodeAppHost = 'http://ciaiteleradiology.com/teleapp';
+  const nodeAppHost = 'http://localhost/teleapp';
 
   useEffect(() => {
-    fetch(`${nodeAppHost}/read_templates/${labId}`)
+    //fetch(`${nodeAppHost}/read_templates/${labId}`)
+    let authHeaders = localStorage.getItem('auth-t');
+    console.log("local headers read_templates ", authHeaders);
+    fetch(`${nodeAppHost}/read_templates/${labId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': authHeaders
+      },
+    })
       .then(response => response.json())
       .then(actualData => {
         console.log('actualData ', actualData);

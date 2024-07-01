@@ -27,6 +27,7 @@ function CreateDoctorReferral(props) {
   const navigate = useNavigate();
 
   const [initialValues, setInitialValues] = useState({
+    doctorId: '',
     doctorName: '',
     specialization: '',
     clinic: '',
@@ -34,7 +35,7 @@ function CreateDoctorReferral(props) {
     email: '',
   });
 
-  const nodeAppHost = 'http://ciaiteleradiology.com/teleapp';
+  const nodeAppHost = 'http://localhost/teleapp';
 
   const handelChangeInput = event => {
     event.preventDefault();
@@ -46,6 +47,7 @@ function CreateDoctorReferral(props) {
     if (editData) {
       setInitialValues({
         ...initialValues,
+        doctorId: editData.doc_id,
         doctorName: editData.doc_name,
         specialization: editData.doc_specialization,
         clinic: editData.doc_clinic,
@@ -64,20 +66,26 @@ function CreateDoctorReferral(props) {
       initialValues.phoneNumber !== '' &&
       initialValues.email !== ''
     ) {
-      const url = `${nodeAppHost}/add_referral_doctor`;
+
+      let authHeaders = localStorage.getItem('auth-t');
+      let url = `${nodeAppHost}/add_referral_doctor`;
 
       const formData = {
+        doc_id: initialValues.doctorId,
         doc_name: initialValues.doctorName,
         doc_specialization: initialValues.specialization,
         doc_clinic: initialValues.clinic,
         doc_phone_number: initialValues.phoneNumber,
         doc_email: initialValues.email,
       };
-
+      if (initialValues.doctorId !== '') {
+        url = `${nodeAppHost}/update_referral_doctor`;
+      }
       const options = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Authorization': authHeaders
         },
         body: JSON.stringify(formData),
       };

@@ -20,7 +20,12 @@ function ViewerLayout({
   rightPanelClosed = false,
 }): React.FunctionComponent {
   const [appConfig] = useAppConfig();
-
+let windowWidth = window.innerWidth;
+let isMobile = false;
+if(windowWidth < 768){
+  isMobile = true;
+}
+console.log("isMobile ", isMobile);
   const { panelService, hangingProtocolService } = servicesManager.services;
   const [showLoadingIndicator, setShowLoadingIndicator] = useState(appConfig.showLoadingIndicator);
 
@@ -127,7 +132,7 @@ function ViewerLayout({
             <ErrorBoundary context="Left Panel">
               <SidePanelWithServices
                 side="left"
-                activeTabIndex={leftPanelClosedState ? null : 0}
+                activeTabIndex={(isMobile?rightPanelClosedState:leftPanelClosedState) ? null : 0}
                 servicesManager={servicesManager}
               />
             </ErrorBoundary>

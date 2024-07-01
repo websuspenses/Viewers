@@ -19,7 +19,7 @@ function DoctorReferralsList() {
   const [doctorsList, setDoctorsList] = useState([]);
   const [editItem, setEachItem] = useState('');
   // const [editItemId, setEachItemID] = useState('');
-  const nodeAppHost = 'http://ciaiteleradiology.com/teleapp';
+  const nodeAppHost = 'http://localhost/teleapp';
   // Set body style
   useEffect(() => {
     document.body.classList.add('bg-black');
@@ -31,7 +31,14 @@ function DoctorReferralsList() {
   }, []);
 
   useEffect(() => {
-    fetch(`${nodeAppHost}/get_referral_doctors`)
+    let authHeaders = localStorage.getItem('auth-t');
+    console.log("local headers ", authHeaders);
+    fetch(`${nodeAppHost}/get_referral_doctors`, {
+      method: 'GET',
+      headers: {
+        'Authorization': authHeaders
+      },
+    })
       .then(response => response.json())
       .then(actualData => {
         console.log('actualData ', actualData);
@@ -80,6 +87,7 @@ function DoctorReferralsList() {
 
   const handleEditItem = docId => {
     const editData = doctorsList.find(item => item.doc_id === docId);
+    console.log("editData ", editData);
     setEachItem(editData);
     setShowEditConfirm(true);
   };
@@ -131,15 +139,7 @@ function DoctorReferralsList() {
                   {item.doc_name}
                 </strong>
                 <br />
-                <b style={{ fontWeight: 'bold' }}>{item.doc_specialization}</b>
-                <br />
-                <b style={{ fontWeight: 'bold' }}>{item.doc_clinic}</b>
-                <br />
-                <b style={{ fontWeight: 'bold' }}>{item.doc_phone_number}</b>
-                <br />
-                <b style={{ fontWeight: 'bold' }}>{item.doc_email}</b>
-                <br />
-
+                <span style={{ fontWeight: 'italic' }}>{item.doc_specialization}, {item.doc_clinic}</span>
                 <div className="buttonAdjustCls items-center sm:flex">
                   <Stack
                     direction="row"

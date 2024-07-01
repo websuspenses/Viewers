@@ -92,6 +92,8 @@ const StudyListTableRow = props => {
                               ? dynamicWidth
                               : title === 'Generate Reports'
                                 ? dynamicWidth
+                                : title === 'Save to Cloud'
+                                ? dynamicWidth
                                 : defaultWidth
                         }
                         title={title}

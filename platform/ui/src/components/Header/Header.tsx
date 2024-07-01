@@ -10,7 +10,7 @@ import IconButton from '../IconButton';
 import Dropdown from '../Dropdown';
 
 import { ToggleSwitch } from '@ohif/ui';
-
+let windowWidth = window.innerWidth;
 function Header({
   children,
   menuOptions,
@@ -28,12 +28,18 @@ function Header({
 
   // TODO: this should be passed in as a prop instead and the react-router-dom
   // dependency should be dropped
+
+  let windowWidth = window.innerWidth;
+  let isMobile = false;
+  if(windowWidth < 768){
+    isMobile = true;
+  }
+
   const onClickReturn = () => {
-    if (isReturnEnabled && onClickReturnButton) {
+    if (!isMobile && isReturnEnabled && onClickReturnButton) {
       onClickReturnButton();
     }
   };
-
   const originUrl = window.location.href;
   const path = originUrl.replace(`/generate-report/${modalityValue}`, '/');
 
@@ -47,28 +53,34 @@ function Header({
       <div
         //className="flex flex-1 justify-between"
         className={
-          isActive ? 'navbarAlignCls flex flex-1 justify-between' : 'flex flex-1 justify-between'
+          isActive ? 'navbarAlignCls flex flex-1 header-flex justify-between' : 'flex flex-1 header-flex justify-between'
         }
       >
-        <div className="flex items-center">
+        <div className="flex items-center mobile-logo">
           {/* // TODO: Should preserve filter/sort
               // Either injected service? Or context (like react router's `useLocation`?) */}
           <div
             className={classNames(
-              'mr-3 inline-flex items-center',
-              isReturnEnabled && 'cursor-pointer'
+              'mr-3 inline-flex items-center cursor-pointer'
             )}
             onClick={onClickReturn}
             data-cy="return-to-work-list"
           >
-            {isReturnEnabled && (
+            {/* (
               <a href="/workList">
                 <Icon
                   name="chevron-left"
                   className="text-primary-active w-8"
                 />
               </a>
-            )}
+            ) */}
+            {!isMobile ? (<a href="/workList">
+                <Icon
+                  name="chevron-left"
+                  className="text-primary-active w-8"
+                />
+              </a>):('')
+}
             <div className="ml-4">
               {/* {WhiteLabeling?.createLogoComponentFn?.(React, props) || } */}
               {isActive ? (
@@ -76,7 +88,7 @@ function Header({
                   width="250"
                   height="140"
                   // src="./ohif-logo.svg"
-                  src={screen === 'GenerateReport' ? path + './ohif-logo.svg' : '/ohif-logo.svg'}
+                  src='/ohif-logo.svg'
                   id="imgsource"
                 />
               ) : (
@@ -85,17 +97,13 @@ function Header({
                   height="140"
                   id="imgsource_dark"
                   // src="./ohif-whitebg-logo.svg"
-                  src={
-                    screen === 'GenerateReport'
-                      ? path + './ohif-whitebg-logo.svg'
-                      : '/ohif-whitebg-logo.svg'
-                  }
+                  src='/ohif-whitebg-logo.svg'
                 />
               )}
             </div>
           </div>
         </div>
-        <div className="flex items-center">{children}</div>
+        <div className="flex items-center mobile-tools">{children}</div>
         {/* <div ><ToggleSwitch handleChange={handleChange} IsActive={isActive}  /></div> */}
 
         <div className="flex items-center">
@@ -123,7 +131,6 @@ function Header({
               showDropdownIcon={false}
               list={menuOptions}
               alignment="right"
-              isActive={isActive}
             >
               <IconButton
                 id={'options-settings-icon'}

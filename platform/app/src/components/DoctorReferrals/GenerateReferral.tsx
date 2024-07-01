@@ -23,7 +23,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 
 function GenerateReferral(props) {
   const { open, handleClose, StudyInstanceUId } = props;
-
+  const nodeAppHost = 'http://localhost/teleapp';
   const [value, setValue] = useState('');
   const [doctorsData, setDoctorsData] = useState([]);
 
@@ -37,7 +37,14 @@ function GenerateReferral(props) {
   // console.log('object', object, value);
 
   useEffect(() => {
-    fetch(`http://ciaiteleradiology.com/teleapp/get_referral_doctors`)
+    let authHeaders = localStorage.getItem('auth-t');
+    console.log("local headers ", authHeaders);
+    fetch(`${nodeAppHost}/get_referral_doctors`, {
+      method: 'GET',
+      headers: {
+        'Authorization': authHeaders
+      },
+    })
       .then(response => response.json())
       .then(actualData => {
         console.log('actualData ', actualData);
@@ -50,10 +57,11 @@ function GenerateReferral(props) {
 
   function sendStudyReferral(event) {
     event.preventDefault();
-    const url = 'http://ciaiteleradiology.com/teleapp/send_study_referral';
+   //const url = 'http://ciaiteleradiology.com/teleapp/send_study_referral';
+    const url = `${nodeAppHost}/send_study_referral`
 
     const viewerUrl = 'http://localhost:3000';
-
+    let authHeaders = localStorage.getItem('auth-t');
     const formData = {
       sr_to_doctor: value,
       sr_requester_id: 2,
@@ -64,6 +72,7 @@ function GenerateReferral(props) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        'Authorization': authHeaders
       },
       body: JSON.stringify(formData),
     };
