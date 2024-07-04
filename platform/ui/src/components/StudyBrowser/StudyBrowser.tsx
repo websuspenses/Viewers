@@ -49,7 +49,7 @@ const StudyBrowser = ({
               trackedSeries={getTrackedSeries(displaySets)}
               isActive={isExpanded}
               onClick={() => {
-                onClickStudy(studyInstanceUid);
+                // onClickStudy(studyInstanceUid);
               }}
               data-cy="thumbnail-list"
             />
