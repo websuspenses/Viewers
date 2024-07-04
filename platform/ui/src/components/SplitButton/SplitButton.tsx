@@ -117,7 +117,7 @@ const SplitButton = ({
     >
       <div
         id="SplitButton"
-        className="relative"
+        className="relative split-button-classes"
       >
         <div
           className={classes.Button({ ...state })}

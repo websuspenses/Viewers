@@ -86,7 +86,8 @@ function WorkList({
   const defaultSortValues =
     shouldUseDefaultSort && canSort ? { sortBy: 'studyDate', sortDirection: 'ascending' } : {};
   const sortedStudies = studies;
-
+  const hostname = window.location.hostname;
+  let hideOption = hostname == 'ciaiteleradiology.com' ? false : true;
   if (canSort) {
     studies.sort((s1, s2) => {
       if (shouldUseDefaultSort) {
@@ -473,9 +474,9 @@ function WorkList({
         {
           key: 'actions',
           title: 'Save to Cloud',
-          content: (
+          content: hideOption && (
             // <Link to="/generate-referral">
-            <svg
+            <svg 
               onClick={() => saveToServer(studyInstanceUid)}
               xmlns="http://www.w3.org/2000/svg"
               version="1.1"

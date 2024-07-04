@@ -15,7 +15,7 @@ function ReportTemplatesList() {
   const [showconfirm, setShowConfirm] = useState(false);
 
   const labId = 2;
-  const nodeAppHost = 'http://localhost/teleapp';
+  const nodeAppHost = '/teleapp';
 
   useEffect(() => {
     //fetch(`${nodeAppHost}/read_templates/${labId}`)

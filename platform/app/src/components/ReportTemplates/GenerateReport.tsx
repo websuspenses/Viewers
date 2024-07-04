@@ -6,6 +6,23 @@ import '../ReportTemplates/report.css';
 import { Header } from '@ohif/ui';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import {
+  align,
+  font,
+  fontColor,
+  fontSize,
+  formatBlock,
+  hiliteColor,
+  horizontalRule,
+  lineHeight,
+  list,
+  paragraphStyle,
+  table,
+  template,
+  textStyle,
+  image,
+  link
+} from "suneditor/src/plugins";
 const defaultFonts = [
   'Arial',
   'Comic Sans MS',
@@ -32,17 +49,29 @@ const customPlugin = {
   name: 'custom_example',
   innerHTML: '<img src="/ohif-logo.svg" alt="OHIF Logo fadfdfsfdsfsd">',
 };
+let addOnPlugins1 = {
+
+  align,
+  image,
+  template
+
+};
 const editorOptions = {
-  plugins: [customPlugin],
-  height: 200,
+  plugins: [addOnPlugins1],
+  minHeight: "50vh",
+  maxHeight: "50vh",
   buttonList: [
     ['undo', 'redo'],
+    ['font', 'fontSize', 'formatBlock'],
+    ['paragraphStyle', 'blockquote'],
+    ['bold', 'underline', 'italic', 'strike', 'subscript', 'superscript'],
+    ['fontColor', 'hiliteColor', 'textStyle'],
     ['removeFormat'],
-    ['bold', 'underline', 'italic', 'font', 'fontSize'],
-    ['fontColor', 'hiliteColor'],
+    ['outdent', 'indent'],
     ['align', 'horizontalRule', 'list', 'lineHeight'],
-    ['table', 'link', 'image', 'imageGallery'],
-    ['showBlocks', 'codeView', 'print'],
+    ['table', 'link', 'image'],
+    ['fullScreen', 'showBlocks', 'codeView'],
+    ['preview', 'print', 'save'],
   ],
   imageRotation: false,
   font: sortedFontOptions,
@@ -62,9 +91,7 @@ const editorOptions = {
     '#74CC6D',
     '#FF9900',
     '#CCCCCC',
-  ],
-  imageUploadUrl: 'http://localhost:3006/chazki-gateway/orders/upload',
-  imageGalleryUrl: 'http://localhost:3006/orders/gallery',
+  ]
 };
 
 const GenerateReport = () => {

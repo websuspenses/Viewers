@@ -35,7 +35,7 @@ function CreateDoctorReferral(props) {
     email: '',
   });
 
-  const nodeAppHost = 'http://localhost/teleapp';
+  const nodeAppHost = '/teleapp';
 
   const handelChangeInput = event => {
     event.preventDefault();

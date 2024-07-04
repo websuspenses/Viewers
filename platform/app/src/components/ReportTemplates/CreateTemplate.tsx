@@ -6,6 +6,23 @@ import '../ReportTemplates/report.css';
 import { Header } from '@ohif/ui';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import {
+  align,
+  font,
+  fontColor,
+  fontSize,
+  formatBlock,
+  hiliteColor,
+  horizontalRule,
+  lineHeight,
+  list,
+  paragraphStyle,
+  table,
+  template,
+  textStyle,
+  image,
+  link
+} from "suneditor/src/plugins";
 
 const defaultFonts = [
   'Arial',
@@ -29,20 +46,48 @@ const sortedFontOptions = [
   ...defaultFonts,
 ].sort();
 
+let addOnPlugins1 = {
+
+  align,
+  image,
+  template
+
+};
 const editorOptions = {
-  height: 200,
+  showPathLabel: false,
+  minHeight: "50vh",
+  maxHeight: "50vh",
+  placeholder: "Enter your text here!!!",
+  plugins: [addOnPlugins1],
   buttonList: [
     ['undo', 'redo'],
+    ['font', 'fontSize', 'formatBlock'],
+    ['paragraphStyle', 'blockquote'],
+    ['bold', 'underline', 'italic', 'strike', 'subscript', 'superscript'],
+    ['fontColor', 'hiliteColor', 'textStyle'],
     ['removeFormat'],
-    ['bold', 'underline', 'italic', 'font', 'fontSize'],
-    ['fontColor', 'hiliteColor'],
+    ['outdent', 'indent'],
     ['align', 'horizontalRule', 'list', 'lineHeight'],
-    ['table', 'link', 'image', 'imageGallery'],
-    ['showBlocks', 'codeView', 'print'],
+    ['table', 'link', 'image'],
+    ['fullScreen', 'showBlocks', 'codeView'],
+    ['preview', 'print', 'save'],
   ],
-  imageRotation: false,
-  font: sortedFontOptions,
-  fontSize: [12, 14, 16, 18, 20],
+  formats: ["p", "div", "h1", "h2", "h3", "h4", "h5", "h6"],
+  font: [
+    "Arial",
+    "Calibri",
+    "Comic Sans",
+    "Courier",
+    "Garamond",
+    "Georgia",
+    "Impact",
+    "Lucida Console",
+    "Palatino Linotype",
+    "Segoe UI",
+    "Tahoma",
+    "Times New Roman",
+    "Trebuchet MS"
+  ],
   colorList: [
     [
       '#828282',
@@ -59,17 +104,14 @@ const editorOptions = {
       '#74CC6D',
       '#FF9900',
       '#CCCCCC',
-    ],
+    ]
   ],
-  imageUploadUrl: 'http://localhost:3006/chazki-gateway/orders/upload',
-  imageGalleryUrl: 'http://localhost:3006/orders/gallery',
-};
-
+}
 const CreateTemplate = () => {
   const navigate = useNavigate();
 
   let labName = 'Test CT Scan Center';
-  const nodeAppHost = 'http://localhost/teleapp';
+  const nodeAppHost = '/teleapp';
 
   labName = labName.replace(/ /g, '_') + '.json';
   const params = useParams();
@@ -112,7 +154,7 @@ const CreateTemplate = () => {
 
   useEffect(() => {
     if (modalityValue) {
-     // fetch(`${nodeAppHost}/read_study_template/${labId}/${templateValue}`)
+      // fetch(`${nodeAppHost}/read_study_template/${labId}/${templateValue}`)
       let authHeaders = localStorage.getItem('auth-t');
       console.log("local headers --> read_study_template ", authHeaders);
       fetch(`${nodeAppHost}/read_study_template/${labId}/${templateValue}`, {
@@ -185,6 +227,41 @@ const CreateTemplate = () => {
     setValue(content);
   };
 
+  // function onImageUploadBefore() {
+  //   return (files, _info, _core, uploadHandler) => {
+  //     console.log("Files ", files);
+  //       const formData = new FormData();
+  //      let data= formData.append("file", files[0]);
+
+  //       const options = {
+  //         method: 'POST',
+  //         body: JSON.stringify(data),
+  //       };
+  //      const res = fetch("http://localhost:3300/create",options);
+
+  //       console.log("Result",res);
+  //   };
+  // }
+  function handleImageUploadBefore(files, info, uploadHandler) {
+    // uploadHandler is a function
+    console.log(files, info);
+    let fileresult = getBase64(files[0]);
+    return fileresult;
+  }
+  function getBase64(file) {
+    let reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = function () {
+      console.log('reader.result: ', reader.result);
+      return reader.result;
+    };
+    reader.onerror = function (error) {
+      console.log('Error: ', error);
+    };
+  }
+  const imageUploadHandler = (xmlHttpRequest, info, core) => {
+    console.log("Image upload handler --->", xmlHttpRequest, info, core)
+  }
   function handleChangeSwitch() {
     setIsActive(!isActive);
   }
@@ -269,7 +346,7 @@ const CreateTemplate = () => {
         <h1 className="templateHeaderCls">
           {modalityValue ? 'Update Template' : 'Create Template'}
         </h1>
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} >
           <div style={{ display: 'grid', justifyContent: 'center' }}>
             <div className="modalityDropdown">
               <label htmlFor="dropdown">Modality:</label>
@@ -291,13 +368,20 @@ const CreateTemplate = () => {
                 ))}
               </select>
             </div>
-            <SunEditor
-              ref={editorRef}
+            {/* <SunEditor
               setOptions={editorOptions}
-              lang="en"
+              onImageUploadBefore={handleImageUploadBefore}
               onChange={onChangeHandler}
+            /> */}
+            <SunEditor
+              autoFocus={true}
+              lang="en"
+              setOptions={editorOptions}
+              onChange={onChangeHandler}
+              ref={editorRef}
               setContents={modalityValue ? updateTemplateInfo : modalityInfo}
             />
+            
             <button
               className="submitButton"
               type="submit"

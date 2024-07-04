@@ -23,7 +23,8 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 
 function GenerateReferral(props) {
   const { open, handleClose, StudyInstanceUId } = props;
-  const nodeAppHost = 'http://localhost/teleapp';
+  const nodeAppHost = '/teleapp';
+  const hostName = '/pacs/dicom-web/';
   const [value, setValue] = useState('');
   const [doctorsData, setDoctorsData] = useState([]);
 
@@ -57,15 +58,34 @@ function GenerateReferral(props) {
 
   function sendStudyReferral(event) {
     event.preventDefault();
-   //const url = 'http://ciaiteleradiology.com/teleapp/send_study_referral';
-    const url = `${nodeAppHost}/send_study_referral`
+    //const url = 'http://ciaiteleradiology.com/teleapp/send_study_referral';
 
-    const viewerUrl = 'http://localhost:3000';
     let authHeaders = localStorage.getItem('auth-t');
+
+    let referralUrl='';
+    fetch(`${hostName}studies/${StudyInstanceUId}/get_cloud_url`, {
+      method: 'GET',
+      headers: {
+        Authorization: authHeaders,
+      },
+    })
+      .then(response => response.json())
+      .then(result => {
+        console.log('Cloud URL info ', result);
+        referralUrl = result.url;
+        sendMessage(referralUrl);
+      })
+      .catch(err => {
+        console.log(err.message);
+      });
+  }
+  const sendMessage = (referralUrl) => {
+    let authHeaders = localStorage.getItem('auth-t');
+    const url = `${nodeAppHost}/send_study_referral`;
     const formData = {
       sr_to_doctor: value,
       sr_requester_id: 2,
-      sr_requester_comments: `Hello Dr. Laxman,I have shared below study with you.Can you please check and provide your feedback sir,Link: ${viewerUrl}/viewer?StudyInstanceUIDs=${StudyInstanceUId}`,
+      sr_requester_comments: `Hello Doctor,Could you please check below URL: ${referralUrl}`,
     };
 
     const options = {
@@ -87,7 +107,6 @@ function GenerateReferral(props) {
       console.error('Error:', error);
     }
   }
-
   const handleResetInform = () => {
     setValue('');
   };

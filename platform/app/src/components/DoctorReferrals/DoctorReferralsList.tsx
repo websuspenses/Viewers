@@ -19,7 +19,7 @@ function DoctorReferralsList() {
   const [doctorsList, setDoctorsList] = useState([]);
   const [editItem, setEachItem] = useState('');
   // const [editItemId, setEachItemID] = useState('');
-  const nodeAppHost = 'http://localhost/teleapp';
+  const nodeAppHost = '/teleapp';
   // Set body style
   useEffect(() => {
     document.body.classList.add('bg-black');
