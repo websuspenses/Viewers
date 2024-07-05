@@ -81,3 +81,32 @@
   float: right;
   margin-top: -10px;
 }
+.success-message{
+  color: #454343;
+    text-align: center;
+    display: inline-block;
+    background-color: #77b4aa;
+    border-radius: 9px;
+    padding: 5px 15px;
+    margin-top: 8px;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    margin-left: 41px;
+}
+.error-message{
+  color: #454343;
+    text-align: center;
+    display: inline-block;
+    background-color: rgb(244 172 172);
+    border-radius: 9px;
+    padding: 5px 15px;
+    margin-top: 8px;
+    box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19);
+    margin-left: 41px;
+}
+.response-container{
+  display: flex;
+  margin: auto;
+  width: 80%;
+  text-align: right;
+  justify-content:space-around
+}

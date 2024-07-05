@@ -72,12 +72,12 @@ const StudyListTableRow = props => {
                         className={
                           isActive
                             ? classnames(
-                              'px-4 py-2 text-base',
+                              'px-2 py-2 text-base',
                               { 'border-secondary-light-darkMode border-b': !isExpanded },
                               getGridWidthClass(gridCol) || ''
                             )
                             : classnames(
-                              'truncate px-4 py-2 text-base',
+                              'truncate px-2 py-2 text-base',
                               { 'border-secondary-light border-b': !isExpanded },
                               getGridWidthClass(gridCol) || ''
                             )

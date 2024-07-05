@@ -23,7 +23,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 }));
 
 function CreateDoctorReferral(props) {
-  const { open, handleClose, screen, editData } = props;
+  const { open, handleClose, screen, editData, sendUpdateMessage } = props;
   const navigate = useNavigate();
 
   const [initialValues, setInitialValues] = useState({
@@ -34,6 +34,7 @@ function CreateDoctorReferral(props) {
     phoneNumber: '',
     email: '',
   });
+  console.log("setUpdateError function...", sendUpdateMessage);
 
   const nodeAppHost = '/teleapp';
 
@@ -69,6 +70,7 @@ function CreateDoctorReferral(props) {
 
       let authHeaders = localStorage.getItem('auth-t');
       let url = `${nodeAppHost}/add_referral_doctor`;
+      let apitype = 'create';
 
       const formData = {
         doc_id: initialValues.doctorId,
@@ -79,6 +81,7 @@ function CreateDoctorReferral(props) {
         doc_email: initialValues.email,
       };
       if (initialValues.doctorId !== '') {
+        apitype = 'update';
         url = `${nodeAppHost}/update_referral_doctor`;
       }
       const options = {
@@ -91,26 +94,42 @@ function CreateDoctorReferral(props) {
       };
 
       try {
-        const res = fetch(url, options);
-        if (res) {
-          setInitialValues({
-            ...initialValues,
-            doctorName: '',
-            specialization: '',
-            clinic: '',
-            phoneNumber: '',
-            email: '',
-          });
-          handleClose();
-          navigate('/doctor-referrals');
-        }
-        console.log('response ', res);
+        const res = fetch(url, options)
+        .then(response => response.json())
+        .then(result => {
+          console.log('Update referral result ', result);
+          if (result) {
+            setInitialValues({
+              ...initialValues,
+              doctorName: '',
+              specialization: '',
+              clinic: '',
+              phoneNumber: '',
+              email: '',
+            });
+            
+            if(apitype == 'update'){
+              sendUpdateMessage({"message":'Updated Successfully...',"status":"success"});
+            }
+            else{
+              sendUpdateMessage({"message":'Created Successfully...',"status":"success"});
+            }
+            handleClose();
+            navigate('/doctor-referrals');
+          }
+        })
+        .catch(err => {
+          console.log(err.message);
+          sendUpdateMessage({"message":'Something went wrong...',"status":"error"});
+        });
       } catch (error) {
         console.error('Error:', error);
+        sendUpdateMessage({"message":'Something went wrong...',"status":"error"});
       }
     }
   };
 
+  
   const handleResetForm = () => {
     setInitialValues({
       ...initialValues,

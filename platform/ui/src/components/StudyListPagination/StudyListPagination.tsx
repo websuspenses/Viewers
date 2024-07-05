@@ -55,7 +55,7 @@ const StudyListPagination = ({ onChangePage, currentPage, perPage, onChangePerPa
               <LegacyButtonGroup>
                 <LegacyButton
                   size="initial"
-                  className="px-4 py-2 text-base"
+                  className="px-2 py-2 text-base"
                   //color="translucent"
                   //border="primary"
                   color={isActive ? "primaryActive_dark_color" : "translucent"}

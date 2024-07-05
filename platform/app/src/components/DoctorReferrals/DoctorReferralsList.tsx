@@ -18,7 +18,9 @@ function DoctorReferralsList() {
   const [showEditConfirm, setShowEditConfirm] = useState(false);
   const [doctorsList, setDoctorsList] = useState([]);
   const [editItem, setEachItem] = useState('');
-  // const [editItemId, setEachItemID] = useState('');
+  const [updateError, setUpdateError] = useState('');
+  const [isSuccess, setErrorStatus] = useState('');
+  
   const nodeAppHost = '/teleapp';
   // Set body style
   useEffect(() => {
@@ -31,6 +33,10 @@ function DoctorReferralsList() {
   }, []);
 
   useEffect(() => {
+    readDoctorsList();
+  }, []);
+
+  const readDoctorsList = ()=>{
     let authHeaders = localStorage.getItem('auth-t');
     console.log("local headers ", authHeaders);
     fetch(`${nodeAppHost}/get_referral_doctors`, {
@@ -47,8 +53,7 @@ function DoctorReferralsList() {
       .catch(err => {
         console.log(err.message);
       });
-  }, []);
-
+  }
   useEffect(() => {
     if (isActive) {
       document.body.classList.remove('bg-black');
@@ -102,6 +107,16 @@ function DoctorReferralsList() {
     }
   };
 
+  const sendUpdateMessage = (response) => {
+    console.log("sendUpdateMessage ", response.message);
+    setUpdateError(response.message);
+    setErrorStatus(response.status);
+    readDoctorsList();
+    setTimeout(() => {
+      setUpdateError('');
+      setErrorStatus('');
+    }, 3000);
+  }
   return (
     <div>
       <Header
@@ -114,8 +129,13 @@ function DoctorReferralsList() {
         screen="ReportTemplateList"
       />
       <div className="reportcontainer">
+        
+
         <div className="createBtnCls">
-          <Link style={{ textDecoration: 'none' }}>
+        <div className="response-container">
+          <span className={isSuccess==='success' ? "success-message" : isSuccess==='error' ? "error-message":''}>{updateError}</span>
+        </div>
+          <Link style={{ textDecoration: 'none', width:'20%',textAlign:'right' }}>
             <Button
               variant="contained"
               color="success"
@@ -148,14 +168,12 @@ function DoctorReferralsList() {
                     <Tooltip title="Edit">
                       <EditIcon
                         style={{ cursor: 'pointer' }}
-                        title="Edit"
                         onClick={() => handleEditItem(item.doc_id)}
                       />
                     </Tooltip>
                     <Tooltip title="Delete">
                       <DeleteIcon
                         style={{ cursor: 'pointer' }}
-                        title="Delete"
                         onClick={handleDeleteTemplate}
                       />
                     </Tooltip>
@@ -171,6 +189,7 @@ function DoctorReferralsList() {
           handleClose={handleCloseConfirmation}
           screen="EditScreen"
           editData={editItem}
+          sendUpdateMessage={sendUpdateMessage}
         />
       )}
       {showconfirm && (
@@ -186,6 +205,7 @@ function DoctorReferralsList() {
           handleClose={handleCloseConfirmation}
           screen="CreateScreen"
           setReferralPopup={setReferralPopup}
+          sendUpdateMessage={sendUpdateMessage}
         />
       )}
     </div>

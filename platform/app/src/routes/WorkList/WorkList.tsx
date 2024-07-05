@@ -181,8 +181,12 @@ function WorkList({
   }
   const saveToServer = async studyId => {
     try {
-      const result = await dataSource.query.studies.sendToCloud(studyId);
-      console.log("saveToServer result ", result);
+      let text = "Do you really want to Save this into Server...? It will take sometime to process your request";
+      if (confirm(text) == true) {
+        const result = await dataSource.query.studies.sendToCloud(studyId);
+        console.log("saveToServer result ", result);
+      }
+
     } catch (ex) {
       // TODO: UI Notification Service
       console.warn(ex);
@@ -282,7 +286,7 @@ function WorkList({
     const isExpanded = expandedRows.some(k => k === rowKey);
     const {
       studyInstanceUid,
-      accession,
+      // accession,
       modalities,
       instances,
       description,
@@ -325,18 +329,18 @@ function WorkList({
             </>
           ),
           title: `${studyDate || ''} ${studyTime || ''}`,
-          gridCol: 5,
+          gridCol: 3,
         },
         {
           key: 'description',
           content: <TooltipClipboard ActiveMode={isActive}>{description}</TooltipClipboard>,
-          gridCol: 4,
+          gridCol: 3,
         },
         {
           key: 'modality',
           content: modalities,
           title: modalities,
-          gridCol: 3,
+          gridCol: 2,
         },
         // {
         //   key: 'accession',
@@ -365,7 +369,7 @@ function WorkList({
             </>
           ),
           title: (instances || 0).toString(),
-          gridCol: 4,
+          gridCol: 2,
         },
         {
           key: 'status',
@@ -468,7 +472,7 @@ function WorkList({
               </svg>
             </Link>
           ),
-          gridCol: 3,
+          gridCol: 1,
         },
 
         {
@@ -476,7 +480,7 @@ function WorkList({
           title: 'Save to Cloud',
           content: hideOption && (
             // <Link to="/generate-referral">
-            <svg 
+            <svg
               onClick={() => saveToServer(studyInstanceUid)}
               xmlns="http://www.w3.org/2000/svg"
               version="1.1"
@@ -490,7 +494,7 @@ function WorkList({
             </svg>
             // </Link>
           ),
-          gridCol: 3,
+          gridCol: 1,
         },
         {
           key: 'actions',
@@ -514,7 +518,7 @@ function WorkList({
             </svg>
             // </Link>
           ),
-          gridCol: 3,
+          gridCol: 1,
         },
       ],
       // Todo: This is actually running for all rows, even if they are
@@ -803,7 +807,7 @@ const defaultFilterValues = {
   },
   description: '',
   modalities: [],
-  accession: '',
+  // accession: '',
   sortBy: '',
   sortDirection: 'none',
   pageNumber: 1,
@@ -832,7 +836,7 @@ function _getQueryFilterValues(params) {
     },
     description: params.get('description'),
     modalities: params.get('modalities') ? params.get('modalities').split(',') : [],
-    accession: params.get('accession'),
+    // accession: params.get('accession'),
     sortBy: params.get('sortby'),
     sortDirection: params.get('sortdirection'),
     pageNumber: _tryParseInt(params.get('pagenumber'), undefined),

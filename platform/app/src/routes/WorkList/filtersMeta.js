@@ -25,7 +25,7 @@ const filtersMeta = [
     displayName: 'StudyDescription',
     inputType: 'Text',
     isSortable: true,
-    gridCol: 4,
+    gridCol: 3,
   },
   {
     name: 'modalities',
@@ -108,13 +108,13 @@ const filtersMeta = [
     isSortable: true,
     gridCol: 3,
   },
-  {
-    name: 'accession',
-    displayName: 'AccessionNumber',
-    inputType: 'Text',
-    isSortable: true,
-    gridCol: 3,
-  },
+  // {
+  //   name: 'accession',
+  //   displayName: 'AccessionNumber',
+  //   inputType: 'Text',
+  //   isSortable: true,
+  //   gridCol: 3,
+  // },
   {
     name: 'instances',
     displayName: 'Instances',
@@ -132,17 +132,9 @@ const filtersMeta = [
   {
     name: 'actions',
     displayName: 'Actions',
-    inputType: 'MultiSelect',
-    inputProps: {
-      options: [
-        { value: 'AR', label: 'AR' },
-        { value: 'ASMT', label: 'ASMT' },
-        { value: 'AU', label: 'AU' },
-        { value: 'RTINTENT', label: 'RTINTENT' },
-      ],
-    },
+    inputType: 'None',
     isSortable: false,
-    gridCol: 3,
+    gridCol: 4,
   },
 ];
 

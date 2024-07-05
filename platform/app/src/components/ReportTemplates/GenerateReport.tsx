@@ -118,13 +118,6 @@ const GenerateReport = () => {
   const [modalitydata, setModalityData] = useState('<p>sample modality</p>');
   const [currentDate, setCurrentDate] = useState(new Date());
 
-  const options = [
-    { id: 'ct', value: 'CT' },
-    { id: 'ct_head', value: 'CCT HeadT' },
-    { id: 'mri', value: 'MRI' },
-    { id: 'ct3', value: 'CT3' },
-  ];
-
   useEffect(() => {
     //fetch(`${hostName}studies/${modalityValue}/metadata/reportRaw`);
     const authHeaders = localStorage.getItem('auth-t');

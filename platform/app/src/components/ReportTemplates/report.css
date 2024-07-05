@@ -58,19 +58,21 @@
   
   .templatesList_dark {
 	margin: 8px;
-	padding: 2rem;
-	border-radius: 4px;
-	background: #373737 !important;
-	color: #b7b7b7;
+    padding: 1rem;
+    border-radius: 4px;
+    /* background: #373737 !important; */
+    color: #b7b7b7;
+    box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
   }
   
   .templates-item {
 	margin: 8px;
-	padding: 2rem;
-	border-radius: 4px;
-	background: #ffffff !important;
-	color: #0a7c6c;
-	border: 1px solid #dadada;
+    padding: 1rem;
+    border-radius: 4px;
+    background: #ffffff !important;
+    color: #0a7c6c;
+    /* box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.2), 0 6px 20px 0 rgba(0, 0, 0, 0.19); */
+    box-shadow: rgba(149, 157, 165, 0.2) 0px 8px 24px;
   }
   
   .reports-justify-between {
