@@ -302,7 +302,7 @@ svg.text-primary-active {
 
 .border-secondary-light {
   border-color: #f5f5f5;
-  border: none;
+  /* border: none; */
 }
 
 .bg-primary-main {

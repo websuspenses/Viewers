@@ -52,6 +52,7 @@ function WorkList({
   servicesManager,
   ...props
 }) {
+  console.log("studies....", studies);
   const { hotkeyDefinitions, hotkeyDefaults } = hotkeysManager;
   const { show, hide } = useModal();
   const { t } = useTranslation();
@@ -61,7 +62,7 @@ function WorkList({
   const searchParams = useSearchParams();
   const navigate = useNavigate();
 
-  const STUDIES_LIMIT = 101;
+  const STUDIES_LIMIT = 25;
   const queryFilterValues = _getQueryFilterValues(searchParams);
   const [filterValues, _setFilterValues] = useState({
     ...defaultFilterValues,
@@ -277,10 +278,11 @@ function WorkList({
     return !isEqual(filterValues, defaultFilterValues);
   };
 
-  const rollingPageNumberMod = Math.floor(101 / resultsPerPage);
+  const rollingPageNumberMod = Math.floor(25 / resultsPerPage);
   const rollingPageNumber = (pageNumber - 1) % rollingPageNumberMod;
   const offset = resultsPerPage * rollingPageNumber;
   const offsetAndTake = offset + resultsPerPage;
+  console.log("sortedStudies ", sortedStudies);
   const tableDataSource = sortedStudies.map((study, key) => {
     const rowKey = key + 1;
     const isExpanded = expandedRows.some(k => k === rowKey);
@@ -294,6 +296,8 @@ function WorkList({
       patientName,
       date,
       time,
+      studyStatus,
+      inCloud
     } = study;
     const studyDate =
       date &&
@@ -374,7 +378,7 @@ function WorkList({
         {
           key: 'status',
           title: 'In-Progress',
-          content: 'In-Progress',
+          content: studyStatus?studyStatus:'N/A',
           gridCol: 2,
         },
         {
@@ -478,7 +482,7 @@ function WorkList({
         {
           key: 'actions',
           title: 'Save to Cloud',
-          content: hideOption && (
+          content: hideOption && (inCloud !== "Yes") && (
             // <Link to="/generate-referral">
             <svg
               onClick={() => saveToServer(studyInstanceUid)}
@@ -499,7 +503,7 @@ function WorkList({
         {
           key: 'actions',
           title: 'Refer',
-          content: (
+          content: (studyStatus !== 'Referred') && (
             // <Link to="/generate-referral">
             <svg
               onClick={() => handleShowModal(studyInstanceUid)}

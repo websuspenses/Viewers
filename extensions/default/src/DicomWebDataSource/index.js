@@ -134,7 +134,7 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
         mapParams: mapParams.bind(),
         search: async function (origParams) {
           qidoDicomWebClient.headers = getAuthrorizationHeader();
-          console.log("qidoDicomWebClient.headers ", qidoDicomWebClient.headers);
+          //console.log("qidoDicomWebClient.headers ", qidoDicomWebClient.headers);
           localStorage.setItem('auth-t', qidoDicomWebClient.headers.Authorization);
           const { studyInstanceUid, seriesInstanceUid, ...mappedParams } =
             mapParams(origParams, {
@@ -143,7 +143,7 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
             }) || {};
 
           const results = await qidoSearch(qidoDicomWebClient, undefined, undefined, mappedParams);
-
+          console.log("results ---> ", results);
           return processResults(results);
         },
 
