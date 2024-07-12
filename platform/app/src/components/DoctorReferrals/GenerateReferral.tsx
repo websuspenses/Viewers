@@ -8,6 +8,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Dialog from '@mui/material/Dialog';
+import { useNavigate } from 'react-router-dom';
 
 const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   '& .MuiDialogContent-root': {
@@ -22,6 +23,7 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
 }));
 
 function GenerateReferral(props) {
+  const navigate = useNavigate();
   const { open, handleClose, StudyInstanceUId } = props;
   const nodeAppHost = '/teleapp';
   const hostName = '/pacs/dicom-web/';
@@ -73,13 +75,13 @@ function GenerateReferral(props) {
       .then(result => {
         console.log('Cloud URL info ', result);
         referralUrl = result.url;
-        sendMessage(referralUrl);
+        sendMessage(referralUrl, StudyInstanceUId);
       })
       .catch(err => {
         console.log(err.message);
       });
   }
-  const sendMessage = (referralUrl) => {
+  const sendMessage = (referralUrl, studyInstanceUid) => {
     let authHeaders = localStorage.getItem('auth-t');
     const url = `${nodeAppHost}/send_study_referral`;
     const formData = {
@@ -100,6 +102,29 @@ function GenerateReferral(props) {
     try {
       const res = fetch(url, options);
       if (res) {
+          let url = `${hostName}/studies/${studyInstanceUid}/update_status`;
+            const statusBody = {"status":"Referral sent"};
+            const options2 = {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: authHeaders,
+              },
+              body: JSON.stringify(statusBody),
+            };
+        
+            try {
+              const res = fetch(url, options2);
+              if (res) {
+                alert("Referred Succesfully...")
+                navigate('/workList');
+                console.log('Status updated Save to server', res);
+              }
+              console.log('response ', res);
+            } catch (error) {
+              console.error('Error:', error);
+            }
+            //navigate('/workList');
         handleClose();
       }
       console.log('response ', res);

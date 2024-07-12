@@ -313,8 +313,32 @@ const GenerateReport = () => {
 
     try {
       const res = fetch(url, options);
-      console.log('response ', res);
+     
       if (res) {
+        console.log('Generate Report', res);
+          let url2 = `${hostName}studies/${modalityValue}/update_status`;
+            const statusBody = {"status":"Report Generated"};
+            const options2 = {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: authHeaders,
+              },
+              body: JSON.stringify(statusBody),
+            };
+        
+            try {
+              const res1 = fetch(url2, options2);
+              if (res1) {
+                navigate('/workList');
+                alert("Report generated Successfully...");
+                console.log('Status updated Generate report', res1);
+              }
+              console.log('response ', res1);
+            } catch (error) {
+              console.error('Error:', error);
+            }
+        
         navigate('/workList');
       }
     } catch (error) {

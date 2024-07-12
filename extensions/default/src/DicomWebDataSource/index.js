@@ -1,6 +1,8 @@
 import { api } from 'dicomweb-client';
 import { DicomMetadataStore, IWebApiDataSource, utils, errorHandler, classes } from '@ohif/core';
 
+import { useNavigate } from 'react-router-dom';
+
 import {
   mapParams,
   search as qidoSearch,
@@ -134,7 +136,7 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
         mapParams: mapParams.bind(),
         search: async function (origParams) {
           qidoDicomWebClient.headers = getAuthrorizationHeader();
-          //console.log("qidoDicomWebClient.headers ", qidoDicomWebClient.headers);
+          console.log("qidoDicomWebClient.headers ", qidoDicomWebClient.headers);
           localStorage.setItem('auth-t', qidoDicomWebClient.headers.Authorization);
           const { studyInstanceUid, seriesInstanceUid, ...mappedParams } =
             mapParams(origParams, {
@@ -148,19 +150,39 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
         },
 
         sendToCloud: async function (studyInstanceUid) {
+          //const navigate = useNavigate();
           qidoDicomWebClient.headers = getAuthrorizationHeader();
           const url = dicomWebConfig.wadoRoot + '/studies/' + studyInstanceUid + '/send_to_cloud';
           console.log("URL ", url);
           await fetch(url, qidoDicomWebClient)
             .then(response => response.json())
-            .then(actualData => {
-              console.log('actualData ', actualData);
+            .then(result => {
+              console.log('result ', result);
+              if(result.StudyID){
+                let url = `${dicomWebConfig.wadoRoot}/studies/${studyInstanceUid}/update_status`;
+                  const statusBody = {"status":"Ready to Refer"};
+                  const options = {
+                    method: 'POST',
+                    headers: qidoDicomWebClient.headers,
+                    body: JSON.stringify(statusBody),
+                  };
+              
+                  try {
+                    const res = fetch(url, options);
+                    if (res) {
+                      //navigate('/workList');
+                      console.log('Status updated Save to server', res);
+                    }
+                    console.log('response ', res);
+                  } catch (error) {
+                    console.error('Error:', error);
+                  }
+              }
             })
             .catch(err => {
               console.log(err.message);
             });
         },
-        processResults: processResults.bind(),
       },
       series: {
         // mapParams: mapParams.bind(),
