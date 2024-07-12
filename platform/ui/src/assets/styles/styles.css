@@ -929,8 +929,97 @@ div#ohif-thumbnail-list>div>div:nth-child(2) {
   border-radius: 6px;
 }
 
-.actions-container svg:hover {
-  /* fill: black; */
-  background-color: #ffffff;
-  fill: #1e7f6c;
+
+div.actions-container svg:hover {
+  background-color: #0a7c6c;
+  fill: #ffffff !important;
+  }
+
+.DateInput_input, .customSelect__wrapper .customSelect__control{
+  border:none;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+}
+input[type='text']{
+  border:none;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+}
+button.border-primary-main.leading-none{
+  border:none;
+  margin: 0 2px;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+}
+button.border-primary-main.leading-none:hover{
+  color:#ffffff;
+  background-color:#0b7c69;
+}
+p.m-0.leading-tight.text-base.text-white, p.m-0.leading-tight.text-base.text-white:hover{
+  color:#0b7c69;
+  opacity:1;
+}
+
+
+
+
+# viewer table styles
+
+[data-cy="study-list-results"] tr:hover{
+  z-index:-1;
+  background-color:transparent;
+  color:#0a7c6c;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+}
+[data-cy="study-list-results"] tr:hover .actions-container svg{
+  fill:#0a7c6c;
+}
+[data-cy="study-list-results"] button{
+  color: #0a7c6c;
+  background-color:transparent;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+  border-radius:5px;
+}
+[data-cy="study-list-results"] button:hover, [data-cy="study-list-results"] button:hover svg{
+  color: #ffffff;
+  background-color:#0a7c6c;
+}
+[data-cy="study-list-results"] button svg{
+  color:transparent;
+}
+[data-cy="study-list-results"] button svg path{
+  fill:#0a7c6c;
+}
+tr.max-h-0.w-full.select-text.overflow-hidden.bg-black{
+border: 1px solid #0a7c6c;
+}
+.w-full.transition.duration-300.border-primary-light.hover\:border-secondary-light.mb-2.overflow-hidden.rounded.border tr{
+      box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+      color:#0a7c6c;
+}
+.w-full.transition.duration-300.border-primary-light.hover\:border-secondary-light.mb-2.overflow-hidden.rounded.border tr:hover{
+  background-color:transparent;
+}
+
+tr.hover\:bg-secondary-main.cursor-pointer.transition.duration-300.bg-primary-dark:hover {
+  background-color:#ffffff;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+
+  color:#0a7c6c;
+}
+.sticky.-top-1.z-10.mx-auto.border-b-4.border-black .bg-primary-dark.pt-3.pb-3{
+  color:#ffffff;
+  background-color:#0a7c6c;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+.sticky.-top-1.z-10.mx-auto.border-b-4.border-black .bg-primary-dark.pt-3.pb-3 .text-white{
+  color:#ffffff;
+}
+.sticky.-top-1.z-10.mx-auto.border-b-4.border-black .bg-primary-dark.pt-3.pb-3 .text-white svg g{
+  fill:#ffffff;
+}
+.DateRangePicker .CalendarDay:hover, .CalendarDay__selected, .CalendarDay__selected:active, .CalendarDay__selected:hover{
+background-color: rgb(10 124 105);
+}
+.DateRangePicker td.CalendarDay__selected_span{
+  background-color: rgb(91 91 91);
 }
