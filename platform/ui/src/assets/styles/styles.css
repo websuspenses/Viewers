@@ -938,6 +938,7 @@ div.actions-container svg:hover {
 .DateInput_input, .customSelect__wrapper .customSelect__control{
   border:none;
   box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+  color: #0a7c6c;
 }
 input[type='text']{
   border:none;
@@ -1022,4 +1023,7 @@ background-color: rgb(10 124 105);
 }
 .DateRangePicker td.CalendarDay__selected_span{
   background-color: rgb(91 91 91);
+}
+[data-cy="input-description"], [data-cy="input-patientName"], [data-cy="input-mrn"]{
+  color: #0a7c6c !important;
 }
