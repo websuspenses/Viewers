@@ -65,7 +65,7 @@ describe('OHIF Download Snapshot File', () => {
     cy.get('[data-cy=file-type]').should('have.value', 'jpg');
   });*/
 
-  // TO-DO once issue is fixed: https://github.com/OHIF/Viewers/issues/1217
+  // TO-DO once issue is fixed: ''issues/1217
   // it('checks error messages for empty fields', function() {
   //   //Clear fields Image Width and Filename
   //   cy.get('[data-cy="image-width"]').clear();

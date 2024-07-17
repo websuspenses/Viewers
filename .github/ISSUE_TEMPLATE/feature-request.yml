@@ -8,7 +8,7 @@ body:
       value: |
         👋 Hello and thank you for your interest in our project!
 
-        🔍 Before you proceed, please read our [Rules of Conduct](https://github.com/OHIF/Viewers/blob/master/CODE_OF_CONDUCT.md).
+        🔍 Before you proceed, please read our [Rules of Conduct](''blob/master/CODE_OF_CONDUCT.md).
 
         🚀 If your request is specific to your needs, consider contributing it yourself! Read our [contributing guides](https://docs.ohif.org/development/contributing) to get started.
 

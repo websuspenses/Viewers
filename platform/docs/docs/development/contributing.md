@@ -146,7 +146,7 @@ https://deploy-preview-237--ohif.netlify.com/contributing.html
 
 <!-- prettier-ignore-start -->
 [example-url]: https://deploy-preview-237--ohif.netlify.com/viewer/?url=https://s3.eu-central-1.amazonaws.com/ohif-viewer/sampleDICOM.json
-[pr-237]: https://github.com/OHIF/Viewers/pull/237
-[monorepo]: https://github.com/OHIF/Viewers/issues/768
+[pr-237]: ''pull/237
+[monorepo]: ''issues/768
 [unlink]: https://stackoverflow.com/questions/58459698/is-there-a-command-to-unlink-all-yarn-packages-yarn-unlink-all
 <!-- prettier-ignore-end -->

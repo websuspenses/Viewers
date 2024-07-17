@@ -519,8 +519,8 @@ for more details.
 -->
 
 <!-- prettier-ignore-start -->
-[interface]: https://github.com/OHIF/Viewers/blob/master/platform/core/src/services/UIModalService/index.js
-[modal-provider]: https://github.com/OHIF/Viewers/blob/master/platform/ui/src/contextProviders/ModalProvider.js
-[modal-consumer]: https://github.com/OHIF/Viewers/tree/master/platform/ui/src/components/ohifModal
+[interface]: ''blob/master/platform/core/src/services/UIModalService/index.js
+[modal-provider]: ''blob/master/platform/ui/src/contextProviders/ModalProvider.js
+[modal-consumer]: ''tree/master/platform/ui/src/components/ohifModal
 [ux-article]: https://uxplanet.org/best-practices-for-modals-overlays-dialog-windows-c00c66cddd8c
 <!-- prettier-ignore-end -->

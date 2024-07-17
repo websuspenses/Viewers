@@ -118,7 +118,7 @@ output.
   -->
 
 <!-- prettier-ignore-start -->
-[default-config]: https://github.com/OHIF/Viewers/blob/master/platform/viewer/public/config/default.js
-[html-templates]: https://github.com/OHIF/Viewers/tree/master/platform/viewer/public/html-templates
-[config-files]: https://github.com/OHIF/Viewers/tree/master/platform/viewer/public/config
+[default-config]: ''blob/master/platform/viewer/public/config/default.js
+[html-templates]: ''tree/master/platform/viewer/public/html-templates
+[config-files]: ''tree/master/platform/viewer/public/config
 <!-- prettier-ignore-end -->

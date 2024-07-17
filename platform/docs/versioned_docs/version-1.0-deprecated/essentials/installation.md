@@ -11,7 +11,7 @@ Either clone the repository using Git:
 git clone git@github.com:OHIF/Viewers.git
 ````
 
-or [Download the latest Master as a ZIP File](https://github.com/OHIF/Viewers/archive/master.zip).
+or [Download the latest Master as a ZIP File](''archive/master.zip).
 
 ## Set up a DICOM server
 

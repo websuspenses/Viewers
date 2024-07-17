@@ -933,97 +933,345 @@ div#ohif-thumbnail-list>div>div:nth-child(2) {
 div.actions-container svg:hover {
   background-color: #0a7c6c;
   fill: #ffffff !important;
-  }
+}
 
-.DateInput_input, .customSelect__wrapper .customSelect__control{
-  border:none;
+.DateInput_input,
+.customSelect__wrapper .customSelect__control {
+  border: none;
   box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
   color: #0a7c6c;
 }
-input[type='text']{
-  border:none;
+
+input[type='text'] {
+  border: none;
   box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
 }
-button.border-primary-main.leading-none{
-  border:none;
+
+button.border-primary-main.leading-none {
+  border: none;
   margin: 0 2px;
   box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
 }
-button.border-primary-main.leading-none:hover{
-  color:#ffffff;
-  background-color:#0b7c69;
-}
-p.m-0.leading-tight.text-base.text-white, p.m-0.leading-tight.text-base.text-white:hover{
-  color:#0b7c69;
-  opacity:1;
-}
 
-
-
-
-# viewer table styles
-
-[data-cy="study-list-results"] tr:hover{
-  z-index:-1;
-  background-color:transparent;
-  color:#0a7c6c;
-  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
-}
-[data-cy="study-list-results"] tr:hover .actions-container svg{
-  fill:#0a7c6c;
-}
-[data-cy="study-list-results"] button{
-  color: #0a7c6c;
-  background-color:transparent;
-  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
-  border-radius:5px;
-}
-[data-cy="study-list-results"] button:hover, [data-cy="study-list-results"] button:hover svg{
+button.border-primary-main.leading-none:hover {
   color: #ffffff;
-  background-color:#0a7c6c;
+  background-color: #0b7c69;
 }
-[data-cy="study-list-results"] button svg{
-  color:transparent;
+
+p.m-0.leading-tight.text-base.text-white,
+p.m-0.leading-tight.text-base.text-white:hover {
+  color: #0b7c69;
+  opacity: 1;
 }
-[data-cy="study-list-results"] button svg path{
-  fill:#0a7c6c;
+
+
+
+
+# viewer table styles [data-cy="study-list-results"] tr:hover {
+  z-index: -1;
+  background-color: transparent;
+  color: #0a7c6c;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
 }
-tr.max-h-0.w-full.select-text.overflow-hidden.bg-black{
-border: 1px solid #0a7c6c;
+
+[data-cy="study-list-results"] tr:hover .actions-container svg {
+  fill: #0a7c6c;
 }
-.w-full.transition.duration-300.border-primary-light.hover\:border-secondary-light.mb-2.overflow-hidden.rounded.border tr{
-      box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
-      color:#0a7c6c;
+
+[data-cy="study-list-results"] button {
+  color: #0a7c6c;
+  background-color: transparent;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+  border-radius: 5px;
 }
-.w-full.transition.duration-300.border-primary-light.hover\:border-secondary-light.mb-2.overflow-hidden.rounded.border tr:hover{
-  background-color:transparent;
+
+[data-cy="study-list-results"] button:hover,
+[data-cy="study-list-results"] button:hover svg {
+  color: #ffffff;
+  background-color: #0a7c6c;
+}
+
+[data-cy="study-list-results"] button svg {
+  color: transparent;
+}
+
+[data-cy="study-list-results"] button svg path {
+  fill: #0a7c6c;
+}
+
+tr.max-h-0.w-full.select-text.overflow-hidden.bg-black {
+  border: 1px solid #0a7c6c;
+}
+
+.w-full.transition.duration-300.border-primary-light.hover\:border-secondary-light.mb-2.overflow-hidden.rounded.border tr {
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+  color: #0a7c6c;
+}
+
+.w-full.transition.duration-300.border-primary-light.hover\:border-secondary-light.mb-2.overflow-hidden.rounded.border tr:hover {
+  background-color: transparent;
 }
 
 tr.hover\:bg-secondary-main.cursor-pointer.transition.duration-300.bg-primary-dark:hover {
-  background-color:#ffffff;
+  background-color: #ffffff;
   box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
 
-  color:#0a7c6c;
+  color: #0a7c6c;
 }
-.sticky.-top-1.z-10.mx-auto.border-b-4.border-black .bg-primary-dark.pt-3.pb-3{
-  color:#ffffff;
-  background-color:#0a7c6c;
+
+.sticky.-top-1.z-10.mx-auto.border-b-4.border-black .bg-primary-dark.pt-3.pb-3 {
+  color: #ffffff;
+  background-color: #0a7c6c;
   border-top-left-radius: 10px;
   border-top-right-radius: 10px;
 }
 
-.sticky.-top-1.z-10.mx-auto.border-b-4.border-black .bg-primary-dark.pt-3.pb-3 .text-white{
-  color:#ffffff;
+.sticky.-top-1.z-10.mx-auto.border-b-4.border-black .bg-primary-dark.pt-3.pb-3 .text-white {
+  color: #ffffff;
 }
-.sticky.-top-1.z-10.mx-auto.border-b-4.border-black .bg-primary-dark.pt-3.pb-3 .text-white svg g{
-  fill:#ffffff;
+
+.sticky.-top-1.z-10.mx-auto.border-b-4.border-black .bg-primary-dark.pt-3.pb-3 .text-white svg g {
+  fill: #ffffff;
 }
-.DateRangePicker .CalendarDay:hover, .CalendarDay__selected, .CalendarDay__selected:active, .CalendarDay__selected:hover{
-background-color: rgb(10 124 105);
+
+.DateRangePicker .CalendarDay:hover,
+.CalendarDay__selected,
+.CalendarDay__selected:active,
+.CalendarDay__selected:hover {
+  background-color: rgb(10 124 105);
 }
-.DateRangePicker td.CalendarDay__selected_span{
+
+.DateRangePicker td.CalendarDay__selected_span {
   background-color: rgb(91 91 91);
 }
-[data-cy="input-description"], [data-cy="input-patientName"], [data-cy="input-mrn"]{
+
+[data-cy="input-description"],
+[data-cy="input-patientName"],
+[data-cy="input-mrn"] {
   color: #0a7c6c !important;
+}
+
+[data-cy="options-dropdown"] div:hover p.m-0.leading-tight.text-base.text-white {
+  color: #ffffff !important;
+}
+
+[data-cy="study-list-results"] .border-transparent td {
+  padding-left: 25px;
+}
+
+.ohif-select .customSelect__option svg>g rect {
+  stroke: #0a7c69;
+  fill: #ffffff;
+}
+
+.ohif-select .customSelect__option svg>rect {
+  fill: #ffffff;
+  stroke: #0a7c69;
+}
+
+.ohif-select .customSelect__option svg>rect:hover {
+  fill: #ffffff;
+  stroke: #0a7c69;
+}
+
+.invisible-scrollbar .bg-secondary-main {
+  background-color: #ffffff;
+  margin-bottom: 10px;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+}
+
+div.bg-customblue-40 {
+  background-color: transparent;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+}
+
+[data-cy="seriesList-btn"] span {
+  color: #0a7c69;
+}
+
+.hover\:text-primary-active:hover {
+  color: #ffffff;
+  background-color: #0a7c69;
+}
+
+div[data-cy="viewport-notification"] {
+  background-color: rgb(232 232 232);
+}
+
+div[data-cy="viewport-notification"] svg g circle {
+  fill: #0a7c69;
+}
+
+
+div[data-cy="viewport-notification"] {
+  background-color: rgb(232 232 232);
+}
+
+div[data-cy="viewport-notification"] svg g circle {
+  fill: #0a7c69;
+}
+
+div.ohif-scrollbar:hover {
+  /* background-color:#0a7c69 !important; */
+}
+
+.DraggableItem.react-draggable button:hover {
+  background-color: #ffffff !important;
+  color: #0a7c69 !important;
+}
+
+.ohif-scrollbar [data-cy="measurement-item"] div:nth-child(1) {
+  border: 1px solid #0a7c69;
+  border-radius: 4px;
+}
+
+.ohif-scrollbar [data-cy="measurement-item"]:hover {
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+}
+
+.ohif-scrollbar [data-cy="measurement-item"]:hover div:nth-child(1) {
+  background-color: #0a7c69;
+  color: #ffffff;
+}
+
+._add-view p input.form-control {
+  padding: 5px 10px;
+  border-radius: 5px;
+}
+
+div.MuiStack-root .css-1sszw6i-MuiButtonBase-root-MuiButton-root {
+  color: #2d2d2d;
+  background-color: #ffffff;
+}
+
+div.MuiStack-root .css-1sszw6i-MuiButtonBase-root-MuiButton-root:hover {
+  color: #ffffff;
+  background-color: #2d2d2d;
+}
+
+div.user-view p span:first-child {
+  color: #0a7c6c;
+  font-weight: 900;
+}
+
+[data-cy="study-browser-thumbnail-no-image"] svg g {
+  fill: #0a7c69;
+  stroke: #0a7c69;
+}
+
+[data-cy="study-browser-thumbnail-no-image"] svg g {
+  fill: #0a7c69;
+  stroke: #0a7c69;
+}
+
+#SplitButton .\!text-primary-active {
+  background-color: #ffffff;
+}
+
+#SplitButton .\!text-primary-active svg g rect {
+  stroke: #0a7c69;
+}
+
+#SplitButton .\!text-primary-active svg g path:not(:first-child) {
+  fill: #0a7c69;
+  stroke: #0a7c69;
+}
+
+#SplitButton .\!text-primary-active span:nth-child(2) {
+  color: #0a7c69;
+}
+
+
+
+
+#SplitButton [data-cy="MeasurementTools-list-menu"] .hover\:\!bg-primary-dark:hover,
+#SplitButton [data-cy="MoreTools-list-menu"] .hover\:\!bg-primary-dark:hover {
+  background-color: #5b5b5b !important;
+  color: #ffffff !important;
+}
+
+[data-cy="studyBrowser-panel"] .border-secondary-light {
+  border-color: transparent;
+}
+
+[data-cy="side-panel-header-left"] svg.text-primary-active path:nth-child(2),
+[data-cy="side-panel-header-left"] svg.text-primary-active>path,
+[data-cy="side-panel-header-right"] svg.text-primary-active path:nth-child(2),
+[data-cy="side-panel-header-right"] svg.text-primary-active>path {
+  stroke: #0a7c69;
+}
+
+.split-button-classes .hover\:\!bg-primary-dark:hover {
+  background-color: transparent !important;
+}
+
+[data-cy="Layout"] svg>g>g>g:nth-child(3) {
+  stroke: #0a7c69;
+}
+
+.tooltip-box .flex .bg-secondary-dark .gap-4 div:hover {
+  background-color: #0a7c69;
+}
+
+.tooltip-box .flex .bg-secondary-dark .gap-4 div:hover svg rect,
+.tooltip-box .flex .bg-secondary-dark .gap-4 div:hover svg g {
+  stroke: #ffffff;
+}
+
+.tooltip-box .flex .bg-primary-dark div.border-primary-dark.bg-4color {
+  background-color: #0a7c69;
+  border-color: #ffffff;
+}
+
+.tooltip-box .flex .bg-primary-dark div.border-primary-dark.bg-primary-active,
+.tooltip-box .flex .bg-primary-dark div.border-primary-dark:hover {
+  background-color: #ffffff;
+  border-color: #0a7c69;
+}
+
+div.ohif-disabled svg g {
+  stroke: #5b5b5b;
+}
+
+div.ohif-disabled svg g path {
+  fill: #ababab;
+}
+
+div.ohif-disabled svg rect {
+  fill: #ababab;
+}
+
+button[data-cy="options-settings-icon"] svg path {
+  fill: #0a7c69;
+}
+
+button[data-cy="options-chevron-down-icon"] svg path {
+  stroke: #0a7c69;
+}
+
+[data-cy="study-browser-thumbnail"] .border-secondary-light {
+  border-color: transparent;
+}
+
+button.leading-none svg g path {
+  stroke:#ffffff;
+}
+button.leading-none svg g{
+  fill:#0a7c69;
+}
+button.leading-none{
+  border-color:#0a7c69;
+  color:#0a7c69;
+}
+
+.flex.flex-col.items-center.justify-center.pt-48 > div > svg g{
+    stroke:#0a7c69;
+}
+
+.flex.flex-col.items-center.justify-center.pt-48 > div > svg > g > circle{
+    fill:#ffffff;
+}
+#kc-header-wrapper{
+  color:transparent;
+
 }

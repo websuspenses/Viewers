@@ -155,7 +155,7 @@ const createBaseStyle = (expandedWidth: number) => {
     // top by the same top offset as the viewport grid. Also adjust the height so that there is no overflow.
     position: 'relative',
     top: '0.2%',
-    height: '99.8%',
+    height: '92%',
   };
 };
 const SidePanel = ({

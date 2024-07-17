@@ -74,7 +74,7 @@ describe('OHIF General Viewer', function () {
     cy.get('[data-cy="about-modal"]')
       .should('contains.text', 'Visit the forum')
       .and('contains.text', 'Report an issue')
-      .and('contains.text', 'https://github.com/OHIF/Viewers/');
+      .and('contains.text', '''');
 
     //check version number
     cy.get('[data-cy="about-modal"]').then($modal => {

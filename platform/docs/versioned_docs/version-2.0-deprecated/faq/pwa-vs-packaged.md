@@ -54,6 +54,6 @@ You can read more about this particular strategy in our
 <!-- prettier-ignore-start -->
 [pwa]: https://developers.google.com/web/progressive-web-apps/
 [pwa-checklist]: https://developers.google.com/web/progressive-web-apps/checklist
-[monorepo]: https://github.com/OHIF/Viewers/issues/768
+[monorepo]: ''issues/768
 [viewer-npm]: https://www.npmjs.com/package/@ohif/viewer
 <!-- prettier-ignore-end -->

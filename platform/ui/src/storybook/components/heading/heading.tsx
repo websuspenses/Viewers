@@ -30,7 +30,7 @@ export const Heading = ({ title, componentRelativePath }) => {
       {componentRelativePath && (
         <div>
           <a
-            href={`https://github.com/OHIF/Viewers/blob/master/platform/ui/src/components/${componentRelativePath}`}
+            href={`''blob/master/platform/ui/src/components/${componentRelativePath}`}
             className="text-sm font-normal text-blue-600"
             target="_blank"
             rel="noopener noreferrer"

@@ -35,7 +35,7 @@ can be used with Vue, React, Vanilla JS, or any number of other frameworks.
 
 The documentation for this library is sparse. The best way to get started is to
 look at its
-[top level exports](https://github.com/OHIF/Viewers/blob/master/platform/core/src/index.js),
+[top level exports](''blob/master/platform/core/src/index.js),
 and explore the source code of features that interest you. If you want to see
 how we use this library, you can check out [our viewer
 implementation][react-viewer].
@@ -132,5 +132,5 @@ Links:
 [license-image]: https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square
 [license-url]: LICENSE
 <!-- Misc. -->
-[react-viewer]: https://github.com/OHIF/Viewers/tree/react
+[react-viewer]: ''tree/react
 <!-- prettier-ignore-end -->

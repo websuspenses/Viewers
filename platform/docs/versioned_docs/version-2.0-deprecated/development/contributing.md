@@ -141,6 +141,6 @@ https://deploy-preview-237--ohif.netlify.com/contributing.html
 
 <!-- prettier-ignore-start -->
 [example-url]: https://deploy-preview-237--ohif.netlify.com/viewer/?url=https://s3.eu-central-1.amazonaws.com/ohif-viewer/sampleDICOM.json
-[pr-237]: https://github.com/OHIF/Viewers/pull/237
-[monorepo]: https://github.com/OHIF/Viewers/issues/768
+[pr-237]: ''pull/237
+[monorepo]: ''issues/768
 <!-- prettier-ignore-end -->

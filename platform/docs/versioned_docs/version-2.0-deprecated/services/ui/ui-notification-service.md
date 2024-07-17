@@ -48,8 +48,8 @@ is expected to support, [check out it's interface in `@ohif/core`][interface]
 -->
 
 <!-- prettier-ignore-start -->
-[interface]: https://github.com/OHIF/Viewers/blob/master/platform/core/src/services/UINotificationService/index.js
-[snackbar-provider]: https://github.com/OHIF/Viewers/blob/master/platform/ui/src/contextProviders/SnackbarProvider.js
-[snackbar-container]: https://github.com/OHIF/Viewers/blob/master/platform/ui/src/components/snackbar/SnackbarContainer.js
+[interface]: ''blob/master/platform/core/src/services/UINotificationService/index.js
+[snackbar-provider]: ''blob/master/platform/ui/src/contextProviders/SnackbarProvider.js
+[snackbar-container]: ''blob/master/platform/ui/src/components/snackbar/SnackbarContainer.js
 [ux-article]: https://uxplanet.org/how-to-design-notifications-for-better-ux-6fb0711be54d
 <!-- prettier-ignore-end -->

@@ -609,7 +609,7 @@
         .should('be.greaterThan', 1);
     });
 
-    // //TODO: Test blocked by issue #1551: https://github.com/OHIF/Viewers/issues/1551
+    // //TODO: Test blocked by issue #1551: ''issues/1551
     // it('checks if user can add a new W/L preset', function() {
     //   let description = ':nth-child(8) > .description > .preferencesInput';
     //   let window = ':nth-child(8) > .window > .preferencesInput';
@@ -681,7 +681,7 @@
       cy.get('[data-cy="close-button"]').click();
     });
 
-    // //TODO: Test blocked by issue #1551: https://github.com/OHIF/Viewers/issues/1551
+    // //TODO: Test blocked by issue #1551: ''issues/1551
     // it('checks if user can edit an existing W/L preset', function() {
     //   let description = ':nth-child(2) > .description > .preferencesInput';
     //   let window = ':nth-child(2) > .window > .preferencesInput';

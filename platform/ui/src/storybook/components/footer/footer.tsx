@@ -8,7 +8,7 @@ export const Footer = ({ componentRelativePath }) => {
         usecases, please send us a pull request. Edit this page on{' '}
         <a
           className="text-blue-400"
-          href={`https://github.com/OHIF/Viewers/edit/master/platform/ui/src/components/${componentRelativePath}`}
+          href={`''edit/master/platform/ui/src/components/${componentRelativePath}`}
         >
           Github
         </a>

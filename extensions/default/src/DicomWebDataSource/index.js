@@ -591,7 +591,11 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
   };
 
   if (dicomWebConfig.supportsReject) {
-    implementation.reject = dcm4cheeReject(dicomWebConfig.wadoRoot);
+    const authHeaders = userAuthenticationService.getAuthorizationHeader();
+        if (authHeaders && authHeaders.Authorization) {
+          implementation.reject = dcm4cheeReject(authHeaders.Authorization, dicomWebConfig.wadoRoot);
+        }
+    
   }
 
   return IWebApiDataSource.create(implementation);

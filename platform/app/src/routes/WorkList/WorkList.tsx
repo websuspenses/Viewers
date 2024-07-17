@@ -322,7 +322,7 @@ function WorkList({
         {
           key: 'mrn',
           content: <TooltipClipboard ActiveMode={isActive}>{mrn}</TooltipClipboard>,
-          gridCol: 3,
+          gridCol: 2,
         },
         {
           key: 'studyDate',
@@ -333,7 +333,7 @@ function WorkList({
             </>
           ),
           title: `${studyDate || ''} ${studyTime || ''}`,
-          gridCol: 3,
+          gridCol: 4,
         },
         {
           key: 'description',
@@ -379,7 +379,7 @@ function WorkList({
           key: 'status',
           title: 'In-Progress',
           content: studyStatus?studyStatus:'In-Progress',
-          gridCol: 2,
+          gridCol: 3,
         },
         {
           key: 'actions',
@@ -509,7 +509,7 @@ function WorkList({
             </Link>
             </div>
           ),
-          gridCol: 2,
+          gridCol: 4,
         }
 
         // {

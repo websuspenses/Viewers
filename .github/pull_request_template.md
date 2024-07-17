@@ -1,5 +1,5 @@
 <!-- Do Not Delete This! pr_template -->
-<!-- Please read our Rules of Conduct: https://github.com/OHIF/Viewers/blob/master/CODE_OF_CONDUCT.md -->
+<!-- Please read our Rules of Conduct: ''blob/master/CODE_OF_CONDUCT.md -->
 <!-- 🕮 Read our guide about our Contributing Guide here https://docs.ohif.org/development/contributing -->
 <!-- :hand: Thank you for starting this amazing contribution! -->
 

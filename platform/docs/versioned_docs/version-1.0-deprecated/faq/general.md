@@ -5,14 +5,14 @@
 We accept and triage bug reports through Github primarily.
 
 1. [Create a Github account](https://github.com/join)
-2. Search the current [Issue List](https://github.com/OHIF/Viewers/issues) to
+2. Search the current [Issue List](''issues) to
    ensure you are not creating a duplicate issue.
 
 If your issue already exists, post a comment to show us that this issue also
 affects you.
 
 3. If no prior issue exists,
-   [Create a New Issue](https://github.com/OHIF/Viewers/issues/new) on the
+   [Create a New Issue](''issues/new) on the
    repository.
 
 Some tips for filing a new issue:
@@ -68,7 +68,7 @@ discussion and solutions.
 **NO.** The OHIF Viewer, Lesion Tracker, and Standalone Viewer, **NOT** F.D.A.
 cleared or CE Marked. It is the users responsibility to ensure compliance with
 applicable rules and regulations. The
-[License](https://github.com/OHIF/Viewers/blob/master/LICENSE) for the OHIF
+[License](''blob/master/LICENSE) for the OHIF
 Framework does not prevent your company or group from seeking F.D.A. clearance
 for a product built using the framework.
 

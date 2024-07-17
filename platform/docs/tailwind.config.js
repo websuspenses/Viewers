@@ -286,7 +286,7 @@ module.exports = {
     },
     fontFamily: {
       sans: [
-        'Inter',
+        'monospace',
         'system-ui',
         '-apple-system',
         'BlinkMacSystemFont',

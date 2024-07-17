@@ -189,7 +189,7 @@ The following services is available in the `OHIF-v3`.
 
 <!-- prettier-ignore-start -->
 
-[core-services]: https://github.com/OHIF/Viewers/tree/master/platform/core/src/services
-[services-manager]: https://github.com/OHIF/Viewers/blob/master/platform/core/src/services/ServicesManager.js
+[core-services]: ''tree/master/platform/core/src/services
+[services-manager]: ''blob/master/platform/core/src/services/ServicesManager.js
 [cross-cutting-concerns]: https://en.wikipedia.org/wiki/Cross-cutting_concern
 <!-- prettier-ignore-end -->

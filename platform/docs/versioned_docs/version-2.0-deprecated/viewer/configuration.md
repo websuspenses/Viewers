@@ -126,5 +126,5 @@ window.config = {
 -->
 
 <!-- prettier-ignore-start -->
-[config-dir]: https://github.com/OHIF/Viewers/tree/master/platform/viewer/public/config
+[config-dir]: ''tree/master/platform/viewer/public/config
 <!-- prettier-ignore-end -->

@@ -130,27 +130,27 @@ addressed and a Stable version is released.
 <!-- prettier-ignore-start -->
 [groom-backlog]: https://www.agilealliance.org/glossary/backlog-grooming
 [retrospective]: https://www.atlassian.com/team-playbook/plays/retrospective
-[gh-issues]: https://github.com/OHIF/Viewers/issues/new/choose
-[gh-labels]: https://github.com/OHIF/Viewers/labels
+[gh-issues]: ''issues/new/choose
+[gh-labels]: ''labels
 <!-- Issue Labels -->
-[label-story]: https://github.com/OHIF/Viewers/labels/Story%20%3Araised_hands%3A
-[label-tooling]: https://github.com/OHIF/Viewers/labels/Task%3A%20CI%2FTooling%20%3Arobot%3A
-[label-docs]: https://github.com/OHIF/Viewers/labels/Task%3A%20Docs%20%3Abook%3A
-[label-refactor]: https://github.com/OHIF/Viewers/labels/Task%3A%20Refactor%20%3Ahammer_and_wrench%3A
-[label-tests]: https://github.com/OHIF/Viewers/labels/Task%3A%20Tests%20%3Amicroscope%3A
-[label-bug]: https://github.com/OHIF/Viewers/labels/Bug%3A%20Verified%20%3Abug%3A
+[label-story]: ''labels/Story%20%3Araised_hands%3A
+[label-tooling]: ''labels/Task%3A%20CI%2FTooling%20%3Arobot%3A
+[label-docs]: ''labels/Task%3A%20Docs%20%3Abook%3A
+[label-refactor]: ''labels/Task%3A%20Refactor%20%3Ahammer_and_wrench%3A
+[label-tests]: ''labels/Task%3A%20Tests%20%3Amicroscope%3A
+[label-bug]: ''labels/Bug%3A%20Verified%20%3Abug%3A
 <!-- PR Labels -->
-[draft]: https://github.com/OHIF/Viewers/labels/PR%3A%20Draft
-[awaiting-response]: https://github.com/OHIF/Viewers/labels/PR%3A%20Awaiting%20Response%20%3Aspeech_balloon%3A
-[awaiting-review]: https://github.com/OHIF/Viewers/labels/PR%3A%20Awaiting%20Review%20%3Aeyes%3A
-[awaiting-stories]: https://github.com/OHIF/Viewers/labels/PR%3A%20Awaiting%20UX%20Stories%20%3Adancer%3A
-[awaiting-revisions]: https://github.com/OHIF/Viewers/labels/PR%3A%20Awaiting%20Revisions%20%3Apen%3A
-[no-ux-impact]: https://github.com/OHIF/Viewers/labels/PR%3A%20No%20UX%20Impact%20%3Aupside_down_face%3A
+[draft]: ''labels/PR%3A%20Draft
+[awaiting-response]: ''labels/PR%3A%20Awaiting%20Response%20%3Aspeech_balloon%3A
+[awaiting-review]: ''labels/PR%3A%20Awaiting%20Review%20%3Aeyes%3A
+[awaiting-stories]: ''labels/PR%3A%20Awaiting%20UX%20Stories%20%3Adancer%3A
+[awaiting-revisions]: ''labels/PR%3A%20Awaiting%20Revisions%20%3Apen%3A
+[no-ux-impact]: ''labels/PR%3A%20No%20UX%20Impact%20%3Aupside_down_face%3A
 <!-- -->
 [ohif-dev]: https://viewer-dev.ohif.org
 [ohif-stage]: https://viewer-stage.ohif.org
 [ohif-prod]: https://viewer.ohif.org
-[gh-board]: https://github.com/OHIF/Viewers/projects/4
-[label-grabs]: https://github.com/OHIF/Viewers/issues?q=is%3Aissue+is%3Aopen+label%3A%22Up+For+Grabs+%3Araising_hand_woman%3A%22
+[gh-board]: ''projects/4
+[label-grabs]: ''issues?q=is%3Aissue+is%3Aopen+label%3A%22Up+For+Grabs+%3Araising_hand_woman%3A%22
 [contributing-docs]: ./development/contributing.md
 <!-- prettier-ignore-end -->

@@ -45,7 +45,7 @@ some community members do offer consulting services. You can search our
 
 **NO.** The OHIF Viewer is **NOT** F.D.A. cleared or CE Marked. It is the users
 responsibility to ensure compliance with applicable rules and regulations. The
-[License](https://github.com/OHIF/Viewers/blob/master/LICENSE) for the OHIF
+[License](''blob/master/LICENSE) for the OHIF
 Platform does not prevent your company or group from seeking F.D.A. clearance
 for a product built using the platform.
 
@@ -74,6 +74,6 @@ rules and regulations.
 [501k-clearance]: https://www.fda.gov/MedicalDevices/DeviceRegulationandGuidance/HowtoMarketYourDevice/PremarketSubmissions/PremarketNotification510k/
 [ce-marking]: https://ec.europa.eu/growth/single-market/ce-marking_en
 [hipaa-def]: https://en.wikipedia.org/wiki/Health_Insurance_Portability_and_Accountability_Act
-[new-issue]: https://github.com/OHIF/Viewers/issues/new/choose
-[bug-report-template]: https://github.com/OHIF/Viewers/issues/new?assignees=&labels=Bug+Report+%3Abug%3A&template=---bug-report.md&title=
+[new-issue]: ''issues/new/choose
+[bug-report-template]: ''issues/new?assignees=&labels=Bug+Report+%3Abug%3A&template=---bug-report.md&title=
 <!-- prettier-ignore-end -->

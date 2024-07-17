@@ -140,12 +140,12 @@ you would need to recreate.
   -->
 
 <!-- prettier-ignore-start -->
-[monorepo]: https://github.com/OHIF/Viewers/issues/768
+[monorepo]: ''issues/768
 [viewers-project]: https://github.com/OHIF/Viewers
 [viewer-npm]: https://www.npmjs.com/package/@ohif/viewer
 [pwa]: https://developers.google.com/web/progressive-web-apps/
 [configuration]: ./configuring/index.md
 [extensions]: ./extensions/index.md
-[core-github]: https://github.com/OHIF/viewers/platform/core
-[ui-github]: https://github.com/OHIF/Viewers/tree/master/platform/ui
+[core-github]: ''platform/core
+[ui-github]: ''tree/master/platform/ui
 <!-- prettier-ignore-end -->

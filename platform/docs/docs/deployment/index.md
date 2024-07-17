@@ -201,7 +201,7 @@ _Sample JSON format:_
 ```
 
 More info on this JSON format can be found here
-[Issue #1500](https://github.com/OHIF/Viewers/issues/1500)
+[Issue #1500](''issues/1500)
 
 **Implementation Notes:**
 
@@ -217,7 +217,7 @@ More info on this JSON format can be found here
    not support this format yet.
 3. The JSON format is case-sensitive. Please ensure you have matched casing with
    the naturalised Dicom format referenced in
-   [Issue #1500](https://github.com/OHIF/Viewers/issues/1500).
+   [Issue #1500](''issues/1500).
 
 _CORS Issues (Cross-Origin Resource Sharing)_
 

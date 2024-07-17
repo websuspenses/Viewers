@@ -68,8 +68,8 @@ monorepository. If a new version is cut/released, a Docker image is created.
 Documentation is generated with `gitbook` and pushed to our `gh-pages` branch.
 GitHub hosts the `gh-pages` branch with GitHub Pages.
 
-- Platform Packages: https://github.com/ohif/viewers/#platform
-- Extension Packages: https://github.com/ohif/viewers/#extensions
+- Platform Packages: ''#platform
+- Extension Packages: ''#extensions
 - Documentation: https://docs.ohif.org/
 
 ![WORKFLOW_RELEASE](../assets/img/WORKFLOW_RELEASE.png)

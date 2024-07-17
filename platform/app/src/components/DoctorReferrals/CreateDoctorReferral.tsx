@@ -150,7 +150,7 @@ function CreateDoctorReferral(props) {
         sx={{ m: 0, p: 2 }}
         id="customized-dialog-title"
       >
-        {screen === 'EditScreen' ? 'Update Confirmation' : 'Create Confirmation'}
+        {screen === 'EditScreen' ? 'Update Doctor Details' : 'Add Doctor Details'}
       </DialogTitle>
       <IconButton
         aria-label="close"

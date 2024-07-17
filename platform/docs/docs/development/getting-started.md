@@ -129,6 +129,6 @@ yarn run build
 [add-remote-repo]: https://help.github.com/en/articles/fork-a-repo#step-3-configure-git-to-sync-your-fork-with-the-original-spoon-knife-repository
 [sync-changes]: https://help.github.com/en/articles/syncing-a-fork
 [triangular-workflow]: https://github.blog/2015-07-29-git-2-5-including-multiple-worktrees-and-triangular-workflows/#improved-support-for-triangular-workflows
-[ohif-viewers-repo]: https://github.com/OHIF/Viewers/
+[ohif-viewers-repo]: ''
 [ohif-viewers]: https://github.com/OHIF/Viewers
 <!-- prettier-ignore-end -->

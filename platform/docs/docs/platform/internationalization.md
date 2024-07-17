@@ -392,5 +392,5 @@ Languages:
 [Portugese-Brazil](https://www.locize.io/register?invitation=Qc5Dq449xbblQqLTpWeMfsyFiu3gACcgpj0EIucQjjs9Ph9pzPLpq3MnZupF9t6N)
 
 Don't see your language in the above list? Add a request
-[here](https://github.com/OHIF/Viewers/issues/618) so that we can create the
+[here](''issues/618) so that we can create the
 language for your translation contribution.

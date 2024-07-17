@@ -14,7 +14,7 @@ module.exports = {
       xl: '1280px',
     },
     fontFamily: {
-      inter: ['Inter', 'sans-serif'],
+      inter: ['monospace', 'sans-serif'],
     },
     colors: {
       overlay: 'rgba(0, 0, 0, 0.8)',

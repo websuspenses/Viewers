@@ -8,7 +8,7 @@
 
 <div align="center">
   <a href="https://docs.ohif.org/"><strong>Read The Docs</strong></a> |
-  <a href="https://github.com/OHIF/Viewers/tree/master/docs/latest">Edit the docs</a>
+  <a href="''tree/master/docs/latest">Edit the docs</a>
 </div>
 <div align="center">
   <a href="https://docs.ohif.org/demo">Demo</a> |
@@ -28,7 +28,7 @@
 
 > ATTENTION: If you are looking for Version 1 (the Meteor Version) of this
 > repository, it lives on
-> [the `v1.x` branch](https://github.com/OHIF/Viewers/tree/v1.x)
+> [the `v1.x` branch](''tree/v1.x)
 
 ## Why?
 
@@ -44,7 +44,7 @@ workflow customization and advanced functionality at common integration points.
 If you're interested in using the OHIF Viewer, but you're not sure it supports
 your use case [check out our docs](https://docs.ohif.org/). Still not sure, or
 you would like to propose new features? Don't hesitate to
-[create an issue](https://github.com/OHIF/Viewers/issues) or open a pull
+[create an issue](''issues) or open a pull
 request.
 
 ## Getting Started
@@ -143,7 +143,7 @@ well-tested business logic.
 4. To commit changes, run `yarn run cm`
 
 When creating tests, place the test file "next to" the file you're testing.
-[For example](https://github.com/OHIF/Viewers/blob/master/src/utils/index.test.js):
+[For example](''blob/master/src/utils/index.test.js):
 
 ```js
 // File
@@ -165,7 +165,7 @@ Thanks goes to these wonderful people
 
 <!-- ALL-CONTRIBUTORS-LIST:START - Do not remove or modify this section -->
 <!-- prettier-ignore -->
-<table><tr><td align="center"><a href="https://github.com/swederik"><img src="https://avatars3.githubusercontent.com/u/607793?v=4" width="100px;" alt="Erik Ziegler"/><br /><sub><b>Erik Ziegler</b></sub></a><br /><a href="https://github.com/OHIF/Viewers/commits?author=swederik" title="Code">💻</a> <a href="#infra-swederik" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td><td align="center"><a href="https://github.com/evren217"><img src="https://avatars1.githubusercontent.com/u/4920551?v=4" width="100px;" alt="Evren Ozkan"/><br /><sub><b>Evren Ozkan</b></sub></a><br /><a href="https://github.com/OHIF/Viewers/commits?author=evren217" title="Code">💻</a></td><td align="center"><a href="https://github.com/galelis"><img src="https://avatars3.githubusercontent.com/u/2378326?v=4" width="100px;" alt="Gustavo André Lelis"/><br /><sub><b>Gustavo André Lelis</b></sub></a><br /><a href="https://github.com/OHIF/Viewers/commits?author=galelis" title="Code">💻</a></td><td align="center"><a href="http://dannyrb.com/"><img src="https://avatars1.githubusercontent.com/u/5797588?v=4" width="100px;" alt="Danny Brown"/><br /><sub><b>Danny Brown</b></sub></a><br /><a href="https://github.com/OHIF/Viewers/commits?author=dannyrb" title="Code">💻</a> <a href="#infra-dannyrb" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td><td align="center"><a href="https://github.com/all-contributors/all-contributors-bot"><img src="https://avatars3.githubusercontent.com/u/46843839?v=4" width="100px;" alt="allcontributors[bot]"/><br /><sub><b>allcontributors[bot]</b></sub></a><br /><a href="https://github.com/OHIF/Viewers/commits?author=allcontributors" title="Documentation">📖</a></td><td align="center"><a href="https://www.linkedin.com/in/siliconvalleynextgeneration/"><img src="https://avatars0.githubusercontent.com/u/1230575?v=4" width="100px;" alt="Esref Durna"/><br /><sub><b>Esref Durna</b></sub></a><br /><a href="#question-EsrefDurna" title="Answering Questions">💬</a></td><td align="center"><a href="https://github.com/diego0020"><img src="https://avatars3.githubusercontent.com/u/7297450?v=4" width="100px;" alt="diego0020"/><br /><sub><b>diego0020</b></sub></a><br /><a href="https://github.com/OHIF/Viewers/commits?author=diego0020" title="Code">💻</a></td></tr><tr><td align="center"><a href="https://github.com/dlwire"><img src="https://avatars3.githubusercontent.com/u/1167291?v=4" width="100px;" alt="David Wire"/><br /><sub><b>David Wire</b></sub></a><br /><a href="https://github.com/OHIF/Viewers/commits?author=dlwire" title="Code">💻</a></td><td align="center"><a href="https://github.com/jfmedeiros1820"><img src="https://avatars1.githubusercontent.com/u/2211708?v=4" width="100px;" alt="João Felipe de Medeiros Moreira"/><br /><sub><b>João Felipe de Medeiros Moreira</b></sub></a><br /><a href="https://github.com/OHIF/Viewers/commits?author=jfmedeiros1820" title="Tests">⚠️</a></td></tr></table>
+<table><tr><td align="center"><a href="https://github.com/swederik"><img src="https://avatars3.githubusercontent.com/u/607793?v=4" width="100px;" alt="Erik Ziegler"/><br /><sub><b>Erik Ziegler</b></sub></a><br /><a href="''commits?author=swederik" title="Code">💻</a> <a href="#infra-swederik" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td><td align="center"><a href="https://github.com/evren217"><img src="https://avatars1.githubusercontent.com/u/4920551?v=4" width="100px;" alt="Evren Ozkan"/><br /><sub><b>Evren Ozkan</b></sub></a><br /><a href="''commits?author=evren217" title="Code">💻</a></td><td align="center"><a href="https://github.com/galelis"><img src="https://avatars3.githubusercontent.com/u/2378326?v=4" width="100px;" alt="Gustavo André Lelis"/><br /><sub><b>Gustavo André Lelis</b></sub></a><br /><a href="''commits?author=galelis" title="Code">💻</a></td><td align="center"><a href="http://dannyrb.com/"><img src="https://avatars1.githubusercontent.com/u/5797588?v=4" width="100px;" alt="Danny Brown"/><br /><sub><b>Danny Brown</b></sub></a><br /><a href="''commits?author=dannyrb" title="Code">💻</a> <a href="#infra-dannyrb" title="Infrastructure (Hosting, Build-Tools, etc)">🚇</a></td><td align="center"><a href="https://github.com/all-contributors/all-contributors-bot"><img src="https://avatars3.githubusercontent.com/u/46843839?v=4" width="100px;" alt="allcontributors[bot]"/><br /><sub><b>allcontributors[bot]</b></sub></a><br /><a href="''commits?author=allcontributors" title="Documentation">📖</a></td><td align="center"><a href="https://www.linkedin.com/in/siliconvalleynextgeneration/"><img src="https://avatars0.githubusercontent.com/u/1230575?v=4" width="100px;" alt="Esref Durna"/><br /><sub><b>Esref Durna</b></sub></a><br /><a href="#question-EsrefDurna" title="Answering Questions">💬</a></td><td align="center"><a href="https://github.com/diego0020"><img src="https://avatars3.githubusercontent.com/u/7297450?v=4" width="100px;" alt="diego0020"/><br /><sub><b>diego0020</b></sub></a><br /><a href="''commits?author=diego0020" title="Code">💻</a></td></tr><tr><td align="center"><a href="https://github.com/dlwire"><img src="https://avatars3.githubusercontent.com/u/1167291?v=4" width="100px;" alt="David Wire"/><br /><sub><b>David Wire</b></sub></a><br /><a href="''commits?author=dlwire" title="Code">💻</a></td><td align="center"><a href="https://github.com/jfmedeiros1820"><img src="https://avatars1.githubusercontent.com/u/2211708?v=4" width="100px;" alt="João Felipe de Medeiros Moreira"/><br /><sub><b>João Felipe de Medeiros Moreira</b></sub></a><br /><a href="''commits?author=jfmedeiros1820" title="Tests">⚠️</a></td></tr></table>
 
 <!-- ALL-CONTRIBUTORS-LIST:END -->
 
@@ -197,11 +197,11 @@ Links:
 [configuration-url]: https://docs.ohif.org/configuring/
 [extensions-url]: https://docs.ohif.org/extensions
 <!-- Misc. -->
-[react-viewer]: https://github.com/OHIF/Viewers/tree/react
+[react-viewer]: ''tree/react
 <!-- Issue Boilerplate -->
-[bugs]: https://github.com/OHIF/Viewers/labels/bug
-[requests-feature]: https://github.com/OHIF/Viewers/labels/enhancement
-[good-first-issue]: https://github.com/OHIF/Viewers/labels/good%20first%20issue
+[bugs]: ''labels/bug
+[requests-feature]: ''labels/enhancement
+[good-first-issue]: ''labels/good%20first%20issue
 [google-group]: https://groups.google.com/forum/#!forum/cornerstone-platform
 
 <!-- prettier-ignore-end -->

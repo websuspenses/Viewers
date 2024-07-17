@@ -78,7 +78,7 @@ const AboutModal = ({ buildNumber, versionNumber, commitHash, isActive }) => {
       {renderRowTitle(t('Important links'))}
       <div className="mb-8 flex">
         <Link
-          href="#"
+          href="https://cyberintellectus.com/products-telehealth/"
           showIcon={true}
           isActive={isActive}
         >

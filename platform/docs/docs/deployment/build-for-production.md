@@ -24,7 +24,7 @@ More on: _[`git clone`](https://git-scm.com/docs/git-clone),
 
 _From .zip:_
 
-[OHIF/Viewers: master.zip](https://github.com/OHIF/Viewers/archive/master.zip)
+[OHIF/Viewers: master.zip](''archive/master.zip)
 
 ### Restore Dependencies & Build
 
@@ -129,8 +129,8 @@ web application. For a starting point, check out this repository's own use of:
 
 <!-- prettier-ignore-start -->
 [circleci]: https://circleci.com/gh/OHIF/Viewers
-[circleci-config]: https://github.com/OHIF/Viewers/blob/master/.circleci/config.yml
+[circleci-config]: ''blob/master/.circleci/config.yml
 [netlify]: https://app.netlify.com/sites/ohif/deploys
-[netlify.toml]: https://github.com/OHIF/Viewers/blob/master/platform/app/netlify.toml
-[build-deploy-preview.sh]: https://github.com/OHIF/Viewers/blob/master/.netlify/build-deploy-preview.sh
+[netlify.toml]: ''blob/master/platform/app/netlify.toml
+[build-deploy-preview.sh]: ''blob/master/.netlify/build-deploy-preview.sh
 <!-- prettier-ignore-end -->

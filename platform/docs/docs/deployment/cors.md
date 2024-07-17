@@ -214,7 +214,7 @@ If deploying OHIF using Netlify, the Netlify configuration [file](https://docs.n
 :::
 
 :::tip
-If OHIF is served behind nginx, then the headers can be set in the nginx.conf file as follows. The [template nginx configuration file](https://github.com/OHIF/Viewers/blob/master/.docker/Viewer-v3.x/default.conf.template) for creating a [OHIF Docker image](./docker.md#building-the-docker-image) has an example of this too.
+If OHIF is served behind nginx, then the headers can be set in the nginx.conf file as follows. The [template nginx configuration file](''blob/master/.docker/Viewer-v3.x/default.conf.template) for creating a [OHIF Docker image](./docker.md#building-the-docker-image) has an example of this too.
 ```nginx
 server {
   location / {

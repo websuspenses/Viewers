@@ -232,10 +232,10 @@ below:
 [osirix]: http://www.osirix-viewer.com/
 [horos]: https://www.horosproject.org/
 [default-config]:
-  https://github.com/OHIF/Viewers/blob/master/platform/app/public/config/default.js
+  ''blob/master/platform/app/public/config/default.js
 [html-templates]:
-  https://github.com/OHIF/Viewers/tree/master/platform/app/public/html-templates
+  ''tree/master/platform/app/public/html-templates
 [config-files]:
-  https://github.com/OHIF/Viewers/tree/master/platform/app/public/config
+  ''tree/master/platform/app/public/config
 [storescu]: http://support.dcmtk.org/docs/storescu.html
 [webpack-proxy]: https://webpack.js.org/configuration/dev-server/#devserverproxy

@@ -1,4 +1,4 @@
-export default function (wadoRoot) {
+export default function (Authheaders, wadoRoot) {
   return {
     series: (StudyInstanceUID, SeriesInstanceUID) => {
       return new Promise((resolve, reject) => {
@@ -8,7 +8,7 @@ export default function (wadoRoot) {
         const url = `${wadoRoot}/studies/${StudyInstanceUID}/series/${SeriesInstanceUID}/reject/${CodeValueAndCodeSchemeDesignator}`;
 
         const xhr = new XMLHttpRequest();
-        xhr.open('POST', url, true);
+        xhr.open('POST', url, Authheaders.headers);
 
         //Send the proper header information along with the request
         // TODO -> Auth when we re-add authorization.

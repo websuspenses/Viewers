@@ -31,5 +31,5 @@ some community members do offer consulting services. You can search our
   Links
   -->
 
-[gh-issues]: https://github.com/OHIF/Viewers/issues/
+[gh-issues]: ''issues/
 [google-group]: https://groups.google.com/forum/#!forum/cornerstone-platform

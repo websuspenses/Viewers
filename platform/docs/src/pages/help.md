@@ -25,5 +25,5 @@ If you need additional help, please [reach out to us](https://ohif.org/get-suppo
 how we can help you.
 
 
-[gh-issues]: https://github.com/OHIF/Viewers/issues/
+[gh-issues]: ''issues/
 [google-group]: https://groups.google.com/forum/#!forum/cornerstone-platform

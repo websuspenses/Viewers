@@ -11,14 +11,14 @@ const filtersMeta = [
     displayName: 'MRN',
     inputType: 'Text',
     isSortable: true,
-    gridCol: 3,
+    gridCol: 2,
   },
   {
     name: 'studyDate',
     displayName: 'StudyDate',
     inputType: 'DateRange',
     isSortable: true,
-    gridCol: 5,
+    gridCol: 4,
   },
   {
     name: 'description',
@@ -106,7 +106,7 @@ const filtersMeta = [
       ],
     },
     isSortable: true,
-    gridCol: 3,
+    gridCol: 2,
   },
   // {
   //   name: 'accession',
@@ -127,7 +127,7 @@ const filtersMeta = [
     displayName: 'Status',
     inputType: 'None',
     isSortable: false,
-    gridCol: 2,
+    gridCol: 3,
   },
   {
     name: 'actions',

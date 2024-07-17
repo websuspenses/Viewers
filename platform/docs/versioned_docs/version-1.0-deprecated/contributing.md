@@ -36,7 +36,7 @@ and available for testing.
 For example,
 [this url](https://deploy-preview-237--ohif.netlify.com/viewer/?url=https://s3.eu-central-1.amazonaws.com/ohif-viewer/sampleDICOM.json)
 allows you to test
-[pull request 237, the request that created this FAQ entry,](https://github.com/OHIF/Viewers/pull/237)
+[pull request 237, the request that created this FAQ entry,](''pull/237)
 using data pulled from Amazon S3.
 
 Replacing the number 237 in the link below with your pull request number should

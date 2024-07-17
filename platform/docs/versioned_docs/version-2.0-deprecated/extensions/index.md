@@ -259,7 +259,7 @@ the top level [`extensions/`][ext-source] directory.
                 <a href="https://www.npmjs.com/package/@ohif/extension-dicom-html">DICOM HTML</a>
             </td>
             <td>
-                Renders text and HTML content for <a href="https://github.com/OHIF/Viewers/blob/master/extensions/dicom-html/src/OHIFDicomHtmlSopClassHandler.js#L4-L12">specific SopClassUIDs</a>.
+                Renders text and HTML content for <a href="''blob/master/extensions/dicom-html/src/OHIFDicomHtmlSopClassHandler.js#L4-L12">specific SopClassUIDs</a>.
             </td>
             <td>Viewport, SopClassHandler</td>
         </tr>
@@ -268,7 +268,7 @@ the top level [`extensions/`][ext-source] directory.
                 <a href="https://www.npmjs.com/package/@ohif/extension-dicom-pdf">DICOM PDF</a>
             </td>
             <td>
-                Renders PDFs for a <a href="https://github.com/OHIF/Viewers/blob/master/extensions/dicom-pdf/src/OHIFDicomPDFSopClassHandler.js#L4-L6">specific SopClassUID</a>.
+                Renders PDFs for a <a href="''blob/master/extensions/dicom-pdf/src/OHIFDicomPDFSopClassHandler.js#L4-L6">specific SopClassUID</a>.
             </td>
             <td>Viewport, SopClassHandler</td>
         </tr>
@@ -277,7 +277,7 @@ the top level [`extensions/`][ext-source] directory.
                 <a href="https://www.npmjs.com/package/@ohif/extension-dicom-microscopy">DICOM Microscopy</a>
             </td>
             <td>
-                Renders Microscopy images for a <a href="https://github.com/OHIF/Viewers/blob/master/extensions/dicom-microscopy/src/DicomMicroscopySopClassHandler.js#L5-L7">specific SopClassUID</a>.
+                Renders Microscopy images for a <a href="''blob/master/extensions/dicom-microscopy/src/DicomMicroscopySopClassHandler.js#L5-L7">specific SopClassUID</a>.
             </td>
             <td>Viewport, SopClassHandler</td>
         </tr>
@@ -286,7 +286,7 @@ the top level [`extensions/`][ext-source] directory.
                 <a href="https://www.npmjs.com/package/@ohif/extension-dicom-segmentation">DICOM Segmentation</a>
             </td>
             <td>
-                Renders segmentation images for a <a href="https://github.com/OHIF/Viewers/blob/master/extensions/dicom-segmentation/src/OHIFDicomSegSopClassHandler.js#L5-L7">specific SopClassUID</a>.
+                Renders segmentation images for a <a href="''blob/master/extensions/dicom-segmentation/src/OHIFDicomSegSopClassHandler.js#L5-L7">specific SopClassUID</a>.
             </td>
             <td>Panel, Toolbar</td>
         </tr>
@@ -299,6 +299,6 @@ the top level [`extensions/`][ext-source] directory.
 
 <!-- prettier-ignore-start -->
 [viewers-repo]: https://github.com/OHIF/Viewers
-[ext-source]: https://github.com/OHIF/Viewers/tree/master/extensions
-[module-types]: https://github.com/OHIF/Viewers/blob/master/platform/core/src/extensions/MODULE_TYPES.js
+[ext-source]: ''tree/master/extensions
+[module-types]: ''blob/master/platform/core/src/extensions/MODULE_TYPES.js
 <!-- prettier-ignore-end -->

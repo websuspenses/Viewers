@@ -297,7 +297,7 @@ To migrate from OHIF v2 to OHIF v3:
 Previously we used `cornerstone-wado-image-loader` for loading images. However, we have fully switched the a new
 library called `@cornerstonejs/dicom-image-loader` which is a fork of `cornerstone-wado-image-loader` with typescript support and bug fixes.
 We have deprecated `cornerstone-wado-image-loader` and you should also switch to `@cornerstonejs/dicom-image-loader` as well.
-The process is very simple, you can follow this [PR](https://github.com/OHIF/Viewers/pull/3339) to see how we have migrated.
+The process is very simple, you can follow this [PR](''pull/3339) to see how we have migrated.
 
 There is also a new loader and package `@cornerstonejs/streaming-image-volume-loader`, which provides streaming of the image data
 into a volume using web workers and web assembly. You can look into the cornerstone documentation and read more about the

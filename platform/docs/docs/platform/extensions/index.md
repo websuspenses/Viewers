@@ -112,7 +112,7 @@ the top level [`extensions/`][ext-source] directory.
                 <a href="">dicom-pdf</a>
             </td>
             <td>
-                Renders PDFs for a <a href="https://github.com/OHIF/Viewers/blob/master/extensions/dicom-pdf/src/OHIFDicomPDFSopClassHandler.js#L4-L6">specific SopClassUID</a>.
+                Renders PDFs for a <a href="''blob/master/extensions/dicom-pdf/src/OHIFDicomPDFSopClassHandler.js#L4-L6">specific SopClassUID</a>.
             </td>
             <td>Viewport, SopClassHandler</td>
         </tr>
@@ -340,6 +340,6 @@ are used to determine the appropriate implementation of the rotation behavior.
 
 <!-- prettier-ignore-start -->
 [viewers-repo]: https://github.com/OHIF/Viewers
-[ext-source]: https://github.com/OHIF/Viewers/tree/master/extensions
-[module-types]: https://github.com/OHIF/Viewers/blob/master/platform/core/src/extensions/MODULE_TYPES.js
+[ext-source]: ''tree/master/extensions
+[module-types]: ''blob/master/platform/core/src/extensions/MODULE_TYPES.js
 <!-- prettier-ignore-end -->

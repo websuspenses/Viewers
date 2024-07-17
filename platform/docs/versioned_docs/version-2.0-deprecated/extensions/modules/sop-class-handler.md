@@ -102,8 +102,8 @@ manager has the method `createDisplaySets` that takes an array of
 
 <!-- prettier-ignore-start -->
 [sop-class-link]: http://dicom.nema.org/dicom/2013/output/chtml/part04/sect_B.5.html
-[dicom-html-sop]: https://github.com/OHIF/Viewers/blob/master/extensions/dicom-html/src/OHIFDicomHtmlSopClassHandler.js#L4-L12
-[dicom-pdf-sop]: https://github.com/OHIF/Viewers/blob/master/extensions/dicom-pdf/src/OHIFDicomPDFSopClassHandler.js#L4-L6
-[dicom-micro-sop]: https://github.com/OHIF/Viewers/blob/master/extensions/dicom-microscopy/src/DicomMicroscopySopClassHandler.js#L5-L7
-[dicom-seg-sop]: https://github.com/OHIF/Viewers/blob/master/extensions/dicom-segmentation/src/OHIFDicomSegSopClassHandler.js#L5-L7
+[dicom-html-sop]: ''blob/master/extensions/dicom-html/src/OHIFDicomHtmlSopClassHandler.js#L4-L12
+[dicom-pdf-sop]: ''blob/master/extensions/dicom-pdf/src/OHIFDicomPDFSopClassHandler.js#L4-L6
+[dicom-micro-sop]: ''blob/master/extensions/dicom-microscopy/src/DicomMicroscopySopClassHandler.js#L5-L7
+[dicom-seg-sop]: ''blob/master/extensions/dicom-segmentation/src/OHIFDicomSegSopClassHandler.js#L5-L7
 <!-- prettier-ignore-end -->

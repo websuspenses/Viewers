@@ -105,7 +105,7 @@ html {
 }
 
 body {
-  font-family: 'Inter', sans-serif;
+  font-family: monospace, sans-serif;
 }
 
 h1,
@@ -115,7 +115,7 @@ h4,
 h5 {
   color: var(--ifm-color-primary);
   font-weight: 400;
-  font-family: 'Inter', sans-serif;
+  font-family: monospace, sans-serif;
 }
 
 blockquote {

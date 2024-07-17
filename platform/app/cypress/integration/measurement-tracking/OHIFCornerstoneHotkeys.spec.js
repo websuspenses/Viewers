@@ -132,7 +132,7 @@ describe('OHIF Cornerstone Hotkeys', () => {
     cy.setLayout(1, 1);
   });*/
 
-  //TO-DO: This test is blocked by issue #1095 (https://github.com/OHIF/Viewers/issues/1095)
+  //TO-DO: This test is blocked by issue #1095 (''issues/1095)
   //Once issue is fixed, this test can be uncommented
   // it('checks if hotkey "Z" activates zoom tool', () => {
   //   // Hotkey Z
@@ -141,7 +141,7 @@ describe('OHIF Cornerstone Hotkeys', () => {
   //   cy.get('@zoomBtn').should('have.class', 'active');
   // });
 
-  //TO-DO: This test is blocked by issue #1095 (https://github.com/OHIF/Viewers/issues/1095)
+  //TO-DO: This test is blocked by issue #1095 (''issues/1095)
   //Once issue is fixed, this test can be uncommented
   // it('checks if hotkeys "PageDown" and "PageUp" can navigate in the series thumbnails', () => {
   //   // Hotkey PageDown
