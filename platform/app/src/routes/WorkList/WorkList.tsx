@@ -11,6 +11,9 @@ import { useAppConfig } from '@state';
 import { useDebounce, useSearchParams } from '@hooks';
 import { utils, hotkeys, ServicesManager } from '@ohif/core';
 // import '../../style.css';
+import DoDisturbIcon from '@mui/icons-material/DoDisturb';
+
+
 
 import {
   Icon,
@@ -52,6 +55,12 @@ function WorkList({
   servicesManager,
   ...props
 }) {
+
+  const items1 = JSON.parse(localStorage.getItem('active_dark'));
+  const hostNameurl = '/pacs/dicom-web/';
+
+
+  console.log('items active_dark items1: ', items1);
   console.log("studies....", studies);
   const { hotkeyDefinitions, hotkeyDefaults } = hotkeysManager;
   const { show, hide } = useModal();
@@ -75,6 +84,9 @@ function WorkList({
   const [isActive, setIsActive] = useState(false);
   const [referralPopup, setReferralPopup] = useState(false);
   const [showStudyInstanceId, setShowStudyInstanceID] = useState('');
+  const [iframeImageflag, setIframeImageflag] = useState<string>('disableIframeFlag');
+  const [iframeWindowflag, setIframeWindowflag] = useState<string>('iframeDisable');
+  const [iframeBlockFlag, setIframeBlockFlag] = useState(true);
 
   /*
    * The default sort value keep the filters synchronized with runtime conditional sorting
@@ -172,14 +184,21 @@ function WorkList({
 
   useEffect(() => {
     const items = JSON.parse(localStorage.getItem('active_dark'));
+
+    console.log("items items::::, ", items);
     if (items) {
       setIsActive(items);
     }
   }, []);
 
   function handleChangeSwitch() {
+    localStorage.setItem('active_dark', JSON.stringify(!isActive));
     setIsActive(!isActive);
   }
+  const handleRedirectPage = () => {
+    navigate('/workList');
+  }
+
   const saveToServer = async studyId => {
     try {
       let text = "Do you really want to Save this into Server...? It will take sometime to process your request";
@@ -203,7 +222,10 @@ function WorkList({
   };
 
   useEffect(() => {
-    localStorage.setItem('active_dark', JSON.stringify(isActive));
+
+    console.log('isActive: ', isActive);
+
+    // localStorage.setItem('active_dark', JSON.stringify(isActive));
     document.body.classList.remove('bg-black');
   }, [isActive]);
 
@@ -278,6 +300,74 @@ function WorkList({
     return !isEqual(filterValues, defaultFilterValues);
   };
 
+  const handleViewerImage = (event, studyInstanceUid) => {
+    console.log('123', 123, studyInstanceUid)
+    event.preventDefault();
+    //const iframeurl = `http://localhost/viewer?StudyInstanceUIDs=${studyInstanceUid}`
+    if (window.location.origin != "") {
+      const iframeurl = `${window.location.origin}/viewer?StudyInstanceUIDs=${studyInstanceUid}`
+      top.window.document.getElementById('imageViewerId').src = iframeurl;
+      setIframeImageflag("enableIframeFlag");
+      setIframeWindowflag('iframeEnable');
+      setIframeBlockFlag(false);
+
+      setTimeout(() => {
+        if (top.window.document.getElementById('imageViewerId').contentWindow.document.getElementsByClassName('mobile-logo') && top.window.document.getElementById('imageViewerId').contentWindow.document.getElementsByClassName('mobile-logo'), length > 0) {
+          console.log("logo: ", top.window.document.getElementById('imageViewerId').contentWindow.document.getElementsByClassName('mobile-logo'));
+          top.window.document.getElementById('imageViewerId').contentWindow.document.getElementsByClassName('mobile-logo')[0].style.display = "none";
+        }
+      }, 7000);
+    }
+  }
+
+  const handleEmergency = (event, studyInstanceUid) => {
+    console.log('handleEmergency', studyInstanceUid)
+
+    // http://localhost/pacs/dicom-web/studies/1.3.12.2.1107.5.1.7.106324.30000024060414024990600000008/metadata/isEmergency
+
+    // {
+    // isEmergency:true;
+    // }
+
+    event.preventDefault();
+
+    let authHeaders = localStorage.getItem('auth-t');
+
+    let referralUrl = '';
+    //fetch(`${hostNameurl}studies/${studyInstanceUid}/get_cloud_url`, {
+    fetch(`http://localhost/pacs/dicom-web/studies/1.3.12.2.1107.5.1.7.106324.30000024060414024990600000008/metadata/isEmergency`, {
+      method: 'GET',
+      headers: {
+        Authorization: authHeaders,
+      },
+    })
+      .then(response => response.json())
+      .then(result => {
+        console.log('Cloud URL info ', result);
+        referralUrl = result.url;
+        //sendMessage(referralUrl, studyInstanceUid);
+      })
+      .catch(err => {
+        console.log(err.message);
+      });
+
+  }
+
+
+
+
+  // setTimeout(() => {
+  //   top.window.document.getElementById('imageViewerId').contentWindow.document.getElementsByClassName('mobile-logo')[0].style.display = "none";
+  // }, 10000);
+
+
+
+
+
+  const handleIframeInfo = () => {
+
+  }
+
   const rollingPageNumberMod = Math.floor(25 / resultsPerPage);
   const rollingPageNumber = (pageNumber - 1) % rollingPageNumberMod;
   const offset = resultsPerPage * rollingPageNumber;
@@ -307,6 +397,27 @@ function WorkList({
       time &&
       moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).isValid() &&
       moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).format('hh:mm A');
+
+
+    // const isValidMode = mode.isValidMode({
+    //   modalities: modalitiesToCheck,
+    //   study,
+    // });
+    // TODO: Modes need a default/target route? We mostly support a single one for now.
+    // We should also be using the route path, but currently are not
+    // mode.routeName
+    // mode.routes[x].path
+    // Don't specify default data source, and it should just be picked up... (this may not currently be the case)
+    // How do we know which params to pass? Today, it's just StudyInstanceUIDs and configUrl if exists
+
+    // const query1 = new URLSearchParams();
+    // if (filterValues.configUrl) {
+    //   query1.append('configUrl', filterValues.configUrl);
+    // }
+    // query1.append('StudyInstanceUIDs', studyInstanceUid);
+
+    // const originUrl = window.location.href;
+    // const path1 = originUrl.replace('/workList', '/');
 
     return {
       row: [
@@ -378,7 +489,12 @@ function WorkList({
         {
           key: 'status',
           title: 'In-Progress',
-          content: studyStatus?studyStatus:'In-Progress',
+          //content: studyStatus ? studyStatus : 'In-Progress',
+          content: studyStatus ? (
+            <span className={'common' + studyStatus}>{studyStatus}</span>
+          ) : (
+            <span className={'commonIn-Progress'}>{'In-Progress'}</span>
+          ),
           gridCol: 3,
         },
         {
@@ -386,127 +502,176 @@ function WorkList({
           title: 'Generate Reports',
           content: (
             <div className="actions-container">
-            <Link title="Genarate report" to={`/generate-report/${studyInstanceUid}/${modalities}`}>
-              <svg
-                fill="#0a7c6c"
-                version="1.1"
-                id="Capa_1"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 60 60"
-                width="35px"
-                height="30px"
-              >
-                <g
-                  id="SVGRepo_bgCarrier"
-                  strokeWidth="0"
-                />
+              <Link title="Genarate report" to={`/generate-report/${studyInstanceUid}/${modalities}`}>
+                <svg
+                  fill="#0a7c6c"
+                  version="1.1"
+                  id="Capa_1"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 60 60"
+                  width="35px"
+                  height="30px"
+                >
+                  <g
+                    id="SVGRepo_bgCarrier"
+                    strokeWidth="0"
+                  />
 
-                <g
-                  id="SVGRepo_tracerCarrier"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
+                  <g
+                    id="SVGRepo_tracerCarrier"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
 
-                <g id="SVGRepo_iconCarrier">
-                  {' '}
-                  <g>
+                  <g id="SVGRepo_iconCarrier">
                     {' '}
                     <g>
                       {' '}
-                      <path d="M2,2h39v7h2V1c0-0.6-0.4-1-1-1H1C0.4,0,0,0.4,0,1v58c0,0.6,0.4,1,1,1h32v-2H2V2z" />{' '}
-                      <path d="M43.7,21.3l-2.8-6.6c-0.1-0.4-0.5-0.6-0.9-0.6s-0.7,0.2-0.9,0.6l-2.8,6.6C36.1,21.5,36,21.7,36,22v31v6c0,0.6,0.4,1,1,1h6 c0.6,0,1-0.4,1-1v-6V22C44,21.7,43.9,21.4,43.7,21.3z M38,23h4v29h-4V23z M40,17.5l1.5,3.5h-3L40,17.5z M42,58h-4v-4h4V58z" />{' '}
-                      <path d="M59,38H48c-0.6,0-1,0.4-1,1v20c0,0.6,0.4,1,1,1h11c0.6,0,1-0.4,1-1V39C60,38.4,59.6,38,59,38z M58,40v5h-9v-5H58z M49,58 V47h9v11H49z" />{' '}
-                      <path d="M27,11c0-3.3-2.7-6-6-6s-6,2.7-6,6s2.7,6,6,6S27,14.3,27,11z M17,11c0-2.2,1.8-4,4-4s4,1.8,4,4s-1.8,4-4,4S17,13.2,17,11z " />{' '}
-                      <rect
-                        x="15"
-                        y="20"
-                        width="12"
-                        height="2"
-                      />{' '}
-                      <rect
-                        x="15"
-                        y="25"
-                        width="12"
-                        height="2"
-                      />{' '}
-                      <rect
-                        x="6"
-                        y="31"
-                        width="15"
-                        height="2"
-                      />{' '}
-                      <rect
-                        x="6"
-                        y="36"
-                        width="26"
-                        height="2"
-                      />{' '}
-                      <rect
-                        x="6"
-                        y="41"
-                        width="26"
-                        height="2"
-                      />{' '}
-                      <rect
-                        x="6"
-                        y="46"
-                        width="8"
-                        height="2"
-                      />{' '}
-                      <rect
-                        x="6"
-                        y="51"
-                        width="11"
-                        height="2"
-                      />{' '}
-                      <rect
-                        x="21"
-                        y="46"
-                        width="8"
-                        height="2"
-                      />{' '}
-                      <rect
-                        x="21"
-                        y="51"
-                        width="11"
-                        height="2"
-                      />{' '}
+                      <g>
+                        {' '}
+                        <path d="M2,2h39v7h2V1c0-0.6-0.4-1-1-1H1C0.4,0,0,0.4,0,1v58c0,0.6,0.4,1,1,1h32v-2H2V2z" />{' '}
+                        <path d="M43.7,21.3l-2.8-6.6c-0.1-0.4-0.5-0.6-0.9-0.6s-0.7,0.2-0.9,0.6l-2.8,6.6C36.1,21.5,36,21.7,36,22v31v6c0,0.6,0.4,1,1,1h6 c0.6,0,1-0.4,1-1v-6V22C44,21.7,43.9,21.4,43.7,21.3z M38,23h4v29h-4V23z M40,17.5l1.5,3.5h-3L40,17.5z M42,58h-4v-4h4V58z" />{' '}
+                        <path d="M59,38H48c-0.6,0-1,0.4-1,1v20c0,0.6,0.4,1,1,1h11c0.6,0,1-0.4,1-1V39C60,38.4,59.6,38,59,38z M58,40v5h-9v-5H58z M49,58 V47h9v11H49z" />{' '}
+                        <path d="M27,11c0-3.3-2.7-6-6-6s-6,2.7-6,6s2.7,6,6,6S27,14.3,27,11z M17,11c0-2.2,1.8-4,4-4s4,1.8,4,4s-1.8,4-4,4S17,13.2,17,11z " />{' '}
+                        <rect
+                          x="15"
+                          y="20"
+                          width="12"
+                          height="2"
+                        />{' '}
+                        <rect
+                          x="15"
+                          y="25"
+                          width="12"
+                          height="2"
+                        />{' '}
+                        <rect
+                          x="6"
+                          y="31"
+                          width="15"
+                          height="2"
+                        />{' '}
+                        <rect
+                          x="6"
+                          y="36"
+                          width="26"
+                          height="2"
+                        />{' '}
+                        <rect
+                          x="6"
+                          y="41"
+                          width="26"
+                          height="2"
+                        />{' '}
+                        <rect
+                          x="6"
+                          y="46"
+                          width="8"
+                          height="2"
+                        />{' '}
+                        <rect
+                          x="6"
+                          y="51"
+                          width="11"
+                          height="2"
+                        />{' '}
+                        <rect
+                          x="21"
+                          y="46"
+                          width="8"
+                          height="2"
+                        />{' '}
+                        <rect
+                          x="21"
+                          y="51"
+                          width="11"
+                          height="2"
+                        />{' '}
+                      </g>{' '}
                     </g>{' '}
-                  </g>{' '}
-                </g>
-              </svg>
+                  </g>
+                </svg>
               </Link>
               {hideOption && (inCloud !== "Yes") && <Link title="Save to Server" to="">
-              <svg
-              onClick={() => saveToServer(studyInstanceUid)}
-              xmlns="http://www.w3.org/2000/svg"
-              version="1.1"
-              viewBox="-5.0 -10.0 110.0 135.0"
-              fill="#0a7c6c"
-              id="Capa_1"
-              width="35px"
-              height="30px"
-            >
-              <path d="M88.03,50c1.17-2.81,1.76-5.77,1.76-8.81c0-12.77-10.39-23.16-23.16-23.16c-7.73,0-14.99,3.93-19.27,10.34  c-2.12-0.9-4.37-1.36-6.69-1.36c-7.56,0-14.13,4.88-16.37,12C12.77,39.37,3.5,48.87,3.5,60.48c0,11.85,9.64,21.49,21.49,21.49h15.16  c0.83,0,1.5-0.67,1.5-1.5s-0.67-1.5-1.5-1.5H24.99c-10.19,0-18.49-8.29-18.49-18.49C6.5,50.29,14.79,42,24.99,42  c0.05,0,0.1,0,0.14,0.01c0.09,0.01,0.18,0.01,0.27,0.01l1.21,0.03l0.28-1.18c1.54-6.4,7.2-10.86,13.78-10.86  c2.3,0,4.51,0.54,6.56,1.62l1.27,0.66l0.72-1.24c3.61-6.18,10.28-10.03,17.41-10.03c11.12,0,20.16,9.04,20.16,20.16  c0,3.06-0.69,6.02-2.05,8.81l-0.66,1.36l1.36,0.65c4.97,2.39,8.06,7.29,8.06,12.78c0,7.82-6.36,14.19-14.19,14.19H51.5V48.19  l8.16,14.14c0.28,0.48,0.78,0.75,1.3,0.75c0.25,0,0.51-0.06,0.75-0.2c0.72-0.41,0.96-1.33,0.55-2.05L51.3,41.84  c-0.01-0.01-0.02-0.02-0.02-0.03c-0.06-0.1-0.13-0.2-0.22-0.28c0,0,0,0,0,0c-0.08-0.08-0.18-0.15-0.27-0.21  c-0.03-0.02-0.06-0.03-0.09-0.05c-0.08-0.04-0.16-0.07-0.24-0.1c-0.03-0.01-0.06-0.02-0.09-0.03c-0.12-0.03-0.23-0.05-0.36-0.05  s-0.24,0.02-0.36,0.05c-0.03,0.01-0.06,0.02-0.09,0.03c-0.08,0.03-0.17,0.06-0.24,0.1c-0.03,0.02-0.06,0.03-0.09,0.05  c-0.1,0.06-0.19,0.13-0.27,0.21c0,0,0,0,0,0c-0.08,0.08-0.15,0.18-0.22,0.28c-0.01,0.01-0.02,0.02-0.02,0.03L37.74,60.83  c-0.41,0.72-0.17,1.63,0.55,2.05c0.72,0.42,1.63,0.17,2.05-0.55l8.16-14.14v32.28c0,0.83,0.67,1.5,1.5,1.5h29.31  c9.48,0,17.19-7.71,17.19-17.19C96.5,58.72,93.22,53.07,88.03,50z" />
-            </svg>
-            </Link>}
-            <Link title="Refer" to="">
-            <svg
-              onClick={() => handleShowModal(studyInstanceUid)}
-              xmlns="http://www.w3.org/2000/svg"
-              version="1.1"
-              viewBox="-5.0 -10.0 110.0 135.0"
-              fill="#0a7c6c"
-              id="Capa_1"
-              width="35px"
-              height="30px"
-            >
-              <g>
-                <path d="m6.8789 80.059v5.3203 0.33984l0.019532 0.55859c0.011718 0.37109 0.089843 0.75 0.14062 1.1211 0.16016 0.73047 0.37891 1.4609 0.73047 2.1289 0.64844 1.3594 1.6797 2.5117 2.9102 3.3711 1.2383 0.83984 2.7109 1.3711 4.2109 1.4883 0.87891 0.050781 1.1289 0.019531 1.6211 0.03125h1.3281 5.3203 10.641c4.6719-0.019531 11.602 0.96875 11.898-2.7109 0.32031-3.9805-6.9297-2.8594-11.371-2.9102l-10.41-0.089844-5.1992-0.03125h-2.6016c-0.19141-0.011719-0.48828 0-0.60156-0.019531-0.12891 0-0.25 0-0.37109-0.039062-0.25-0.03125-0.48047-0.12109-0.71094-0.19922-0.91016-0.39844-1.6094-1.2812-1.7383-2.2617-0.050781-0.23828-0.039062-0.44922-0.039062-0.96094v-1.3008-2.6016-2.6016c0-0.92969 0.011719-1.5508 0.10938-2.3203 0.17969-1.4688 0.64062-2.8984 1.3086-4.2188 0.67188-1.3203 1.5781-2.5195 2.6602-3.5391 1.2188-1.1406 2.4883-2.25 3.8008-3.3086 2.6094-2.1094 5.3906-4.0195 8.2891-5.6992 1.4492-0.82812 2.9414-1.6016 4.4492-2.3086 0.76172-0.32812 1.5195-0.69141 2.3008-0.98828l1.2812-0.51953c0.66016-0.30078 1.2812-0.73047 1.7812-1.3008 0.5-0.57031 0.89062-1.2695 1.0781-2.0312 0.10156-0.37891 0.14844-0.76953 0.14844-1.1602v-0.35156c0-0.078124 0-0.35156-0.019531-0.51172-0.070312-0.76172-0.30078-1.5-0.71094-2.1719-0.21094-0.33984-0.46094-0.64844-0.76172-0.94141-0.14844-0.14062-0.30859-0.28125-0.48828-0.39844l-0.30859-0.21875c-1.3008-0.87891-2.5-1.8984-3.5586-3.0586-4.2812-4.6016-6.1719-11.27-4.9102-17.398 1.1719-6.1211 5.3984-11.578 11.02-14.129 2.7812-1.3008 5.8516-1.9492 8.8984-1.8594 1.5312 0.058594 3.0117 0.32031 4.4609 0.69141 1.4297 0.46094 2.8516 0.98047 4.1406 1.75 2.6211 1.4609 4.8711 3.5508 6.5117 6.0195 1.6602 2.4414 2.7383 5.2305 3.0391 8.0703 0.039063 0.32813 0.078125 0.67188 0.12109 1.0117 0 0.35156 0.011719 0.69922 0.019531 1.0586 0.039063 0.71094 0.011719 1.4492-0.03125 2.1797-0.078125 1.4688-0.28125 2.8984-0.41016 4.2109-0.25 2.6016-0.35938 4.8984 1.8398 6.1289 1.7695 0.98828 3.9805-0.75 5.3594-4.0195 0.67969-1.6211 1.1406-3.5586 1.2891-5.5312 0.17188-1.9609 0.019531-3.9609-0.23828-5.7109-0.60156-3.9805-2.1094-7.8203-4.3984-11.078-2.2891-3.2695-5.2891-6.0195-8.7383-8.0312-3.4805-1.9609-7.4219-3.1484-11.43-3.3789-3.9805-0.19141-8 0.48047-11.672 2.0312-7.3086 3.1211-13.09 9.6211-15.078 17.309-1 3.8203-1.2109 7.8398-0.46875 11.711 0.73828 3.8711 2.3594 7.5703 4.6992 10.719 1.2305 1.6484 2.6484 3.1602 4.2188 4.4688 0.39844 0.32031 0.78906 0.64844 1.2109 0.94922l0.14062 0.10156-0.73047 0.28906c-1.7383 0.73828-3.4492 1.5391-5.1094 2.4219-3.3203 1.7695-6.4688 3.8086-9.4297 6.0781-1.4805 1.1289-2.9219 2.3203-4.3086 3.5586l-1.0391 0.94141c-0.33984 0.32812-0.78125 0.73828-1.1289 1.1289-0.73828 0.80078-1.4219 1.6719-2.0117 2.5898-1.1797 1.8516-2.0508 3.8984-2.5195 6.0508-0.23828 1.0703-0.37891 2.1719-0.42188 3.2695l-0.019531 0.80859v0.67187 1.3281zm27.641-29.5h-0.03125v0.011718c0.011719 0 0.03125-0.011718 0.03125-0.011718z" />
-                <path d="m92.191 79.16c0.55078-1.2812 0.85938-2.6406 0.91016-4.0391 0.14844-2.8984-1.1289-5.9609-3.1602-7.8984l-4.1211-4.1289-8.2617-8.2305c-0.91016-0.89844-1.5508-2.9414-4.2109-0.39844-2.8711 2.75-0.67969 3.3711 0.14062 4.2617 2.5898 2.7891 5.2617 5.4883 7.9609 8.1719l4.0586 4.0117 0.48828 0.48828c0.10938 0.12109 0.23047 0.23047 0.32812 0.37109 0.21094 0.25 0.37891 0.53125 0.53125 0.82031 0 0.019531 0.019531 0.039062 0.019531 0.058594-0.17969 0.03125-0.35938 0.058593-0.51953 0.050781-10.891-0.57812-21.789 0.89062-32.672-1.8398-1.2695-0.32031-3.1094-0.69922-3.0703 4.3008 0.03125 4.1016 1.7695 3.6406 2.9492 3.6602 5.3281 0.078126 10.648-0.48828 15.98-0.48828 5.3281 0 10.719 0.011719 16.078-0.019531-1.1992 1.1289-2.5391 2.3516-3.8398 3.4805-2.8711 2.5117-5.8516 4.8984-9.0195 7.1016-1.4805 1.0312-3.5703 2.5703 0.011719 6.0703 2.9414 2.8711 4.3203 0.82031 5.4883-0.32031 2.6602-2.6016 5.1992-5.3203 7.7383-8.0391l3.8086-4.0781c0.76172-0.78906 1.6992-1.8711 2.3516-3.3398z" />
-              </g>
-            </svg>
-            </Link>
+                <svg
+                  onClick={() => saveToServer(studyInstanceUid)}
+                  xmlns="http://www.w3.org/2000/svg"
+                  version="1.1"
+                  viewBox="-5.0 -10.0 110.0 135.0"
+                  fill="#0a7c6c"
+                  id="Capa_1"
+                  width="35px"
+                  height="30px"
+                >
+                  <path d="M88.03,50c1.17-2.81,1.76-5.77,1.76-8.81c0-12.77-10.39-23.16-23.16-23.16c-7.73,0-14.99,3.93-19.27,10.34  c-2.12-0.9-4.37-1.36-6.69-1.36c-7.56,0-14.13,4.88-16.37,12C12.77,39.37,3.5,48.87,3.5,60.48c0,11.85,9.64,21.49,21.49,21.49h15.16  c0.83,0,1.5-0.67,1.5-1.5s-0.67-1.5-1.5-1.5H24.99c-10.19,0-18.49-8.29-18.49-18.49C6.5,50.29,14.79,42,24.99,42  c0.05,0,0.1,0,0.14,0.01c0.09,0.01,0.18,0.01,0.27,0.01l1.21,0.03l0.28-1.18c1.54-6.4,7.2-10.86,13.78-10.86  c2.3,0,4.51,0.54,6.56,1.62l1.27,0.66l0.72-1.24c3.61-6.18,10.28-10.03,17.41-10.03c11.12,0,20.16,9.04,20.16,20.16  c0,3.06-0.69,6.02-2.05,8.81l-0.66,1.36l1.36,0.65c4.97,2.39,8.06,7.29,8.06,12.78c0,7.82-6.36,14.19-14.19,14.19H51.5V48.19  l8.16,14.14c0.28,0.48,0.78,0.75,1.3,0.75c0.25,0,0.51-0.06,0.75-0.2c0.72-0.41,0.96-1.33,0.55-2.05L51.3,41.84  c-0.01-0.01-0.02-0.02-0.02-0.03c-0.06-0.1-0.13-0.2-0.22-0.28c0,0,0,0,0,0c-0.08-0.08-0.18-0.15-0.27-0.21  c-0.03-0.02-0.06-0.03-0.09-0.05c-0.08-0.04-0.16-0.07-0.24-0.1c-0.03-0.01-0.06-0.02-0.09-0.03c-0.12-0.03-0.23-0.05-0.36-0.05  s-0.24,0.02-0.36,0.05c-0.03,0.01-0.06,0.02-0.09,0.03c-0.08,0.03-0.17,0.06-0.24,0.1c-0.03,0.02-0.06,0.03-0.09,0.05  c-0.1,0.06-0.19,0.13-0.27,0.21c0,0,0,0,0,0c-0.08,0.08-0.15,0.18-0.22,0.28c-0.01,0.01-0.02,0.02-0.02,0.03L37.74,60.83  c-0.41,0.72-0.17,1.63,0.55,2.05c0.72,0.42,1.63,0.17,2.05-0.55l8.16-14.14v32.28c0,0.83,0.67,1.5,1.5,1.5h29.31  c9.48,0,17.19-7.71,17.19-17.19C96.5,58.72,93.22,53.07,88.03,50z" />
+                </svg>
+              </Link>}
+              <Link title="Refer" to="">
+                <svg
+                  onClick={() => handleShowModal(studyInstanceUid)}
+                  xmlns="http://www.w3.org/2000/svg"
+                  version="1.1"
+                  viewBox="-5.0 -10.0 110.0 135.0"
+                  fill="#0a7c6c"
+                  id="Capa_1"
+                  width="35px"
+                  height="30px"
+                >
+                  <g>
+                    <path d="m6.8789 80.059v5.3203 0.33984l0.019532 0.55859c0.011718 0.37109 0.089843 0.75 0.14062 1.1211 0.16016 0.73047 0.37891 1.4609 0.73047 2.1289 0.64844 1.3594 1.6797 2.5117 2.9102 3.3711 1.2383 0.83984 2.7109 1.3711 4.2109 1.4883 0.87891 0.050781 1.1289 0.019531 1.6211 0.03125h1.3281 5.3203 10.641c4.6719-0.019531 11.602 0.96875 11.898-2.7109 0.32031-3.9805-6.9297-2.8594-11.371-2.9102l-10.41-0.089844-5.1992-0.03125h-2.6016c-0.19141-0.011719-0.48828 0-0.60156-0.019531-0.12891 0-0.25 0-0.37109-0.039062-0.25-0.03125-0.48047-0.12109-0.71094-0.19922-0.91016-0.39844-1.6094-1.2812-1.7383-2.2617-0.050781-0.23828-0.039062-0.44922-0.039062-0.96094v-1.3008-2.6016-2.6016c0-0.92969 0.011719-1.5508 0.10938-2.3203 0.17969-1.4688 0.64062-2.8984 1.3086-4.2188 0.67188-1.3203 1.5781-2.5195 2.6602-3.5391 1.2188-1.1406 2.4883-2.25 3.8008-3.3086 2.6094-2.1094 5.3906-4.0195 8.2891-5.6992 1.4492-0.82812 2.9414-1.6016 4.4492-2.3086 0.76172-0.32812 1.5195-0.69141 2.3008-0.98828l1.2812-0.51953c0.66016-0.30078 1.2812-0.73047 1.7812-1.3008 0.5-0.57031 0.89062-1.2695 1.0781-2.0312 0.10156-0.37891 0.14844-0.76953 0.14844-1.1602v-0.35156c0-0.078124 0-0.35156-0.019531-0.51172-0.070312-0.76172-0.30078-1.5-0.71094-2.1719-0.21094-0.33984-0.46094-0.64844-0.76172-0.94141-0.14844-0.14062-0.30859-0.28125-0.48828-0.39844l-0.30859-0.21875c-1.3008-0.87891-2.5-1.8984-3.5586-3.0586-4.2812-4.6016-6.1719-11.27-4.9102-17.398 1.1719-6.1211 5.3984-11.578 11.02-14.129 2.7812-1.3008 5.8516-1.9492 8.8984-1.8594 1.5312 0.058594 3.0117 0.32031 4.4609 0.69141 1.4297 0.46094 2.8516 0.98047 4.1406 1.75 2.6211 1.4609 4.8711 3.5508 6.5117 6.0195 1.6602 2.4414 2.7383 5.2305 3.0391 8.0703 0.039063 0.32813 0.078125 0.67188 0.12109 1.0117 0 0.35156 0.011719 0.69922 0.019531 1.0586 0.039063 0.71094 0.011719 1.4492-0.03125 2.1797-0.078125 1.4688-0.28125 2.8984-0.41016 4.2109-0.25 2.6016-0.35938 4.8984 1.8398 6.1289 1.7695 0.98828 3.9805-0.75 5.3594-4.0195 0.67969-1.6211 1.1406-3.5586 1.2891-5.5312 0.17188-1.9609 0.019531-3.9609-0.23828-5.7109-0.60156-3.9805-2.1094-7.8203-4.3984-11.078-2.2891-3.2695-5.2891-6.0195-8.7383-8.0312-3.4805-1.9609-7.4219-3.1484-11.43-3.3789-3.9805-0.19141-8 0.48047-11.672 2.0312-7.3086 3.1211-13.09 9.6211-15.078 17.309-1 3.8203-1.2109 7.8398-0.46875 11.711 0.73828 3.8711 2.3594 7.5703 4.6992 10.719 1.2305 1.6484 2.6484 3.1602 4.2188 4.4688 0.39844 0.32031 0.78906 0.64844 1.2109 0.94922l0.14062 0.10156-0.73047 0.28906c-1.7383 0.73828-3.4492 1.5391-5.1094 2.4219-3.3203 1.7695-6.4688 3.8086-9.4297 6.0781-1.4805 1.1289-2.9219 2.3203-4.3086 3.5586l-1.0391 0.94141c-0.33984 0.32812-0.78125 0.73828-1.1289 1.1289-0.73828 0.80078-1.4219 1.6719-2.0117 2.5898-1.1797 1.8516-2.0508 3.8984-2.5195 6.0508-0.23828 1.0703-0.37891 2.1719-0.42188 3.2695l-0.019531 0.80859v0.67187 1.3281zm27.641-29.5h-0.03125v0.011718c0.011719 0 0.03125-0.011718 0.03125-0.011718z" />
+                    <path d="m92.191 79.16c0.55078-1.2812 0.85938-2.6406 0.91016-4.0391 0.14844-2.8984-1.1289-5.9609-3.1602-7.8984l-4.1211-4.1289-8.2617-8.2305c-0.91016-0.89844-1.5508-2.9414-4.2109-0.39844-2.8711 2.75-0.67969 3.3711 0.14062 4.2617 2.5898 2.7891 5.2617 5.4883 7.9609 8.1719l4.0586 4.0117 0.48828 0.48828c0.10938 0.12109 0.23047 0.23047 0.32812 0.37109 0.21094 0.25 0.37891 0.53125 0.53125 0.82031 0 0.019531 0.019531 0.039062 0.019531 0.058594-0.17969 0.03125-0.35938 0.058593-0.51953 0.050781-10.891-0.57812-21.789 0.89062-32.672-1.8398-1.2695-0.32031-3.1094-0.69922-3.0703 4.3008 0.03125 4.1016 1.7695 3.6406 2.9492 3.6602 5.3281 0.078126 10.648-0.48828 15.98-0.48828 5.3281 0 10.719 0.011719 16.078-0.019531-1.1992 1.1289-2.5391 2.3516-3.8398 3.4805-2.8711 2.5117-5.8516 4.8984-9.0195 7.1016-1.4805 1.0312-3.5703 2.5703 0.011719 6.0703 2.9414 2.8711 4.3203 0.82031 5.4883-0.32031 2.6602-2.6016 5.1992-5.3203 7.7383-8.0391l3.8086-4.0781c0.76172-0.78906 1.6992-1.8711 2.3516-3.3398z" />
+                  </g>
+                </svg>
+              </Link>
+
+              <Link title="Basic Viewer" to="javascript:void(0)"
+                //to={`/viewer?StudyInstanceUIDs=${studyInstanceUid}`}
+                //onClick={handleViewerImage}
+                onClick={(event) => handleViewerImage(event, studyInstanceUid)}
+
+              >
+                <svg
+                  fill="#0a7c6c"
+                  version="1.1"
+                  id="Capa_1"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 24 28"
+                  width="35px"
+                  height="30px"
+                >
+                  <g id="_01_align_center" data-name="01 align center">
+                    <path d="M23.821,11.181v0C22.943,9.261,19.5,3,12,3S1.057,9.261.179,11.181a1.969,1.969,0,0,0,0,1.64C1.057,14.739,4.5,21,12,21s10.943-6.261,11.821-8.181A1.968,1.968,0,0,0,23.821,11.181ZM12,19c-6.307,0-9.25-5.366-10-6.989C2.75,10.366,5.693,5,12,5c6.292,0,9.236,5.343,10,7C21.236,13.657,18.292,19,12,19Z" />
+                    <path d="M12,7a5,5,0,1,0,5,5A5.006,5.006,0,0,0,12,7Zm0,8a3,3,0,1,1,3-3A3,3,0,0,1,12,15Z" />
+                  </g>
+                </svg>
+
+              </Link>
+
+              <Link title="Add" to="javascript:void(0)"
+                onClick={(event) => handleEmergency(event, studyInstanceUid)}
+
+              >
+                <svg
+                  fill="#0a7c6c"
+                  version="1.1"
+                  id="Capa_1"
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 50 50"
+                  width="35px"
+                  height="30px"
+                >
+                  <g id="_01_align_center" data-name="01 align center">
+                    {/* <path d="M23.821,11.181v0C22.943,9.261,19.5,3,12,3S1.057,9.261.179,11.181a1.969,1.969,0,0,0,0,1.64C1.057,14.739,4.5,21,12,21s10.943-6.261,11.821-8.181A1.968,1.968,0,0,0,23.821,11.181ZM12,19c-6.307,0-9.25-5.366-10-6.989C2.75,10.366,5.693,5,12,5c6.292,0,9.236,5.343,10,7C21.236,13.657,18.292,19,12,19Z" />
+                    <path d="M12,7a5,5,0,1,0,5,5A5.006,5.006,0,0,0,12,7Zm0,8a3,3,0,1,1,3-3A3,3,0,0,1,12,15Z" /> */}
+                    <path d="M 25 2 C 12.309295 2 2 12.309295 2 25 C 2 37.690705 12.309295 48 25 48 C 37.690705 48 48 37.690705 48 25 C 48 12.309295 37.690705 2 25 2 z M 25 4 C 36.609824 4 46 13.390176 46 25 C 46 36.609824 36.609824 46 25 46 C 13.390176 46 4 36.609824 4 25 C 4 13.390176 13.390176 4 25 4 z M 24 13 L 24 24 L 13 24 L 13 26 L 24 26 L 24 37 L 26 37 L 26 26 L 37 26 L 37 24 L 26 24 L 26 13 L 24 13 z" />
+                  </g>
+                </svg>
+
+
+
+              </Link>
+
+
             </div>
           ),
           gridCol: 4,
@@ -748,13 +913,18 @@ function WorkList({
     customizationService.get('ohif.dataSourceConfigurationComponent') ?? {};
 
   return (
+
+
     <div
       className={
         isActive
           ? 'bg-black-on trad-bg-black flex h-screen flex-col'
           : 'trad-bg-black flex h-screen flex-col bg-black'
       }
+
+
     >
+
       <Header
         isSticky
         menuOptions={menuOptions}
@@ -762,8 +932,14 @@ function WorkList({
         WhiteLabeling={appConfig.whiteLabeling}
         isActive={isActive}
         handleChange={handleChangeSwitch}
-        screen="WorkList"
+        screen={iframeBlockFlag ? "WorkList" : 'Viewer'}
+        handleRedirectPage={handleRedirectPage}
+        iframeBlockFlag={iframeBlockFlag}
+
+
       />
+      {/* <DoDisturbIcon /> */}
+
       {referralPopup && (
         <GenerateReferral
           open={referralPopup}
@@ -772,56 +948,84 @@ function WorkList({
         />
       )}
 
-      <div
-        className={
-          isActive
-            ? 'ohif-scrollbar_darkMode flex grow flex-col overflow-y-auto'
-            : 'ohif-scrollbar flex grow flex-col overflow-y-auto'
-        }
-      >
-        <StudyListFilter
-          numOfStudies={pageNumber * resultsPerPage > 100 ? 101 : numOfStudies}
-          filtersMeta={filtersMeta}
-          filterValues={{ ...filterValues, ...defaultSortValues }}
-          onChange={setFilterValues}
-          clearFilters={() => setFilterValues(defaultFilterValues)}
-          isFiltering={isFiltering(filterValues, defaultFilterValues)}
-          onUploadClick={uploadProps ? () => show(uploadProps) : undefined}
-          getDataSourceConfigurationComponent={
-            dataSourceConfigurationComponent ? () => dataSourceConfigurationComponent() : undefined
+      <div style={{ display: 'flex', margin: '10px' }}>
+
+        <div
+          // className={
+          //   isActive
+          //     ? 'ohif-scrollbar_darkMode flex grow flex-col overflow-y-auto'
+          //     : 'ohif-scrollbar flex grow flex-col overflow-y-auto'
+          // }
+
+          className={
+            isActive
+              ? `ohif-scrollbar_darkMode flex grow flex-col overflow-y-auto ${iframeImageflag} `
+              : `ohif-scrollbar flex grow flex-col overflow-y-auto ${iframeImageflag} `
           }
-          isActive={isActive}
-        />
-        {hasStudies ? (
-          <div className="flex grow flex-col">
-            <StudyListTable
-              tableDataSource={tableDataSource.slice(offset, offsetAndTake)}
-              numOfStudies={numOfStudies}
-              querying={querying}
-              filtersMeta={filtersMeta}
-              isActive={isActive}
-            />
-            <div className="grow">
-              <StudyListPagination
-                onChangePage={onPageNumberChange}
-                onChangePerPage={onResultsPerPageChange}
-                currentPage={pageNumber}
-                perPage={resultsPerPage}
+
+        //style={{ width: '50%' }}
+        >
+          <StudyListFilter style={{ minWidth: '1250px' }}
+            numOfStudies={pageNumber * resultsPerPage > 100 ? 101 : numOfStudies}
+            filtersMeta={filtersMeta}
+            filterValues={{ ...filterValues, ...defaultSortValues }}
+            onChange={setFilterValues}
+            clearFilters={() => setFilterValues(defaultFilterValues)}
+            isFiltering={isFiltering(filterValues, defaultFilterValues)}
+            onUploadClick={uploadProps ? () => show(uploadProps) : undefined}
+            getDataSourceConfigurationComponent={
+              dataSourceConfigurationComponent ? () => dataSourceConfigurationComponent() : undefined
+            }
+            isActive={isActive}
+          />
+          {hasStudies ? (
+            <div className="flex grow flex-col" style={{ minWidth: '1250px' }}>
+              <StudyListTable
+
+                tableDataSource={tableDataSource.slice(offset, offsetAndTake)}
+                numOfStudies={numOfStudies}
+                querying={querying}
+                filtersMeta={filtersMeta}
                 isActive={isActive}
               />
+              <div className="grow">
+                <StudyListPagination
+                  onChangePage={onPageNumberChange}
+                  onChangePerPage={onResultsPerPageChange}
+                  currentPage={pageNumber}
+                  perPage={resultsPerPage}
+                  isActive={isActive}
+                />
+              </div>
             </div>
-          </div>
-        ) : (
-          <div className="flex flex-col items-center justify-center pt-48">
-            {appConfig.showLoadingIndicator && isLoadingData ? (
-              <LoadingIndicatorProgress className={'h-full w-full bg-black'} />
-            ) : (
-              <EmptyStudies isActive={isActive} />
-            )}
-          </div>
-        )}
+          ) : (
+            <div className="flex flex-col items-center justify-center pt-48">
+              {appConfig.showLoadingIndicator && isLoadingData ? (
+                <LoadingIndicatorProgress className={'h-full w-full bg-black'} />
+              ) : (
+                <EmptyStudies isActive={isActive} />
+              )}
+            </div>
+          )}
+        </div>
+
+
+        <div
+          //style={{ width: '50%' }}
+          className={`${iframeWindowflag}${' imageViewerId'}`}
+        //className={iframeWindowflag}
+        >
+          {window.location.origin &&
+            <iframe id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId" src={`${window.location.origin}/viewer?StudyInstanceUIDs=1.2.840.113619.6.44.287012605758997601731119845308746436094`} width="100%"></iframe>
+          }
+
+
+        </div>
       </div>
-    </div>
+
+
+    </div >
+
   );
 }
 
