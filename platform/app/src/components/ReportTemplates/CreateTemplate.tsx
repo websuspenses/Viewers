@@ -55,6 +55,7 @@ let addOnPlugins1 = {
 };
 const editorOptions = {
   showPathLabel: false,
+  maxWidth : '1070px',
   minHeight: "50vh",
   maxHeight: "50vh",
   placeholder: "Enter your text here!!!",

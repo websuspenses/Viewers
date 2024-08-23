@@ -302,7 +302,6 @@ svg.text-primary-active {
 
 .border-secondary-light {
   border-color: #f5f5f5;
-  /* border: none; */
 }
 
 .bg-primary-main {
@@ -319,6 +318,7 @@ svg.text-primary-active {
 /*
   Viewer page styles
   */
+  
 .image-viewer.bg-secondary-dark {
   background-color: #ffffff;
 }

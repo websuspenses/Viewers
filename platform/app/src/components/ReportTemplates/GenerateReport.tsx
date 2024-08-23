@@ -58,6 +58,7 @@ let addOnPlugins1 = {
 };
 const editorOptions = {
   plugins: [addOnPlugins1],
+  maxWidth : '1070px',
   minHeight: "50vh",
   maxHeight: "50vh",
   buttonList: [

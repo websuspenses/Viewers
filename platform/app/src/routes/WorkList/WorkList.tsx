@@ -316,7 +316,7 @@ function WorkList({
           console.log("logo: ", top.window.document.getElementById('imageViewerId').contentWindow.document.getElementsByClassName('mobile-logo'));
           top.window.document.getElementById('imageViewerId').contentWindow.document.getElementsByClassName('mobile-logo')[0].style.display = "none";
         }
-      }, 7000);
+      }, 8000);
     }
   }
 
@@ -335,19 +335,23 @@ function WorkList({
 
     let referralUrl = '';
     //fetch(`${hostNameurl}studies/${studyInstanceUid}/get_cloud_url`, {
-    fetch(`http://localhost/pacs/dicom-web/studies/1.3.12.2.1107.5.1.7.106324.30000024060414024990600000008/metadata/isEmergency`, {
-      method: 'GET',
+      let formData =  {"data":true};
+    fetch(`${hostNameurl}studies/${studyInstanceUid}/addmetadata/isEmergency`, {
+      method: 'POST',
       headers: {
-        Authorization: authHeaders,
+        'Content-Type': 'application/json',
+        'Authorization': authHeaders
       },
+      body: JSON.stringify(formData),
     })
       .then(response => response.json())
       .then(result => {
         console.log('Cloud URL info ', result);
-        referralUrl = result.url;
+        //referralUrl = result.url;
         //sendMessage(referralUrl, studyInstanceUid);
       })
       .catch(err => {
+        console.log('Error  isEmergency API', err);
         console.log(err.message);
       });
 
