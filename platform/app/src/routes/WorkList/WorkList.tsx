@@ -388,15 +388,13 @@ function WorkList({
     setTimeout(() => {
       if (document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo') && document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo').length > 0) {
         document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo')[0].style.display = "none";
-        let elementCls = document.querySelector("iframe").contentWindow.document.getElementsByClassName('bg-black')[0];
+        let elementCls = document.getElementById("imageViewerId").contentWindow.document.getElementsByClassName('bg-black')[0];
         console.log('elementCls: ', elementCls);
 
-        if (elementCls) {
-
+        if (elementCls && isActive) {
           console.log('elementCls in: ', elementCls);
-
-          elementCls.classList.remove('bg-black overflow-hidden');
-          elementCls.classList.add('bg-black-on overflow-hidden');
+          elementCls.classList.remove('bg-black');
+          elementCls.classList.add('bg-black-on');
         }
 
       }
