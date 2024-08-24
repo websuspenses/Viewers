@@ -168,7 +168,7 @@ StudyBrowser.propTypes = {
   ),
 };
 
-const noop = () => {};
+const noop = () => { };
 
 StudyBrowser.defaultProps = {
   onClickTab: noop,

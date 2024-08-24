@@ -17,6 +17,7 @@ const StudyListFilter = ({
   onUploadClick,
   getDataSourceConfigurationComponent,
   isActive,
+  //enableFullWidthFlag,
 }) => {
   const { t } = useTranslation('StudyList');
   const { sortBy, sortDirection } = filterValues;
@@ -90,7 +91,10 @@ const StudyListFilter = ({
           </div>
         </div>
       </div>
-      <div className="sticky -top-1 z-10 mx-auto border-b-4 border-black">
+      <div className={`sticky -top-1 z-10 mx-auto border-b-4 border-black
+      `}
+        style={{ minWidth: '1250px' }}
+      >
         <div className={isActive ? "bg-primary-dark-on pt-3 headContentCls" : "bg-primary-dark pt-3 pb-3"}>
           <InputGroup
             inputMeta={filtersMeta}

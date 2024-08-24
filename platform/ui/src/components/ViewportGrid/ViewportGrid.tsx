@@ -7,7 +7,7 @@ function ViewportGrid({ numRows, numCols, layoutType, children }) {
       data-cy="viewport-grid"
       style={{
         position: 'relative',
-        height: '100%',
+        height: '92%',
         width: '100%',
       }}
     >

@@ -12,6 +12,8 @@ const StudyListTableRow = props => {
   const dynamicWidth = {
     maxWidth: 'max-content',
   };
+
+
   const defaultWidth = {
     maxWidth: 0,
   };
@@ -61,26 +63,30 @@ const StudyListTableRow = props => {
                         { 'bg-secondary-dark': isExpanded }
                       )
                   }
-                  onClick={onClickRow}
+                //onClick={onClickRow}
                 >
                   {row.map((cell, index) => {
                     const { content, title, gridCol } = cell;
 
                     return (
-                      <td
+                      <td data-id={title}
                         key={index}
                         className={
                           isActive
                             ? classnames(
-                              'px-2 py-2 text-base',
+                              'px-2 py-2 text-base ',
                               { 'border-secondary-light-darkMode border-b': !isExpanded },
-                              getGridWidthClass(gridCol) || ''
+                              getGridWidthClass(gridCol) + (
+                                title === ('In-Progress' || 'Referrel-Sent' || 'Report-Generated ' || 'Emergency') ? ' ' + title : '') || ''
                             )
-                            : classnames(
-                              'truncate px-2 py-2 text-base',
-                              { 'border-secondary-light border-b': !isExpanded },
-                              getGridWidthClass(gridCol) || ''
+                            : title === ('In-Progress' || 'Referrel-Sent' || 'Report-Generated ' || 'Emergency') ? classnames(
+                              ' ' + title,
                             )
+                              : classnames(
+                                'truncate px-2 py-2 text-base',
+                                { 'border-secondary-light border-b': !isExpanded },
+                                getGridWidthClass(gridCol) || ''
+                              )
                         }
                         // style={{
                         //   maxWidth: 0,
@@ -93,8 +99,8 @@ const StudyListTableRow = props => {
                               : title === 'Generate Reports'
                                 ? dynamicWidth
                                 : title === 'Save to Cloud'
-                                ? dynamicWidth
-                                : defaultWidth
+                                  ? dynamicWidth
+                                  : defaultWidth
                         }
                         title={title}
                       >

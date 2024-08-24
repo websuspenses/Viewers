@@ -17,7 +17,7 @@ import 'swiper/css/navigation';
 import './style.css';
 
 const borderSize = 4;
-const expandedWidth = 248;
+const expandedWidth = 249;
 const collapsedWidth = 25;
 
 const baseStyle = {

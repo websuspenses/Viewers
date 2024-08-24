@@ -1,5 +1,6 @@
 import React, { ReactNode, useEffect } from 'react';
 import PropTypes from 'prop-types';
+//import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import classNames from 'classnames';
 
@@ -22,6 +23,8 @@ function Header({
   handleChange,
   screen,
   modalityValue,
+  handleRedirectPage,
+  iframeBlockFlag,
   ...props
 }): ReactNode {
   const { t } = useTranslation('Header');
@@ -31,7 +34,7 @@ function Header({
 
   let windowWidth = window.innerWidth;
   let isMobile = false;
-  if(windowWidth < 768){
+  if (windowWidth < 768) {
     isMobile = true;
   }
 
@@ -74,13 +77,21 @@ function Header({
                 />
               </a>
             ) */}
-            {!isMobile ? (<a href="/workList">
+
+
+            {!isMobile ? (
+
+              // <Link title="Work List" to={`/workList`}>
+              <a href="javascript:void(0)" handleRedirectPage={handleRedirectPage}>
                 <Icon
                   name="chevron-left"
                   className="text-primary-active w-8"
                 />
-              </a>):('')
-}
+              </a>
+              // </Link>
+
+            ) : ('')
+            }
             <div className="ml-4">
               {/* {WhiteLabeling?.createLogoComponentFn?.(React, props) || } */}
               {isActive ? (
@@ -105,7 +116,6 @@ function Header({
         </div>
         <div className="flex items-center mobile-tools">{children}</div>
         {/* <div ><ToggleSwitch handleChange={handleChange} IsActive={isActive}  /></div> */}
-
         <div className="flex items-center">
           {/* <span className="text-common-light mr-3 text-lg">{t('INVESTIGATIONAL USE ONLY 111')}</span> */}
           <span className="text-common-light mr-3 text-lg">

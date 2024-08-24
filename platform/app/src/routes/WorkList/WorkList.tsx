@@ -12,7 +12,7 @@ import { useDebounce, useSearchParams } from '@hooks';
 import { utils, hotkeys, ServicesManager } from '@ohif/core';
 // import '../../style.css';
 import DoDisturbIcon from '@mui/icons-material/DoDisturb';
-
+import CloseIcon from '@mui/icons-material/Close';
 
 
 import {
@@ -39,6 +39,8 @@ const { sortBySeriesDate } = utils;
 const { availableLanguages, defaultLanguage, currentLanguage } = i18n;
 
 const seriesInStudiesMap = new Map();
+var defaultLoad = true;
+
 
 /**
  * TODO:
@@ -304,20 +306,19 @@ function WorkList({
     console.log('123', 123, studyInstanceUid)
     event.preventDefault();
     //const iframeurl = `http://localhost/viewer?StudyInstanceUIDs=${studyInstanceUid}`
-    if (window.location.origin != "") {
-      const iframeurl = `${window.location.origin}/viewer?StudyInstanceUIDs=${studyInstanceUid}`
-      top.window.document.getElementById('imageViewerId').src = iframeurl;
-      setIframeImageflag("enableIframeFlag");
-      setIframeWindowflag('iframeEnable');
-      setIframeBlockFlag(false);
+    //if (window.location.origin != "") {
+    const iframeurl = `${window.location.origin}/viewer?StudyInstanceUIDs=${studyInstanceUid}`
+    top.window.document.getElementById('imageViewerId').src = iframeurl;
+    setIframeImageflag("enableIframeFlag");
+    setIframeWindowflag('iframeEnable');
+    setIframeBlockFlag(false);
 
-      setTimeout(() => {
-        if (top.window.document.getElementById('imageViewerId').contentWindow.document.getElementsByClassName('mobile-logo') && top.window.document.getElementById('imageViewerId').contentWindow.document.getElementsByClassName('mobile-logo'), length > 0) {
-          console.log("logo: ", top.window.document.getElementById('imageViewerId').contentWindow.document.getElementsByClassName('mobile-logo'));
-          top.window.document.getElementById('imageViewerId').contentWindow.document.getElementsByClassName('mobile-logo')[0].style.display = "none";
-        }
-      }, 8000);
-    }
+    // setTimeout(() => {
+
+    //   if (document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo') && document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo').length > 0) {
+    //     document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo')[0].style.display = "none";
+    //   }
+    // }, 8000);
   }
 
   const handleEmergency = (event, studyInstanceUid) => {
@@ -335,7 +336,7 @@ function WorkList({
 
     let referralUrl = '';
     //fetch(`${hostNameurl}studies/${studyInstanceUid}/get_cloud_url`, {
-      let formData =  {"data":true};
+    let formData = { "data": true };
     fetch(`${hostNameurl}studies/${studyInstanceUid}/addmetadata/isEmergency`, {
       method: 'POST',
       headers: {
@@ -358,18 +359,21 @@ function WorkList({
   }
 
 
+  const closeImageViewer = (event) => {
+    event.preventDefault();
 
-
-  // setTimeout(() => {
-  //   top.window.document.getElementById('imageViewerId').contentWindow.document.getElementsByClassName('mobile-logo')[0].style.display = "none";
-  // }, 10000);
-
-
-
+    setIframeImageflag("disableIframeFlag");
+    setIframeWindowflag('iframeDisable');
+    setIframeBlockFlag(true);
+  }
 
 
   const handleIframeInfo = () => {
-
+    setTimeout(() => {
+      if (document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo') && document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo').length > 0) {
+        document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo')[0].style.display = "none";
+      }
+    }, 3000);
   }
 
   const rollingPageNumberMod = Math.floor(25 / resultsPerPage);
@@ -655,7 +659,7 @@ function WorkList({
                 onClick={(event) => handleEmergency(event, studyInstanceUid)}
 
               >
-                <svg
+                {/* <svg
                   fill="#0a7c6c"
                   version="1.1"
                   id="Capa_1"
@@ -665,11 +669,13 @@ function WorkList({
                   height="30px"
                 >
                   <g id="_01_align_center" data-name="01 align center">
-                    {/* <path d="M23.821,11.181v0C22.943,9.261,19.5,3,12,3S1.057,9.261.179,11.181a1.969,1.969,0,0,0,0,1.64C1.057,14.739,4.5,21,12,21s10.943-6.261,11.821-8.181A1.968,1.968,0,0,0,23.821,11.181ZM12,19c-6.307,0-9.25-5.366-10-6.989C2.75,10.366,5.693,5,12,5c6.292,0,9.236,5.343,10,7C21.236,13.657,18.292,19,12,19Z" />
-                    <path d="M12,7a5,5,0,1,0,5,5A5.006,5.006,0,0,0,12,7Zm0,8a3,3,0,1,1,3-3A3,3,0,0,1,12,15Z" /> */}
+
                     <path d="M 25 2 C 12.309295 2 2 12.309295 2 25 C 2 37.690705 12.309295 48 25 48 C 37.690705 48 48 37.690705 48 25 C 48 12.309295 37.690705 2 25 2 z M 25 4 C 36.609824 4 46 13.390176 46 25 C 46 36.609824 36.609824 46 25 46 C 13.390176 46 4 36.609824 4 25 C 4 13.390176 13.390176 4 25 4 z M 24 13 L 24 24 L 13 24 L 13 26 L 24 26 L 24 37 L 26 37 L 26 26 L 37 26 L 37 24 L 26 24 L 26 13 L 24 13 z" />
                   </g>
-                </svg>
+                </svg> */}
+
+                <svg fill="#0a7c6c" xmlns="http://www.w3.org/2000/svg" width="35px" height="30px" viewBox="0 0 48 48" version="1.1">
+                  <path d="M 6.689 35.644 C 6.310 36.023, 6 37.833, 6 39.667 L 6 43 24.060 43 L 42.121 43 41.810 39.250 L 41.500 35.500 24.439 35.227 C 15.056 35.077, 7.069 35.265, 6.689 35.644" stroke="none" fill="#64747c" fill-rule="evenodd" /><path d="M 17.217 7.561 C 15.991 8.419, 14.345 10.366, 13.558 11.887 C 12.322 14.279, 9.012 30.162, 9.003 33.750 C 9.001 34.695, 12.665 35, 24 35 C 35.335 35, 38.999 34.695, 38.997 33.750 C 38.988 30.226, 35.690 14.300, 34.487 11.975 C 33.725 10.502, 31.970 8.555, 30.586 7.648 C 27.406 5.565, 20.134 5.517, 17.217 7.561 M 6.217 8.166 C 6.459 8.900, 7.684 9.650, 8.940 9.834 C 10.491 10.061, 11.082 9.741, 10.783 8.834 C 10.541 8.100, 9.316 7.350, 8.060 7.166 C 6.509 6.939, 5.918 7.259, 6.217 8.166 M 37.667 7.667 C 36.302 9.031, 37.069 10.129, 39.172 9.820 C 41.920 9.415, 42.843 7, 40.250 7 C 39.196 7, 38.033 7.300, 37.667 7.667 M 2 15 C 2 15.550, 3.800 16, 6 16 C 8.200 16, 10 15.550, 10 15 C 10 14.450, 8.200 14, 6 14 C 3.800 14, 2 14.450, 2 15 M 38 15 C 38 15.550, 39.800 16, 42 16 C 44.200 16, 46 15.550, 46 15 C 46 14.450, 44.200 14, 42 14 C 39.800 14, 38 14.450, 38 15 M 4.667 20.667 C 3.302 22.031, 4.069 23.129, 6.172 22.820 C 8.920 22.415, 9.843 20, 7.250 20 C 6.196 20, 5.033 20.300, 4.667 20.667 M 39.217 21.166 C 39.459 21.900, 40.684 22.650, 41.940 22.834 C 43.491 23.061, 44.082 22.741, 43.783 21.834 C 43.541 21.100, 42.316 20.350, 41.060 20.166 C 39.509 19.939, 38.918 20.259, 39.217 21.166" stroke="none" fill="#e73442" fill-rule="evenodd" /></svg>
 
 
 
@@ -942,7 +948,6 @@ function WorkList({
 
 
       />
-      {/* <DoDisturbIcon /> */}
 
       {referralPopup && (
         <GenerateReferral
@@ -1019,8 +1024,12 @@ function WorkList({
           className={`${iframeWindowflag}${' imageViewerId'}`}
         //className={iframeWindowflag}
         >
+
           {window.location.origin &&
-            <iframe id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId" src={`${window.location.origin}/viewer?StudyInstanceUIDs=1.2.840.113619.6.44.287012605758997601731119845308746436094`} width="100%"></iframe>
+            <>
+              <CloseIcon color="action" onClick={closeImageViewer} />
+              <iframe id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId" src={`${window.location.origin}/viewer?StudyInstanceUIDs=1.2.840.113619.6.44.287012605758997601731119845308746436094`} width="100%" height="92%"></iframe>
+            </>
           }
 
 

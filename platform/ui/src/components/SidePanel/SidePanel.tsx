@@ -164,7 +164,7 @@ const SidePanel = ({
   activeTabIndex: activeTabIndexProp,
   tabs,
   onOpen,
-  expandedWidth = 248,
+  expandedWidth = 200,
   onActiveTabIndexChange,
 }) => {
   const { t } = useTranslation('SidePanel');
