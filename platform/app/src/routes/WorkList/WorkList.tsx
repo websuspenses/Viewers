@@ -62,7 +62,7 @@ function WorkList({
 
   const items1 = JSON.parse(localStorage.getItem('active_dark'));
   const hostNameurl = '/pacs/dicom-web/';
-
+  const iframeBaseUrl = window.location.origin;
 
   console.log('items active_dark items1: ', items1);
   console.log("studies....", studies);
@@ -91,6 +91,7 @@ function WorkList({
   const [iframeImageflag, setIframeImageflag] = useState<string>('disableIframeFlag');
   const [iframeWindowflag, setIframeWindowflag] = useState<string>('iframeDisable');
   const [iframeBlockFlag, setIframeBlockFlag] = useState(true);
+  const [stuID, setStuID] = useState("");
 
   /*
    * The default sort value keep the filters synchronized with runtime conditional sorting
@@ -133,7 +134,11 @@ function WorkList({
 
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>, sid: any) => {
+    event.preventDefault();
+    console.log('1111111: ', sid);
+
+    setStuID(sid);
     setAnchorEl(event.currentTarget);
   };
   const handleClose = () => {
@@ -226,6 +231,8 @@ function WorkList({
     }
   };
   const handleShowModal = studyId => {
+
+    console.log("studyId: studyId : studyId", studyId);
     setShowStudyInstanceID(studyId);
     setReferralPopup(true);
   };
@@ -313,13 +320,16 @@ function WorkList({
     return !isEqual(filterValues, defaultFilterValues);
   };
 
-  const handleViewerImage = (event, studyInstanceUid) => {
-    console.log('123', 123, studyInstanceUid)
-    event.preventDefault();
+  const handleViewerImage = (studyInstanceUid) => {
+    //event.preventDefault();
+    //setShowStudyInstanceID(studyInstanceUid);
+    console.log('123', 123, studyInstanceUid, showStudyInstanceId)
+
     //const iframeurl = `http://localhost/viewer?StudyInstanceUIDs=${studyInstanceUid}`
     //if (window.location.origin != "") {
-    const iframeurl = `${window.location.origin}/viewer?StudyInstanceUIDs=${studyInstanceUid}`
-    top.window.document.getElementById('imageViewerId').src = iframeurl;
+    //const iframeurl = `${window.location.origin}/viewer?StudyInstanceUIDs=${studyInstanceUid}`
+    //const iframeurl = `${''}http://localhost/viewer?StudyInstanceUIDs=${studyInstanceUid}`
+    //top.window.document.getElementById('imageViewerId').src = iframeurl;
     setIframeImageflag("enableIframeFlag");
     setIframeWindowflag('iframeEnable');
     setIframeBlockFlag(false);
@@ -378,6 +388,17 @@ function WorkList({
     setTimeout(() => {
       if (document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo') && document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo').length > 0) {
         document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo')[0].style.display = "none";
+        let elementCls = document.querySelector("iframe").contentWindow.document.getElementsByClassName('bg-black')[0];
+        console.log('elementCls: ', elementCls);
+
+        if (elementCls) {
+
+          console.log('elementCls in: ', elementCls);
+
+          elementCls.classList.remove('bg-black overflow-hidden');
+          elementCls.classList.add('bg-black-on overflow-hidden');
+        }
+
       }
     }, 3000);
   }
@@ -403,6 +424,9 @@ function WorkList({
       studyStatus,
       inCloud
     } = study;
+
+
+    console.log('dynamic studyInstanceUid', studyInstanceUid)
     const studyDate =
       date &&
       moment(date, ['YYYYMMDD', 'YYYY.MM.DD'], true).isValid() &&
@@ -505,7 +529,7 @@ function WorkList({
           title: 'In-Progress',
           //content: studyStatus ? studyStatus : 'In-Progress',
           content: studyStatus ? (
-            <span className={'common' + studyStatus}>{studyStatus}</span>
+            <span data-id={studyInstanceUid} className={'common' + studyStatus}>{studyStatus}</span>
           ) : (
             <span className={'commonIn-Progress'}>{'In-Progress'}</span>
           ),
@@ -665,7 +689,11 @@ function WorkList({
                   aria-controls={open ? 'basic-menu' : undefined}
                   aria-haspopup="true"
                   aria-expanded={open ? 'true' : undefined}
-                  onClick={handleClick}
+                  //onClick={handleClick}
+                  onClick={(event) => handleClick(event, studyInstanceUid)}
+
+
+                  data-id={studyInstanceUid}
                 >
                   <g id="_01_align_center" data-name="01 align center">
                     <path d="M23.821,11.181v0C22.943,9.261,19.5,3,12,3S1.057,9.261.179,11.181a1.969,1.969,0,0,0,0,1.64C1.057,14.739,4.5,21,12,21s10.943-6.261,11.821-8.181A1.968,1.968,0,0,0,23.821,11.181ZM12,19c-6.307,0-9.25-5.366-10-6.989C2.75,10.366,5.693,5,12,5c6.292,0,9.236,5.343,10,7C21.236,13.657,18.292,19,12,19Z" />
@@ -685,11 +713,12 @@ function WorkList({
                   }}
                 >
                   <MenuItem
-                    onClick={(event) => { handleViewerImage(event, studyInstanceUid) }}
+                    // onClick={() => handleShowModal(studyInstanceUid)}
+                    onClick={() => handleViewerImage(stuID)}
                   >Open In Same Tab</MenuItem>
                   <MenuItem
                     onClick={handleClose}
-                  ><a href={`${window.location.origin}/viewer?StudyInstanceUIDs=${studyInstanceUid}`} target="_blank">Open In Another Tab</a></MenuItem>
+                  ><a href={`${window.location.origin}/viewer?StudyInstanceUIDs=${stuID}`} target="_blank">Open In Another Tab</a></MenuItem>
                 </Menu>
               </>
               <Link title="Add" to="javascript:void(0)"
@@ -901,6 +930,15 @@ function WorkList({
         navigate(`/doctor-referrals`);
       },
     },
+    {
+      title: t('Header:Dark/Light Mode'),
+      icon: 'doctorReferrals',
+      onClick: () => {
+        //navigate(`/doctor-referrals`);
+        handleChangeSwitch();
+      },
+    },
+
   ];
 
   if (appConfig.oidc) {
@@ -1030,11 +1068,13 @@ function WorkList({
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center pt-48">
-              {appConfig.showLoadingIndicator && isLoadingData ? (
-                <LoadingIndicatorProgress className={'h-full w-full bg-black'} />
-              ) : (
-                <EmptyStudies isActive={isActive} />
-              )}
+              {appConfig.showLoadingIndicator && isLoadingData ?
+                (
+                  <LoadingIndicatorProgress className={'h-full w-full bg-black'} />
+                )
+                : (
+                  <EmptyStudies isActive={isActive} />
+                )}
             </div>
           )}
         </div>
@@ -1046,12 +1086,10 @@ function WorkList({
         //className={iframeWindowflag}
         >
 
-          {window.location.origin &&
-            <>
-              <CloseIcon style={{ cursor: 'pointer' }} color="action" onClick={closeImageViewer} />
-              <iframe id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId" src={`${window.location.origin}/viewer?StudyInstanceUIDs=1.2.840.113619.6.44.287012605758997601731119845308746436094`} width="100%" height="92%"></iframe>
-            </>
-          }
+
+          <CloseIcon style={{ cursor: 'pointer' }} color="action" onClick={closeImageViewer} />
+          {/* <iframe id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId" src={`${window.location.origin}/viewer?StudyInstanceUIDs=1.2.840.113619.6.44.287012605758997601731119845308746436094`} width="100%" height="92%"></iframe> */}
+          <iframe data-id={showStudyInstanceId} id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId" src={`${iframeBaseUrl}/viewer?StudyInstanceUIDs=${stuID}`} width="100%" height="92%"></iframe>
 
 
         </div>

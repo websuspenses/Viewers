@@ -9,6 +9,7 @@ const baseClasses =
   'first:border-0 border-t border-secondary-light cursor-pointer select-none outline-none';
 
 const StudyItem = ({
+  patientName,
   date,
   description,
   numInstances,
@@ -42,7 +43,9 @@ const StudyItem = ({
         </div>
         <div className="flex flex-row items-center py-1">
           <div className="text-l flex items-center pr-5 text-blue-300">{modalities}</div>
-          <div className="flex items-center break-words text-base text-blue-300">{description}</div>
+          {/* <div className="flex items-center break-words text-base text-blue-300">{description}</div> */}
+          <div className="flex items-center break-words text-base text-blue-300">{patientName}</div>
+
         </div>
       </div>
       {!!trackedSeries && (

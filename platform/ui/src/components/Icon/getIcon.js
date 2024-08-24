@@ -202,6 +202,11 @@ import MRT2Brain from './../../assets/icons/MR-T2-Brain.png';
 import VolumeRendering from './../../assets/icons/VolumeRendering.png';
 import actionNewDialog from './../../assets/icons/action-new-dialog.svg';
 
+/** CIAI NEW LOADER FOR DARK MODE START */
+import CiailoadingOHIFMark from './../../assets/icons/ciai.png';
+/** CIAI NEW LOADER FOR DARK MODE END */
+
+
 /** LAYOUT */
 
 import layoutAdvanced3DFourUp from './../../assets/icons/layout-advanced-3d-four-up.svg';
@@ -300,7 +305,9 @@ const ICONS = {
   'row-unlock': rowUnlock,
   'checkbox-checked': checkboxChecked,
   'checkbox-unchecked': checkboxUnchecked,
-  'loading-ohif-mark': loadingOHIFMark,
+  //'loading-ohif-mark': loadingOHIFMark,
+  'loading-ohif-mark': CiailoadingOHIFMark,
+
   'notifications-info': notificationsInfo,
   'notifications-error': notificationsError,
   'notifications-success': notificationsSuccess,
