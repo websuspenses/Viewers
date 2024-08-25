@@ -16,6 +16,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import Button from '@mui/material/Button';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import CircularProgress from '@mui/material/CircularProgress';
+import Box from '@mui/material/Box';
 
 import {
   Icon,
@@ -64,8 +66,6 @@ function WorkList({
   const hostNameurl = '/pacs/dicom-web/';
   const iframeBaseUrl = window.location.origin;
 
-  console.log('items active_dark items1: ', items1);
-  console.log("studies....", studies);
   const { hotkeyDefinitions, hotkeyDefaults } = hotkeysManager;
   const { show, hide } = useModal();
   const { t } = useTranslation();
@@ -93,6 +93,7 @@ function WorkList({
   const [iframeBlockFlag, setIframeBlockFlag] = useState(true);
   const [stuID, setStuID] = useState("");
   const [defaultLoad, setDefaultLoad] = useState(true);
+  const [loadStudentID, setloadStudentID] = useState("");
 
 
 
@@ -139,10 +140,10 @@ function WorkList({
   const open = Boolean(anchorEl);
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>, sid: any) => {
     event.preventDefault();
-    console.log('1111111: ', sid);
-    setDefaultLoad(true);
     setStuID(sid);
     setAnchorEl(event.currentTarget);
+
+
   };
   const handleClose = () => {
     setAnchorEl(null);
@@ -206,7 +207,6 @@ function WorkList({
   useEffect(() => {
     const items = JSON.parse(localStorage.getItem('active_dark'));
 
-    console.log("items items::::, ", items);
     if (items) {
       setIsActive(items);
     }
@@ -234,8 +234,6 @@ function WorkList({
     }
   };
   const handleShowModal = studyId => {
-
-    console.log("studyId: studyId : studyId", studyId);
     setShowStudyInstanceID(studyId);
     setReferralPopup(true);
   };
@@ -245,10 +243,6 @@ function WorkList({
   };
 
   useEffect(() => {
-
-    console.log('isActive: ', isActive);
-
-    // localStorage.setItem('active_dark', JSON.stringify(isActive));
     document.body.classList.remove('bg-black');
   }, [isActive]);
 
@@ -325,23 +319,15 @@ function WorkList({
 
   const handleViewerImage = (studyInstanceUid) => {
     //event.preventDefault();
-    //setShowStudyInstanceID(studyInstanceUid);
-    console.log('123', 123, studyInstanceUid, showStudyInstanceId)
-
-    //const iframeurl = `http://localhost/viewer?StudyInstanceUIDs=${studyInstanceUid}`
-    //if (window.location.origin != "") {
-    //const iframeurl = `${window.location.origin}/viewer?StudyInstanceUIDs=${studyInstanceUid}`
-    //const iframeurl = `${''}http://localhost/viewer?StudyInstanceUIDs=${studyInstanceUid}`
-    //top.window.document.getElementById('imageViewerId').src = iframeurl;
+    setDefaultLoad(true)
+    setloadStudentID(stuID)
     setIframeImageflag("enableIframeFlag");
     setIframeWindowflag('iframeEnable');
     setIframeBlockFlag(false);
-
     handleClose();
   }
 
   const handleEmergency = (event, studyInstanceUid) => {
-    console.log('handleEmergency', studyInstanceUid)
 
     // http://localhost/pacs/dicom-web/studies/1.3.12.2.1107.5.1.7.106324.30000024060414024990600000008/metadata/isEmergency
 
@@ -388,28 +374,25 @@ function WorkList({
 
 
   const handleIframeInfo = () => {
-    setDefaultLoad(false)
     setTimeout(() => {
       if (document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo') && document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo').length > 0) {
         document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo')[0].style.display = "none";
         let elementCls = document.getElementById("imageViewerId").contentWindow.document.getElementsByClassName('bg-black')[0];
-        console.log('elementCls: ', elementCls);
 
         if (elementCls && isActive) {
-          console.log('elementCls in: ', elementCls);
           elementCls.classList.remove('bg-black');
           elementCls.classList.add('bg-black-on');
         }
 
       }
     }, 3000);
+    setDefaultLoad(false);
   }
 
   const rollingPageNumberMod = Math.floor(25 / resultsPerPage);
   const rollingPageNumber = (pageNumber - 1) % rollingPageNumberMod;
   const offset = resultsPerPage * rollingPageNumber;
   const offsetAndTake = offset + resultsPerPage;
-  console.log("sortedStudies ", sortedStudies);
   const tableDataSource = sortedStudies.map((study, key) => {
     const rowKey = key + 1;
     const isExpanded = expandedRows.some(k => k === rowKey);
@@ -428,7 +411,6 @@ function WorkList({
     } = study;
 
 
-    console.log('dynamic studyInstanceUid', studyInstanceUid)
     const studyDate =
       date &&
       moment(date, ['YYYYMMDD', 'YYYY.MM.DD'], true).isValid() &&
@@ -1088,13 +1070,26 @@ function WorkList({
         //className={iframeWindowflag}
         >
 
+          <CloseIcon style={isActive ? { color: "#ffffff", cursor: 'pointer' } : { color: "green", cursor: 'pointer' }}
+            // color={isActive ? "success" : "action"}
+            onClick={closeImageViewer} />
 
-          <CloseIcon style={{ cursor: 'pointer' }} color="action" onClick={closeImageViewer} />
-          {/* <iframe id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId" src={`${window.location.origin}/viewer?StudyInstanceUIDs=1.2.840.113619.6.44.287012605758997601731119845308746436094`} width="100%" height="92%"></iframe> */}
-          {/* {defaultLoad ? (<LoadingIndicatorProgress className={'h-full w-full bg-black'} />) : */}
+          {defaultLoad && (
+            <Box sx={{ display: 'flex' }} width="100%" height="92%" >
+              <CircularProgress style={isActive ? { color: "#ffffff", margin: 'auto' } : { color: "green", margin: 'auto' }} />
+            </Box>
+          )
+          }
 
-          <iframe data-id={showStudyInstanceId} id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId" src={`${iframeBaseUrl}/viewer?StudyInstanceUIDs=${stuID}`} width="100%" height="92%"></iframe>
-          {/* } */}
+          {/* <iframe data-id={showStudyInstanceId} id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId" src={`${iframeBaseUrl}/viewer?StudyInstanceUIDs=${stuID}`} width="100%"
+            //height="92%"
+            style={defaultLoad ? { height: "0px" } : { height: "92%" }}
+          ></iframe> */}
+          <iframe id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId" src={`${iframeBaseUrl}/viewer?StudyInstanceUIDs=${loadStudentID}`} width="100%"
+            //height="92%"
+            style={defaultLoad ? { height: "0px" } : { height: "92%" }}
+          ></iframe>
+
 
 
         </div>

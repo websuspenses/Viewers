@@ -1374,7 +1374,7 @@ button.leading-none {
   border: 1px solid #86a17c;
   padding: 0 5px;
   border-radius: 10px;
-  background-color: #ffffff;
+  /* background-color: #ffffff; */
 }
 
 .enableIframeFlag {

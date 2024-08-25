@@ -228,8 +228,8 @@ import tab4D from './../../assets/icons/tab-4d.svg';
 import investigationalUse from './../../assets/icons/illustration-investigational-use.svg';
 import templates from './../../assets/icons/report-templates-list.svg';
 import doctorReferrals from './../../assets/icons/referral-Icon.svg';
-import darkModeIcon from './../../assets/icons/Dark-Mode.svg';
-import lightModeIcon from './../../assets/icons/Light-Mode.svg';
+import darkModeIcon from './../../assets/icons/DarkMode.svg';
+import lightModeIcon from './../../assets/icons/LightMode.svg';
 
 const ICONS = {
   'arrow-down': arrowDown,
