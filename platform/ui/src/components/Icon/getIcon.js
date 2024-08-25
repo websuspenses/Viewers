@@ -228,7 +228,8 @@ import tab4D from './../../assets/icons/tab-4d.svg';
 import investigationalUse from './../../assets/icons/illustration-investigational-use.svg';
 import templates from './../../assets/icons/report-templates-list.svg';
 import doctorReferrals from './../../assets/icons/referral-Icon.svg';
-
+import darkModeIcon from './../../assets/icons/Dark-Mode.svg';
+import lightModeIcon from './../../assets/icons/Light-Mode.svg';
 
 const ICONS = {
   'arrow-down': arrowDown,
@@ -280,6 +281,8 @@ const ICONS = {
   profile: profile,
   templates: templates,
   doctorReferrals: doctorReferrals,
+  'darkModeIcon': darkModeIcon,
+  'lightModeIcon': lightModeIcon,
   'push-left': pushLeft,
   'push-right': pushRight,
   settings: settings,

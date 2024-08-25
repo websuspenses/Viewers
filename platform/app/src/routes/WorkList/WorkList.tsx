@@ -41,7 +41,7 @@ const { sortBySeriesDate } = utils;
 const { availableLanguages, defaultLanguage, currentLanguage } = i18n;
 
 const seriesInStudiesMap = new Map();
-var defaultLoad = true;
+//var defaultLoad = true;
 
 
 /**
@@ -92,6 +92,9 @@ function WorkList({
   const [iframeWindowflag, setIframeWindowflag] = useState<string>('iframeDisable');
   const [iframeBlockFlag, setIframeBlockFlag] = useState(true);
   const [stuID, setStuID] = useState("");
+  const [defaultLoad, setDefaultLoad] = useState(true);
+
+
 
   /*
    * The default sort value keep the filters synchronized with runtime conditional sorting
@@ -137,7 +140,7 @@ function WorkList({
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>, sid: any) => {
     event.preventDefault();
     console.log('1111111: ', sid);
-
+    setDefaultLoad(true);
     setStuID(sid);
     setAnchorEl(event.currentTarget);
   };
@@ -385,6 +388,7 @@ function WorkList({
 
 
   const handleIframeInfo = () => {
+    setDefaultLoad(false)
     setTimeout(() => {
       if (document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo') && document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo').length > 0) {
         document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo')[0].style.display = "none";
@@ -930,7 +934,7 @@ function WorkList({
     },
     {
       title: t('Header:Dark/Light Mode'),
-      icon: 'doctorReferrals',
+      icon: isActive ? "darkModeIcon" : 'lightModeIcon',
       onClick: () => {
         //navigate(`/doctor-referrals`);
         handleChangeSwitch();
@@ -1087,7 +1091,10 @@ function WorkList({
 
           <CloseIcon style={{ cursor: 'pointer' }} color="action" onClick={closeImageViewer} />
           {/* <iframe id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId" src={`${window.location.origin}/viewer?StudyInstanceUIDs=1.2.840.113619.6.44.287012605758997601731119845308746436094`} width="100%" height="92%"></iframe> */}
+          {/* {defaultLoad ? (<LoadingIndicatorProgress className={'h-full w-full bg-black'} />) : */}
+
           <iframe data-id={showStudyInstanceId} id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId" src={`${iframeBaseUrl}/viewer?StudyInstanceUIDs=${stuID}`} width="100%" height="92%"></iframe>
+          {/* } */}
 
 
         </div>
