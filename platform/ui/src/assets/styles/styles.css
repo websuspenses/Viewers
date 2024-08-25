@@ -1278,6 +1278,12 @@ button.leading-none {
   color: #0a7c69;
 }
 
+.enableNewCls {
+  border-color: #057965;
+  color: #ffffff !important;
+  background-color: #0a7c69 !important;
+}
+
 .flex.flex-col.items-center.justify-center.pt-48>div>svg g {
   stroke: #0a7c69;
 }

@@ -46,7 +46,7 @@ const ToolbarButton = ({
       >
         <IconButton
           size={sizeToUse}
-          className={classNames(className, disabled ? 'ohif-disabled' : '')}
+          className={classNames(className, disabled ? 'ohif-disabled' : 'enableNewCls')}
           onClick={() => {
             onInteraction({
               itemId: id,
