@@ -94,8 +94,7 @@ function WorkList({
   const [stuID, setStuID] = useState("");
   const [defaultLoad, setDefaultLoad] = useState(true);
   const [loadStudentID, setloadStudentID] = useState("");
-
-
+  const [modalityFlag, setModalityFlag] = useState("");
 
   /*
    * The default sort value keep the filters synchronized with runtime conditional sorting
@@ -138,10 +137,20 @@ function WorkList({
 
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
-  const handleClick = (event: React.MouseEvent<HTMLButtonElement>, sid: any) => {
+  const handleClick = (event: React.MouseEvent<HTMLButtonElement>, sid: any, mdFlag: any) => {
     event.preventDefault();
     setStuID(sid);
     setAnchorEl(event.currentTarget);
+    setModalityFlag(mdFlag);
+
+    localStorage.setItem('sid', sid);
+    localStorage.setItem('mdFlag', mdFlag);
+
+    //${studyInstanceUid}/${modalities}
+
+    //const bsurl ={`${iframeBaseUrl}/viewer?StudyInstanceUIDs=${sid}`}
+    const bsurl = '/viewer?StudyInstanceUIDs=' + sid
+    navigate(bsurl);
 
 
   };
@@ -217,6 +226,7 @@ function WorkList({
     setIsActive(!isActive);
   }
   const handleRedirectPage = () => {
+    //alert(1234)
     navigate('/workList');
   }
 
@@ -341,7 +351,7 @@ function WorkList({
 
     let referralUrl = '';
     //fetch(`${hostNameurl}studies/${studyInstanceUid}/get_cloud_url`, {
-    let formData = { "data": true };
+    let formData = { "data": 'true' };
     fetch(`${hostNameurl}studies/${studyInstanceUid}/addmetadata/isEmergency`, {
       method: 'POST',
       headers: {
@@ -407,7 +417,10 @@ function WorkList({
       date,
       time,
       studyStatus,
-      inCloud
+      inCloud,
+      isEmergency,
+      isReferralSent,
+      isReportGenerated
     } = study;
 
 
@@ -674,10 +687,8 @@ function WorkList({
                   aria-haspopup="true"
                   aria-expanded={open ? 'true' : undefined}
                   //onClick={handleClick}
-                  onClick={(event) => handleClick(event, studyInstanceUid)}
+                  onClick={(event) => handleClick(event, studyInstanceUid, modalities)}
 
-
-                  data-id={studyInstanceUid}
                 >
                   <g id="_01_align_center" data-name="01 align center">
                     <path d="M23.821,11.181v0C22.943,9.261,19.5,3,12,3S1.057,9.261.179,11.181a1.969,1.969,0,0,0,0,1.64C1.057,14.739,4.5,21,12,21s10.943-6.261,11.821-8.181A1.968,1.968,0,0,0,23.821,11.181ZM12,19c-6.307,0-9.25-5.366-10-6.989C2.75,10.366,5.693,5,12,5c6.292,0,9.236,5.343,10,7C21.236,13.657,18.292,19,12,19Z" />
@@ -1064,14 +1075,11 @@ function WorkList({
         </div>
 
 
-        <div
-          //style={{ width: '50%' }}
+        {/* <div
           className={`${iframeWindowflag}${' imageViewerId'}`}
-        //className={iframeWindowflag}
         >
 
           <CloseIcon style={isActive ? { color: "#ffffff", cursor: 'pointer' } : { color: "green", cursor: 'pointer' }}
-            // color={isActive ? "success" : "action"}
             onClick={closeImageViewer} />
 
           {defaultLoad && (
@@ -1081,18 +1089,14 @@ function WorkList({
           )
           }
 
-          {/* <iframe data-id={showStudyInstanceId} id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId" src={`${iframeBaseUrl}/viewer?StudyInstanceUIDs=${stuID}`} width="100%"
-            //height="92%"
-            style={defaultLoad ? { height: "0px" } : { height: "92%" }}
-          ></iframe> */}
+
           <iframe id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId" src={`${iframeBaseUrl}/viewer?StudyInstanceUIDs=${loadStudentID}`} width="100%"
-            //height="92%"
             style={defaultLoad ? { height: "0px" } : { height: "92%" }}
           ></iframe>
 
 
 
-        </div>
+        </div> */}
       </div>
 
 

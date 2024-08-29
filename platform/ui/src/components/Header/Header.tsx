@@ -43,9 +43,14 @@ function Header({
       onClickReturnButton();
     }
   };
+
   const originUrl = window.location.href;
   const path = originUrl.replace(`/generate-report/${modalityValue}`, '/');
 
+  // const handleRedirectPage = () => {
+  //   alert(2222)
+  // }
+  console.log('handleRedirectPage', handleRedirectPage)
   return (
     <NavBar
       className="justify-between border-b-4 border-black"
@@ -82,7 +87,7 @@ function Header({
             {!isMobile ? (
 
               // <Link title="Work List" to={`/workList`}>
-              <a href="javascript:void(0)" handleRedirectPage={handleRedirectPage}>
+              <a data-id={handleRedirectPage} href="javascript:void(0)" onClick={handleRedirectPage}>
                 <Icon
                   name="chevron-left"
                   className="text-primary-active w-8"

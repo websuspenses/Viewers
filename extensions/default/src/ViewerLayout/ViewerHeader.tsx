@@ -108,10 +108,12 @@ function ViewerHeader({ hotkeysManager, extensionManager, servicesManager, appCo
       showPatientInfo={appConfig.showPatientInfo}
       servicesManager={servicesManager}
       Secondary={
-        <Toolbar
-          servicesManager={servicesManager}
-          buttonSection="secondary"
-        />
+        <>
+          <Toolbar
+            servicesManager={servicesManager}
+            buttonSection="secondary"
+          />
+        </>
       }
       appConfig={appConfig}
     >

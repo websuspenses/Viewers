@@ -1301,36 +1301,39 @@ button.leading-none {
 
 .commonIn-Progress {
   background-color: #dfdafd !important;
-  border: 1px solid rgb(178 212 244) !important;
+  border: 1px solid #dfdafd !important;
   border-radius: 5px !important;
   padding: 0px 5px !important;
+  font-size: 0.8125rem;
 }
 
 .commonReferral {
   background-color: #f4f4d5 !important;
-  border: 1px solid rgb(222 233 110) !important;
+  border: 1px solid #f4f4d5 !important;
   border-radius: 5px !important;
   padding: 0px 5px !important;
+  font-size: 0.8125rem;
 }
 
 .commonReport {
   background-color: #e1f4d8 !important;
-  border: 1px solid rgb(178 212 244) !important;
+  border: 1px solid #e1f4d8 !important;
   border-radius: 5px !important;
   padding: 0px 5px !important;
+  font-size: 0.8125rem;
 }
 
 .commonEmergency {
   background-color: #f1b4bf !important;
-  border: 1px solid rgb(165 239 190) !important;
+  border: 1px solid #f1b4bf !important;
   border-radius: 5px !important;
   padding: 0px 5px !important;
+  font-size: 0.8125rem;
 }
 
 
 .enableIframeFlag {
   width: 50% !important;
-
   /* display: block !important;  */
 }
 
@@ -1381,6 +1384,7 @@ button.leading-none {
   padding: 0 5px;
   border-radius: 10px;
   /* background-color: #ffffff; */
+  margin-right: 5px;
 }
 
 .enableIframeFlag {
@@ -1388,4 +1392,5 @@ button.leading-none {
   padding: 0 5px;
   border-radius: 10px;
   margin-right: 5px;
+  margin-left: 5px;
 }
