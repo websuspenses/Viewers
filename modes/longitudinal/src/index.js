@@ -103,7 +103,11 @@ function modeFactory({ modeConfiguration }) {
         'Capture',
         'Layout',
         'Crosshairs',
-        'MoreTools',
+        'ImageSliceSync',
+        'Angle',
+        'Magnify',
+        'AdvancedMagnify',
+        'MoreTools'
       ]);
 
       customizationService.addModeCustomizations([

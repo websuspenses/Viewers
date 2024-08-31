@@ -51,7 +51,7 @@ const moreTools = [
         createButton({
           id: 'flipHorizontal',
           icon: 'tool-flip-horizontal',
-          label: 'Flip Horizontal',
+          label: 'Flip Horizontal22',
           tooltip: 'Flip Horizontally',
           commands: 'flipViewportHorizontal',
           evaluate: 'evaluate.viewportProperties.toggle',
