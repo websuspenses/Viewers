@@ -1218,7 +1218,8 @@ div.user-view p span:first-child {
 }
 
 [data-cy="Layout"] svg>g>g>g:nth-child(3) {
-  stroke: #0a7c69;
+  /* stroke: #0a7c69; */
+  stroke: #eaf1f0;
 }
 
 .tooltip-box .flex .bg-secondary-dark .gap-4 div:hover {
