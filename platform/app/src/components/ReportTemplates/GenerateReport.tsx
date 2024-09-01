@@ -58,7 +58,7 @@ let addOnPlugins1 = {
 };
 const editorOptions = {
   plugins: [addOnPlugins1],
-  maxWidth : '1070px',
+  maxWidth: '1070px',
   minHeight: "50vh",
   maxHeight: "50vh",
   buttonList: [
@@ -96,6 +96,7 @@ const editorOptions = {
 };
 
 const GenerateReport = () => {
+  const iframeBaseUrl = window.location.origin;
   const navigate = useNavigate();
   const labId = 2;
   const hostName = '/pacs/dicom-web/';
@@ -298,6 +299,8 @@ const GenerateReport = () => {
   const handleSubmit = event => {
     event.preventDefault();
     // Handle form submission with selectedOption
+    let fiftyPerFlag = localStorage.getItem('fiftyPerFlag')
+
     const contentValue = '';
     console.log('contentRef.current.innerHTML', value);
     const authHeaders = localStorage.getItem('auth-t');
@@ -314,33 +317,43 @@ const GenerateReport = () => {
 
     try {
       const res = fetch(url, options);
-     
+
       if (res) {
         console.log('Generate Report', res);
-          let url2 = `${hostName}studies/${modalityValue}/update_status`;
-            const statusBody = {"status":"Report Generated"};
-            const options2 = {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: authHeaders,
-              },
-              body: JSON.stringify(statusBody),
-            };
-        
-            try {
-              const res1 = fetch(url2, options2);
-              if (res1) {
-                navigate('/workList');
-                alert("Report generated Successfully...");
-                console.log('Status updated Generate report', res1);
-              }
-              console.log('response ', res1);
-            } catch (error) {
-              console.error('Error:', error);
+        let url2 = `${hostName}studies/${modalityValue}/update_status`;
+        const statusBody = { "status": "Report Generated" };
+        const options2 = {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: authHeaders,
+          },
+          body: JSON.stringify(statusBody),
+        };
+
+        try {
+          const res1 = fetch(url2, options2);
+          if (res1) {
+            if (fiftyPerFlag == "true") {
+              alert("Report generated Successfully...");
+              localStorage.setItem('fiftyPerFlag', 'false');
+              localStorage.setItem('sid', "");
+              localStorage.setItem('mdFlag', "");
+              //navigate(`/generate-report/${s_id}/${md_Flag}`);
+              window.location.reload();
+              //navigate('/workList');
+            } else {
+              navigate('/workList');
+              alert("Report generated Successfully...");
+              console.log('Status updated Generate report', res1);
             }
-        
-        navigate('/workList');
+          }
+          console.log('response ', res1);
+        } catch (error) {
+          console.error('Error:', error);
+        }
+
+        //navigate('/workList');
       }
     } catch (error) {
       console.error('Error:', error);
@@ -348,6 +361,7 @@ const GenerateReport = () => {
   };
   const handleSubmit1 = event => {
     event.preventDefault();
+
     // Handle form submission with selectedOption
     const contentValue = '';
     console.log('contentRef.current.innerHTML', value);

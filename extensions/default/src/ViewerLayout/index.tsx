@@ -52,14 +52,22 @@ function ViewerLayout({
   const [iframeWindowflag, setIframeWindowflag] = useState<string>('iframeDisable');
   const [iframeBlockFlag, setIframeBlockFlag] = useState(true);
   //const [stuID, setStuID] = useState("");
-  const [stuID, setStuID] = useState("1.2.840.113619.6.44.287012605758997601731119845308746436094");
+  const [stuID, setStuID] = useState("");
   const [defaultLoad, setDefaultLoad] = useState(true);
   const [loadStudentID, setloadStudentID] = useState("");
-  const [modality, setModality] = useState("MR");
+  const [modality, setModality] = useState("");
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
   const [isActive, setIsActive] = useState(false);
+
+  const [drEnableFlag, setDrEnableFlag] = useState(false);
+  const [drCloseFlag, setDrCloseFlag] = useState(false);
+
+
+  const [iflf, setIflf] = useState(false);
+
+
 
   /**
    * Set body classes (tailwindcss) that don't allow vertical
@@ -149,18 +157,24 @@ function ViewerLayout({
   const viewportComponents = viewports.map(getViewportComponentData);
 
   const openDraftReport = () => {
+    localStorage.setItem('fiftyPerFlag', 'true');
     handleViewerImage();
+    setTimeout(() => {
+      if (iflf === true) {
+        setDefaultLoad(false);
+      }
+    }, 2000);
+
   };
 
   const handleViewerImage = () => {
     //event.preventDefault();
 
+    setDrEnableFlag(true);
+    setDrCloseFlag(false);
+
     let s_id = localStorage.getItem('sid')
     let md_Flag = localStorage.getItem('mdFlag')
-
-
-    //localStorage.setItem('sid', sid);
-    //localStorage.setItem('mdFlag', mdFlag);
 
     setDefaultLoad(true)
     setloadStudentID(stuID)
@@ -181,9 +195,13 @@ function ViewerLayout({
   const closeImageViewer = (event) => {
     event.preventDefault();
 
+    setDrEnableFlag(false);
+    setDrCloseFlag(true);
+
     setIframeImageflag("disableIframeFlag");
     setIframeWindowflag('iframeDisable');
     setIframeBlockFlag(true);
+    setDefaultLoad(false);
   }
 
   const handleIframeInfo = () => {
@@ -200,6 +218,7 @@ function ViewerLayout({
         }
 
       }
+      setIflf(true);
     }, 3000);
     setDefaultLoad(false);
   }
@@ -214,7 +233,7 @@ function ViewerLayout({
           appConfig={appConfig}
         />
         <div>
-          <Button style={{ marginTop: '26px', marginLeft: '26px' }} onClick={openDraftReport}>Draft Report</Button>
+          <Button disabled={drEnableFlag} style={{ marginTop: '26px', marginLeft: '26px' }} onClick={openDraftReport}>Draft Report</Button>
         </div>
       </div>
 
@@ -271,7 +290,7 @@ function ViewerLayout({
           className={`${iframeWindowflag}${' imageViewerId'}`}
         >
 
-          <CloseIcon style={isActive ? { color: "#ffffff", cursor: 'pointer' } : { color: "green", cursor: 'pointer' }}
+          <CloseIcon disabled={drCloseFlag} style={isActive ? { color: "#ffffff", cursor: 'pointer' } : { color: "green", cursor: 'pointer' }}
             onClick={closeImageViewer} />
 
           {defaultLoad && (
@@ -283,7 +302,8 @@ function ViewerLayout({
 
 
           <iframe id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId"
-            src={`${iframeBaseUrl}/generate-report/${loadStudentID}/${modality}`}
+            //src={`${iframeBaseUrl}/generate-report/${loadStudentID}/${modality}`}
+            src={`${iframeBaseUrl}/generate-report/${stuID}/${modality}`}
             //src={`${iframeBaseUrl}/viewer?StudyInstanceUIDs=${loadStudentID}`}
             width="100%"
             style={defaultLoad ? { height: "0px" } : { height: "92%" }}

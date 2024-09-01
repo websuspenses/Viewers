@@ -146,6 +146,8 @@ function WorkList({
     localStorage.setItem('sid', sid);
     localStorage.setItem('mdFlag', mdFlag);
 
+    console.log("sid:mdFlag: ", sid, mdFlag);
+
     //${studyInstanceUid}/${modalities}
 
     //const bsurl ={`${iframeBaseUrl}/viewer?StudyInstanceUIDs=${sid}`}
@@ -729,7 +731,7 @@ function WorkList({
 
             </div>
           ),
-          gridCol: 4,
+          gridCol: 5,
         }
 
         // {
