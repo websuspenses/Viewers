@@ -461,11 +461,15 @@ function WorkList({
         {
           key: 'patientName',
           content: patientName ? (
-            <TooltipClipboard ActiveMode={isActive}>{patientName}</TooltipClipboard>
+            <div><TooltipClipboard ActiveMode={isActive}>{patientName}</TooltipClipboard>
+            <br />
+            <br />
+            <TooltipClipboard ActiveMode={isActive}>{description}</TooltipClipboard>
+            </div>
           ) : (
             <span className="text-gray-700">(Empty)</span>
           ),
-          gridCol: 4,
+          gridCol: 5,
         },
         {
           key: 'mrn',
@@ -483,11 +487,11 @@ function WorkList({
           title: `${studyDate || ''} ${studyTime || ''}`,
           gridCol: 4,
         },
-        {
-          key: 'description',
-          content: <TooltipClipboard ActiveMode={isActive}>{description}</TooltipClipboard>,
-          gridCol: 3,
-        },
+        // {
+        //   key: 'description',
+        //   content: <TooltipClipboard ActiveMode={isActive}>{description}</TooltipClipboard>,
+        //   gridCol: 3,
+        // },
         {
           key: 'modality',
           content: modalities,
@@ -532,7 +536,7 @@ function WorkList({
           ) : (
             <span className={'commonIn-Progress'}>{'In-Progress'}</span>
           ),
-          gridCol: 3,
+          gridCol: 4,
         },
         {
           key: 'actions',
@@ -731,7 +735,7 @@ function WorkList({
 
             </div>
           ),
-          gridCol: 5,
+          gridCol: 6,
         }
 
         // {

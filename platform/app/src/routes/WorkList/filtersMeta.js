@@ -4,7 +4,7 @@ const filtersMeta = [
     displayName: 'PatientName',
     inputType: 'Text',
     isSortable: true,
-    gridCol: 4,
+    gridCol: 5,
   },
   {
     name: 'mrn',
@@ -20,13 +20,13 @@ const filtersMeta = [
     isSortable: true,
     gridCol: 4,
   },
-  {
-    name: 'description',
-    displayName: 'StudyDescription',
-    inputType: 'Text',
-    isSortable: true,
-    gridCol: 3,
-  },
+  // {
+  //   name: 'description',
+  //   displayName: 'StudyDescription',
+  //   inputType: 'Text',
+  //   isSortable: true,
+  //   gridCol: 3,
+  // },
   {
     name: 'modalities',
     displayName: 'Modality',
@@ -127,14 +127,14 @@ const filtersMeta = [
     displayName: 'Status',
     inputType: 'None',
     isSortable: false,
-    gridCol: 3,
+    gridCol: 4,
   },
   {
     name: 'actions',
     displayName: 'Actions',
     inputType: 'None',
     isSortable: false,
-    gridCol: 4,
+    gridCol: 6,
   },
 ];
 
