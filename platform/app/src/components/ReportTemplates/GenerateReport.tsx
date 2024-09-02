@@ -336,10 +336,9 @@ const GenerateReport = () => {
           if (res1) {
             if (fiftyPerFlag == "true") {
               alert("Report generated Successfully...");
-              localStorage.setItem('fiftyPerFlag', 'false');
-              localStorage.setItem('sid', "");
-              localStorage.setItem('mdFlag', "");
-              //navigate(`/generate-report/${s_id}/${md_Flag}`);
+              //localStorage.setItem('fiftyPerFlag', 'false');
+              //localStorage.setItem('sid', "");
+              //localStorage.setItem('mdFlag', "");
               window.location.reload();
               //navigate('/workList');
             } else {
