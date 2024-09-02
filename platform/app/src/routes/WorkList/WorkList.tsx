@@ -385,6 +385,12 @@ function WorkList({
   }
 
 
+  const clearOldUser = (event) => {
+    localStorage.setItem('fiftyPerFlag', 'false');
+    localStorage.setItem('sid', "");
+    localStorage.setItem('mdFlag', "");
+  }
+
   const handleIframeInfo = () => {
     setTimeout(() => {
       if (document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo') && document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo').length > 0) {
@@ -462,9 +468,9 @@ function WorkList({
           key: 'patientName',
           content: patientName ? (
             <div><TooltipClipboard ActiveMode={isActive}>{patientName}</TooltipClipboard>
-            <br />
-            <br />
-            <TooltipClipboard ActiveMode={isActive}>{description}</TooltipClipboard>
+              <br />
+              <br />
+              <TooltipClipboard ActiveMode={isActive}>{description}</TooltipClipboard>
             </div>
           ) : (
             <span className="text-gray-700">(Empty)</span>
@@ -543,7 +549,7 @@ function WorkList({
           title: 'Generate Reports',
           content: (
             <div className="actions-container">
-              <Link title="Genarate report" to={`/generate-report/${studyInstanceUid}/${modalities}`}>
+              <Link onClick={clearOldUser} title="Genarate report" to={`/generate-report/${studyInstanceUid}/${modalities}`}>
                 <svg
                   fill="#0a7c6c"
                   version="1.1"
