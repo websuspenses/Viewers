@@ -93,7 +93,7 @@ const StudyListFilter = ({
       </div>
       <div className={`sticky -top-1 z-10 mx-auto border-b-4 border-black
       `}
-        style={{ minWidth: '1250px' }}
+        style={{ minWidth: '1280px' }}
       >
         <div className={isActive ? "bg-primary-dark-on pt-3 headContentCls" : "bg-primary-dark pt-3 pb-3"}>
           <InputGroup

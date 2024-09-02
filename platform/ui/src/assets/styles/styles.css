@@ -1423,3 +1423,17 @@ span.extra-padding{
 span.extra-padding > div{
   margin-top:5px; 
 }
+svg.mr-2.inline-flex.w-4.instances-svg.text-secondary-light g{
+  stroke:#0a7c6c;
+}
+.commonReady{
+  background-color: #1958cb !important;
+    border: 1px solid #f4f4d5 !important;
+    border-radius: 5px !important;
+    padding: 2px 5px !important;
+    font-size: 0.8125rem;
+    color: #ffffff;
+}
+[data-id="Generate Reports"]:hover path, [data-id="Generate Reports"]:hover rect {
+  /* stroke:#ffffff; */
+}
