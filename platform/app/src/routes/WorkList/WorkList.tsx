@@ -461,10 +461,13 @@ function WorkList({
         {
           key: 'patientName',
           content: patientName ? (
-            <div><TooltipClipboard ActiveMode={isActive}>{patientName}</TooltipClipboard>
+            <div className={(isEmergency == 'true' ? 'show-emergency' : '')}>
+              <span className='emergency-placeholder'></span>
+              <TooltipClipboard ActiveMode={isActive}>{patientName}</TooltipClipboard>
             <br />
-            <br />
+            <span className='extra-padding'>
             <TooltipClipboard ActiveMode={isActive}>{description}</TooltipClipboard>
+            </span>
             </div>
           ) : (
             <span className="text-gray-700">(Empty)</span>

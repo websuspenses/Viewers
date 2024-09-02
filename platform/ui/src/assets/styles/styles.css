@@ -1395,3 +1395,31 @@ button.leading-none {
   margin-right: 5px;
   margin-left: 5px;
 }
+
+
+
+.show-emergency span.emergency-placeholder {
+  background-color:red;
+  display:inline-block;
+  width:8px;
+  height:8px;
+  margin-right:10px;
+  border-radius:5px;
+  animation: blink 1s linear infinite;
+}
+@keyframes blink {
+0%, 100% {opacity: 1;}
+50% {opacity: 0;}
+}
+span.emergency-placeholder{
+  width:18px;
+  display:inline-block;
+}
+
+span.extra-padding{
+  margin-left:20px;
+  color:#727070 !important;
+}
+span.extra-padding > div{
+  margin-top:5px; 
+}

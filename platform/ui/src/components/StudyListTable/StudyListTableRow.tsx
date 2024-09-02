@@ -107,10 +107,10 @@ const StudyListTableRow = props => {
                         <div className="flex">
                           {index === 0 && (
                             <div>
-                              <Icon
+                              {/* <Icon
                                 name={isExpanded ? 'chevron-down' : 'chevron-right'}
-                                className="mr-4 inline-flex"
-                              />
+                                className="mr-4 inline-flex emergency-status"
+                              /> */}
                             </div>
                           )}
                           <div

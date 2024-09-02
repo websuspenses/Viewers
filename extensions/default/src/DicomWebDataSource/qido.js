@@ -56,6 +56,7 @@ function processResults(qidoStudies) {
       description: getString(qidoStudy['00081030']) || '',
       studyStatus: qidoStudy?.studyStatus || '',
       inCloud: qidoStudy?.inCloud || '',
+      isEmergency: qidoStudy?.isEmergency || '',
       modalities: getString(getModalities(qidoStudy['00080060'], qidoStudy['00080061'])) || '',
     })
 });
