@@ -129,11 +129,14 @@ function Header({
               screen === 'ReportTemplateList' ||
               screen === 'GenerateReport' ? (
               <div>
-                <ToggleSwitch
+                {/* <ToggleSwitch
                   handleChange={handleChange}
                   IsActive={isActive}
                   screen={screen}
-                />
+                /> */}
+                <div className='secondary-logo'>
+                  <img src="/bhashyam-infotech-logo.png" />
+                </div>
               </div>
             ) : (
               ''

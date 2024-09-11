@@ -1437,3 +1437,11 @@ svg.mr-2.inline-flex.w-4.instances-svg.text-secondary-light g{
 [data-id="Generate Reports"]:hover path, [data-id="Generate Reports"]:hover rect {
   /* stroke:#ffffff; */
 }
+
+.secondary-logo img{
+  width:150px;
+  height:auto;
+}
+.secondary-logo{
+  margin-right:30px;
+}
