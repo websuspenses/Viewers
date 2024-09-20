@@ -350,7 +350,7 @@ const CreateTemplate = () => {
         <form onSubmit={handleSubmit} >
           <div style={{ display: 'grid', justifyContent: 'center' }}>
             <div className="modalityDropdown">
-              <label htmlFor="dropdown">Modality:</label>
+              <label htmlFor="dropdown">Modality: 1</label>
               <select
                 name="selectedOption"
                 disabled={modalityInfo && modalityInfo !== '' ? true : false}
@@ -368,6 +368,17 @@ const CreateTemplate = () => {
                   </option>
                 ))}
               </select>
+            </div>
+            <div className="subModality">
+            <p>
+                  <span>Sub Modality</span>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Enter Sub Modality"
+                    name="subModality"
+                  />
+                </p>
             </div>
             {/* <SunEditor
               setOptions={editorOptions}

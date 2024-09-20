@@ -680,6 +680,7 @@ function WorkList({
                 </span>
                 <Menu
                   id="basic-menu"
+                  className="viewer-sub-menu"
                   anchorEl={anchorEl}
                   open={open}
                   onClose={handleClose}
@@ -693,7 +694,7 @@ function WorkList({
                     //onClick={(event) => handleViewerImage(event, studyInstanceUid)}
                     //onClick={(event) => handleClick(event, studyInstanceUid, modalities)}
                     onClick={() => handleDocModal()}
-                  >Viewer Study</MenuItem>
+                  >View Study</MenuItem>
                   {/* <MenuItem
                     onClick={handleClose}
                   ><a href={`${window.location.origin}/viewer?StudyInstanceUIDs=${stuID}`} target="_blank">Open In Another Tab</a></MenuItem> */}
@@ -708,7 +709,7 @@ function WorkList({
                   >Microscopy</MenuItem>
                   <MenuItem
                     onClick={() => handleDynamicVolumeModal()}
-                  >Dynamic Volume</MenuItem>
+                  >4D PT/CT</MenuItem>
                 </Menu>
               </>
 

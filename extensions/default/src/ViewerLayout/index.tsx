@@ -232,7 +232,7 @@ function ViewerLayout({
           servicesManager={servicesManager}
           appConfig={appConfig}
         />
-        <div>
+        <div className='draftReport'>
           <Button disabled={drEnableFlag} style={{ marginTop: '26px', marginLeft: '26px' }} onClick={openDraftReport}>Draft Report</Button>
         </div>
       </div>
