@@ -55,7 +55,7 @@ let addOnPlugins1 = {
 };
 const editorOptions = {
   showPathLabel: false,
-  maxWidth : '1070px',
+  maxWidth: '1070px',
   minHeight: "50vh",
   maxHeight: "50vh",
   placeholder: "Enter your text here!!!",
@@ -370,15 +370,15 @@ const CreateTemplate = () => {
               </select>
             </div>
             <div className="subModality">
-            <p>
-                  <span>Sub Modality</span>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Enter Sub Modality"
-                    name="subModality"
-                  />
-                </p>
+              <p>
+                <span>Sub Modality</span>
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Enter Sub Modality"
+                  name="sub_Modality"
+                />
+              </p>
             </div>
             {/* <SunEditor
               setOptions={editorOptions}
@@ -393,7 +393,7 @@ const CreateTemplate = () => {
               ref={editorRef}
               setContents={modalityValue ? updateTemplateInfo : modalityInfo}
             />
-            
+
             <button
               className="submitButton"
               type="submit"
