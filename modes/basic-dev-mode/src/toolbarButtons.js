@@ -24,6 +24,7 @@ function _createWwwcPreset(preset, title, subtitle) {
 }
 
 function _createSetToolActiveCommands(toolName, toolGroupIds = ['default', 'mpr',]) {
+  //alert("toolName: " + toolName)
   return toolGroupIds.map(toolGroupId => ({
     commandName: 'setToolActive',
     commandOptions: {

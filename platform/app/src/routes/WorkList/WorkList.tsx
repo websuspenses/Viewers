@@ -202,8 +202,14 @@ function WorkList({
     setAnchorElNew(event.currentTarget);
     //setModalityFlag(mdFlag);
 
-    let myArrayFlg = mdFlag.split("/");
-    let mArrayFlg = myArrayFlg?.length > 0 ? myArrayFlg[0] : mdFlag;
+    var myArrayFlg = mdFlag.replace(/\\/g, "-");
+    //var myArrayFlg = 'MR\SR'.replace(/\\/g, "-");
+    let mArrayFlg = myArrayFlg;
+    if (myArrayFlg.length > 2) {
+      mArrayFlg = myArrayFlg.slice(0, 2);
+    }
+
+    //let mArrayFlg = myArrayFlg?.length > 0 ? myArrayFlg[0] : mdFlag;
     localStorage.setItem('sid', sid);
     //localStorage.setItem('mdFlag', mdFlag);
     localStorage.setItem('mdFlag', mArrayFlg);
