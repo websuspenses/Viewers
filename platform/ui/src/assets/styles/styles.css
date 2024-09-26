@@ -1500,42 +1500,54 @@ svg.mr-2.inline-flex.w-4.instances-svg.text-secondary-light g {
   }
 }
 
-
-/*
+/* Font changes */
 
 @font-face {
   font-family: 'Gotham';
   src: url('../fonts/Gotham-Bold.otf');
-  src: url('../fonts/Gotham-Bold.eot?#iefix') format('embedded-opentype'),
-    url('../fonts/Gotham-Bold.woff') format('woff'),
-    url('../fonts/Gotham-Bold.ttf') format('truetype'),
-    url('../fonts/Gotham-Bold.svg#svgFontName') format('svg');
-  font-weight: 700;
+  src: url('../fonts/Gotham-Bold.otf?#iefix') format('embedded-opentype'),
+    url('../fonts/GothamBold.ttf') format('woff'),
+    url('../fonts/GothamBold.ttf') format('truetype'),
+    url('../fonts/Gotham-Bold.otf#svgFontName') format('svg');
+  font-weight: 600;
   font-style: normal;
 }
 
 @font-face {
   font-family: 'Gotham';
-  src: url('../fonts/Gotham-Medium.eot');
-  src: url('../fonts/Gotham-Medium.eot?#iefix') format('embedded-opentype'),
-    url('../fonts/Gotham-Medium.woff') format('woff'),
-    url('../fonts/Gotham-Medium.ttf') format('truetype'),
-    url('../fonts/Gotham-Medium.svg#svgFontName') format('svg');
-  font-weight: 400;
-  font-style: normal;
-}
-
-@font-face {
-  font-family: 'Gotham';
-  src: url('../fonts/Gotham-Thin.eot');
-  src: url('../fonts/Gotham-Thin.eot?#iefix') format('embedded-opentype'),
-    url('../fonts/Gotham-Thin.woff') format('woff'),
-    url('../fonts/Gotham-Thin.ttf') format('truetype'),
-    url('../fonts/Gotham-Thin.svg#svgFontName') format('svg');
+  src: url('../fonts/GothamMedium_1.ttf');
+  src: url('../fonts/GothamMedium_1.ttf?#iefix') format('embedded-opentype'),
+    url('../fonts/GothamMedium.ttf') format('woff'),
+    url('../fonts/GothamMedium.ttf') format('truetype'),
+    url('../fonts/GothamMedium.ttf#svgFontName') format('svg');
   font-weight: 300;
   font-style: normal;
-} */
+}
+
+@font-face {
+  font-family: 'Gotham';
+  src: url('../fonts/Gotham-Thin.otf');
+  src: url('../fonts/Gotham-Thin.otf?#iefix') format('embedded-opentype'),
+    url('../fonts/Gotham-Thin.otf') format('woff'),
+    url('../fonts/Gotham-Thin.otf') format('truetype'),
+    url('../fonts/Gotham-Thin.otf#svgFontName') format('svg');
+  font-weight: 200;
+  font-style: normal;
+}
 
 body {
   font-family: 'Gotham' !important;
+}
+
+.normal {
+  font-weight: 400;
+}
+
+.bold,
+strong {
+  font-weight: 700;
+}
+
+.light {
+  font-weight: 300;
 }
