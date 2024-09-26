@@ -167,7 +167,7 @@ function WorkList({
               <>
                 <MenuItem key={key} id={data.sub_modality}
                   onClick={() => {
-                    const bsurl = `/generate-report/${sid}/${data.template_id}`;
+                    const bsurl = `/generate-report/${sid}/${data.template_id}/m`;
                     navigate(bsurl);
                   }}
                 >
@@ -182,7 +182,7 @@ function WorkList({
 
         } else {
           setMDropDowns("");
-          const bsurl = `/generate-report/${sid}/${md}`;
+          const bsurl = `/generate-report/${sid}/${md}/s`;
           navigate(bsurl);
         }
       })
@@ -816,10 +816,10 @@ function WorkList({
                   <g>
                     <g>
                       <g>
-                        <path d="M55.672,30.778V27.1a5.4,5.4,0,0,1,5.405-5.4h0a5.4,5.4,0,0,1,5.405,5.4v3.682Z" fill="#ff9000" />
-                        <path d="M30.49,87.108,34.149,80.1a22.264,22.264,0,0,0,2.527-10.3V54.579a24.4,24.4,0,0,1,24.4-24.4h0a24.4,24.4,0,0,1,24.4,24.4V69.8a22.264,22.264,0,0,0,2.527,10.3l3.658,7.011Z" fill="#ffd92e" />
-                        <path d="M70.632,96.754a9.555,9.555,0,0,1-19.109,0Z" fill="#ffd92e" />
-                        <path d="M30.567,87.108H91.881a3.34,3.34,0,0,1,3.34,3.34v6.306a0,0,0,0,1,0,0H26.934a0,0,0,0,1,0,0V90.741A3.633,3.633,0,0,1,30.567,87.108Z" fill="#ff9000" />
+                        <path d="M55.672,30.778V27.1a5.4,5.4,0,0,1,5.405-5.4h0a5.4,5.4,0,0,1,5.405,5.4v3.682Z" fill={(isEmergency !== 'true' ? '#ff9000' : '#5b5b5b')} />
+                        <path d="M30.49,87.108,34.149,80.1a22.264,22.264,0,0,0,2.527-10.3V54.579a24.4,24.4,0,0,1,24.4-24.4h0a24.4,24.4,0,0,1,24.4,24.4V69.8a22.264,22.264,0,0,0,2.527,10.3l3.658,7.011Z" fill={(isEmergency !== 'true' ? '#ffd92e' : '#5b5b5b')} />
+                        <path d="M70.632,96.754a9.555,9.555,0,0,1-19.109,0Z" fill={(isEmergency !== 'true' ? '#ffd92e' : '#5b5b5b')} />
+                        <path d="M30.567,87.108H91.881a3.34,3.34,0,0,1,3.34,3.34v6.306a0,0,0,0,1,0,0H26.934a0,0,0,0,1,0,0V90.741A3.633,3.633,0,0,1,30.567,87.108Z" fill={(isEmergency !== 'true' ? '#ff9000' : '#5b5b5b')} />
                       </g>
                       <circle cx="85.479" cy="58.643" r="15.587" fill="#f25a3c" />
                     </g>

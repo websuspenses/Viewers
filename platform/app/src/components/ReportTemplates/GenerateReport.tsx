@@ -112,6 +112,7 @@ const GenerateReport = () => {
 
   const modalityValue = params.mrn;
   const modality = params.modality;
+  const reportType = params.type;
   const [modalityInfo, getModalityData] = useState('');
   const [modalitytemplateInfo, getModalityTemplateDate] = useState('');
 
@@ -145,7 +146,7 @@ const GenerateReport = () => {
     //fetch(`${nodeAppHost}/read_study_template_for_generate/${labId}/${modality}`)
     const authHeaders = localStorage.getItem('auth-t');
     console.log('local headers --> read_study_template ', authHeaders);
-    fetch(`${nodeAppHost}/read_study_template_for_generate/${labId}/${modality}`, {
+    fetch(`${nodeAppHost}/read_study_template_for_generate/${labId}/${modality}/${reportType}`, {
       method: 'GET',
       headers: {
         Authorization: authHeaders,
@@ -176,14 +177,7 @@ const GenerateReport = () => {
               <br />
               <b>Date:</b>&nbsp;
               ${formattedDate}
-            </p>
-
-            <img
-              width="100px"
-              height="60px"
-              src="/ohif-logo.svg"
-              alt="OHIF Logo"
-            />`;
+            </p>`;
           console.log('Modality template Info 2nd API IF patientInfo', patientInfo);
           updatedTemplateInfo = patientInfo + '<br/>' + actualData.data.template_content;
         } else {

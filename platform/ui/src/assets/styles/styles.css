@@ -1501,7 +1501,7 @@ svg.mr-2.inline-flex.w-4.instances-svg.text-secondary-light g {
 }
 
 /* Font changes */
-
+/* 
 @font-face {
   font-family: 'Gotham';
   src: url('../fonts/Gotham-Bold.otf');
@@ -1512,8 +1512,8 @@ svg.mr-2.inline-flex.w-4.instances-svg.text-secondary-light g {
   font-weight: 600;
   font-style: normal;
 }
-
-@font-face {
+*/
+/* @font-face {
   font-family: 'Gotham';
   src: url('../fonts/GothamMedium_1.ttf');
   src: url('../fonts/GothamMedium_1.ttf?#iefix') format('embedded-opentype'),
@@ -1522,8 +1522,8 @@ svg.mr-2.inline-flex.w-4.instances-svg.text-secondary-light g {
     url('../fonts/GothamMedium.ttf#svgFontName') format('svg');
   font-weight: 300;
   font-style: normal;
-}
-
+}  */
+/* 
 @font-face {
   font-family: 'Gotham';
   src: url('../fonts/Gotham-Thin.otf');
@@ -1533,10 +1533,30 @@ svg.mr-2.inline-flex.w-4.instances-svg.text-secondary-light g {
     url('../fonts/Gotham-Thin.otf#svgFontName') format('svg');
   font-weight: 200;
   font-style: normal;
-}
-
+} */
+@font-face {
+  font-family: 'Gotham';
+  src: url('../fonts/GothamBook.ttf');
+  src: url('../fonts/GothamBook.ttf?#iefix') format('embedded-opentype'),
+    url('../fonts/GothamBook.ttf') format('woff'),
+    url('../fonts/GothamBook.ttf') format('truetype'),
+    url('../fonts/GothamBook.ttf#svgFontName') format('svg');
+  font-weight: 300;
+  font-style: normal;
+} 
+/* @font-face {
+  font-family: 'Gotham';
+  src: url('../fonts/Gotham-Light.otf');
+  src: url('../fonts/Gotham-Light.otf?#iefix') format('embedded-opentype'),
+    url('../fonts/Gotham-Light.otf') format('woff'),
+    url('../fonts/Gotham-Light.otf') format('truetype'),
+    url('../fonts/Gotham-Light.otf#svgFontName') format('svg');
+  font-weight: 200;
+  font-style: normal;
+} */
 body {
   font-family: 'Gotham' !important;
+  font-weight: 700 !important;
 }
 
 .normal {

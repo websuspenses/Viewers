@@ -112,7 +112,7 @@ const bakedInRoutes = [
     children: CreateTemplate,
   },
   {
-    path: '/generate-report/:mrn/:modality',
+    path: '/generate-report/:mrn/:modality/:type',
     children: GenerateReport,
   },
   {
