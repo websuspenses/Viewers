@@ -8,8 +8,10 @@ import EditIcon from '@mui/icons-material/Edit';
 import { Link } from 'react-router-dom';
 import { Header } from '@ohif/ui';
 import ConfirmationDialog from '../AdminPanel/Users/ConfirmationDialog';
+import { useNavigate } from 'react-router-dom';
 
 function ReportTemplatesList() {
+  const navigate = useNavigate();
   const [isActive, setIsActive] = useState(false);
   const [templateData, setData] = useState([]);
   const [showconfirm, setShowConfirm] = useState(false);
@@ -79,6 +81,9 @@ function ReportTemplatesList() {
   const handleCloseConfirmation = () => {
     setShowConfirm(false);
   };
+  const handleRedirectPage = () => {
+    navigate('/workList');
+  }
 
   return (
     <div>
@@ -89,6 +94,7 @@ function ReportTemplatesList() {
         WhiteLabeling={{}}
         isActive={isActive}
         handleChange={handleChangeSwitch}
+        handleRedirectPage={handleRedirectPage}
         screen="ReportTemplateList"
       />
       <div className="reportcontainer">
@@ -101,7 +107,7 @@ function ReportTemplatesList() {
               variant="contained"
               color="success"
               className="createUserCls"
-              //</div>onClick={() => setShowAddMode(true)
+            //</div>onClick={() => setShowAddMode(true)
             >
               Create Template
             </Button>
@@ -131,7 +137,7 @@ function ReportTemplatesList() {
                       color="success"
                       className="createUserCls"
                       startIcon={<EditIcon />}
-                      //onClick={() => setShowEditMode(true)}
+                    //onClick={() => setShowEditMode(true)}
                     >
                       Edit
                     </Button>
