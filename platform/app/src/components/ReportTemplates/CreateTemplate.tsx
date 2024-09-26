@@ -331,6 +331,9 @@ const CreateTemplate = () => {
       }
     }
   };
+  const handleRedirectPage = () => {
+    navigate('/workList');
+  }
 
   return (
     <div>
@@ -341,6 +344,7 @@ const CreateTemplate = () => {
         WhiteLabeling={{}}
         isActive={isActive}
         handleChange={handleChangeSwitch}
+        handleRedirectPage={handleRedirectPage}
         screen="ReportTemplateList"
       />
       <div className="templateForm">

@@ -385,9 +385,7 @@ const GenerateReport = () => {
   };
 
   const handleRedirectPage = () => {
-    //alert(1234)
     navigate('/workList');
-    //navigate(-1);
   }
 
   return (

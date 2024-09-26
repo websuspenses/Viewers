@@ -10,8 +10,10 @@ import ConfirmationDialog from '../AdminPanel/Users/ConfirmationDialog';
 import CreateDoctorReferral from './CreateDoctorReferral';
 import './ReferralStyle.css';
 import Tooltip from '@mui/material/Tooltip';
+import { useNavigate } from 'react-router-dom';
 
 function DoctorReferralsList() {
+  const navigate = useNavigate();
   const [isActive, setIsActive] = useState(false);
   const [showconfirm, setShowConfirm] = useState(false);
   const [referralPopup, setReferralPopup] = useState(false);
@@ -20,7 +22,7 @@ function DoctorReferralsList() {
   const [editItem, setEachItem] = useState('');
   const [updateError, setUpdateError] = useState('');
   const [isSuccess, setErrorStatus] = useState('');
-  
+
   const nodeAppHost = '/teleapp';
   // Set body style
   useEffect(() => {
@@ -36,7 +38,7 @@ function DoctorReferralsList() {
     readDoctorsList();
   }, []);
 
-  const readDoctorsList = ()=>{
+  const readDoctorsList = () => {
     let authHeaders = localStorage.getItem('auth-t');
     console.log("local headers ", authHeaders);
     fetch(`${nodeAppHost}/get_referral_doctors`, {
@@ -117,6 +119,9 @@ function DoctorReferralsList() {
       setErrorStatus('');
     }, 3000);
   }
+  const handleRedirectPage = () => {
+    navigate('/workList');
+  }
   return (
     <div>
       <Header
@@ -126,16 +131,17 @@ function DoctorReferralsList() {
         WhiteLabeling={{}}
         isActive={isActive}
         handleChange={handleChangeSwitch}
+        handleRedirectPage={handleRedirectPage}
         screen="ReportTemplateList"
       />
       <div className="reportcontainer">
-        
+
 
         <div className="createBtnCls">
-        <div className="response-container">
-          <span className={isSuccess==='success' ? "success-message" : isSuccess==='error' ? "error-message":''}>{updateError}</span>
-        </div>
-          <Link style={{ textDecoration: 'none', width:'20%',textAlign:'right' }}>
+          <div className="response-container">
+            <span className={isSuccess === 'success' ? "success-message" : isSuccess === 'error' ? "error-message" : ''}>{updateError}</span>
+          </div>
+          <Link style={{ textDecoration: 'none', width: '20%', textAlign: 'right' }}>
             <Button
               variant="contained"
               color="success"
