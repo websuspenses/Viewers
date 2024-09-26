@@ -98,6 +98,9 @@ function ViewerHeader({ hotkeysManager, extensionManager, servicesManager, appCo
       },
     });
   }
+  const handleRedirectPage = () => {
+    navigate('/workList');
+  }
 
   return (
     <Header
@@ -107,6 +110,7 @@ function ViewerHeader({ hotkeysManager, extensionManager, servicesManager, appCo
       WhiteLabeling={appConfig.whiteLabeling}
       showPatientInfo={appConfig.showPatientInfo}
       servicesManager={servicesManager}
+      handleRedirectPage={handleRedirectPage}
       Secondary={
         <>
           <Toolbar
