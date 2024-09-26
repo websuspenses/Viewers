@@ -390,6 +390,12 @@ const GenerateReport = () => {
     }
   };
 
+  const handleRedirectPage = () => {
+    //alert(1234)
+    navigate('/workList');
+    //navigate(-1);
+  }
+
   return (
     <div>
       <Header
@@ -400,6 +406,7 @@ const GenerateReport = () => {
         isActive={isActive}
         handleChange={handleChangeSwitch}
         screen="GenerateReport"
+        handleRedirectPage={handleRedirectPage}
         modalityValue={modalityValue}
       />
       <div className="templateForm">

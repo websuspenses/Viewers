@@ -87,7 +87,15 @@ function Header({
             {!isMobile ? (
 
               // <Link title="Work List" to={`/workList`}>
-              <a data-id={handleRedirectPage} href="javascript:void(0)" onClick={handleRedirectPage}>
+              <a data-id={handleRedirectPage} href="javascript:void(0)"
+
+                // onClick={(e) => {
+                //   e.preventDefault();
+                //   navigate(-1);
+                // }}
+
+                onClick={handleRedirectPage}
+              >
                 <Icon
                   name="chevron-left"
                   className="text-primary-active w-8"
