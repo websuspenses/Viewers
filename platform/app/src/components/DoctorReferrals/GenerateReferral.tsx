@@ -22,6 +22,18 @@ const BootstrapDialog = styled(Dialog)(({ theme }) => ({
   },
 }));
 
+function generaterandomString(length) {
+  let result = '';
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+  const charactersLength = characters.length;
+  let counter = 0;
+  while (counter < length) {
+    result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    counter += 1;
+  }
+  return result;
+}
+
 function GenerateReferral(props) {
   const navigate = useNavigate();
   const { open, handleClose, StudyInstanceUId } = props;
@@ -64,7 +76,7 @@ function GenerateReferral(props) {
 
     let authHeaders = localStorage.getItem('auth-t');
 
-    let referralUrl='';
+    let referralUrl = '';
     fetch(`${hostName}studies/${StudyInstanceUId}/get_cloud_url`, {
       method: 'GET',
       headers: {
@@ -82,52 +94,95 @@ function GenerateReferral(props) {
       });
   }
   const sendMessage = (referralUrl, studyInstanceUid) => {
-    let authHeaders = localStorage.getItem('auth-t');
-    const url = `${nodeAppHost}/send_study_referral`;
-    const formData = {
-      sr_to_doctor: value,
-      sr_requester_id: 2,
-      sr_requester_comments: `Hello Doctor,Could you please check below URL: ${referralUrl}`,
-    };
 
-    const options = {
+
+
+    // WhatsApp API info
+
+    const body = {
+      "url": referralUrl,
+      "alias": "ciaitr" + generaterandomString(6)
+    }
+
+    const whatsAppSvcURL = 'https://api.tinyurl.com/create?api_token=5YCcwTA4TrhQhqh2M2mWq8UX9s4o3OpUDRWi58ItBI6JwsGKJ73srA8AoCoQ';
+
+    const whatsAppSvcOptions = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': authHeaders
+        'accept': 'application/json'
       },
-      body: JSON.stringify(formData),
-    };
+      body: JSON.stringify(body),
+    }
 
     try {
-      const res = fetch(url, options);
-      if (res) {
-          let url = `${hostName}/studies/${studyInstanceUid}/update_status`;
-            const statusBody = {"status":"Referral sent"};
-            const options2 = {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: authHeaders,
-              },
-              body: JSON.stringify(statusBody),
-            };
-        
-            try {
-              const res = fetch(url, options2);
-              if (res) {
-                alert("Referred Succesfully...")
-                navigate('/workList');
-                console.log('Status updated Save to server', res);
+      fetch(whatsAppSvcURL, whatsAppSvcOptions)
+        .then(response => response.json())
+        .then(tinyUrlResponse => {
+          console.log('Tiny URL info ', tinyUrlResponse, tinyUrlResponse.data.tiny_url);
+
+          let authHeaders = localStorage.getItem('auth-t');
+          const url = `${nodeAppHost}/send_study_referral`;
+          const formData = {
+            sr_to_doctor: value,
+            sr_requester_id: 2,
+            sr_requester_comments: `Hello Doctor,Could you please check below URL: ${tinyUrlResponse.data.tiny_url}`,
+          };
+
+          const options = {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': authHeaders
+            },
+            body: JSON.stringify(formData),
+          };
+
+
+
+
+
+
+          try {
+            const res = fetch(url, options);
+            if (res) {
+              let url = `${hostName}/studies/${studyInstanceUid}/update_status`;
+              const statusBody = { "status": "Referral sent" };
+              const options2 = {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  Authorization: authHeaders,
+                },
+                body: JSON.stringify(statusBody),
+              };
+
+              try {
+                const res = fetch(url, options2);
+                if (res) {
+                  alert("Referred Succesfully...")
+                  navigate('/workList');
+                  console.log('Status updated Save to server', res);
+                }
+                console.log('response ', res);
+              } catch (error) {
+                console.error('Error:', error);
               }
-              console.log('response ', res);
-            } catch (error) {
-              console.error('Error:', error);
+              //navigate('/workList');
+              handleClose();
             }
-            //navigate('/workList');
-        handleClose();
-      }
-      console.log('response ', res);
+            console.log('response ', res);
+          } catch (error) {
+            console.error('Error:', error);
+          }
+
+
+        })
+        .catch(err => {
+          console.log(err.message);
+        });
+
+
     } catch (error) {
       console.error('Error:', error);
     }

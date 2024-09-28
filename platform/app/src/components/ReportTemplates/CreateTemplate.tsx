@@ -130,6 +130,7 @@ const CreateTemplate = () => {
   const [selectedOption, setSelectedOption] = useState(modalityValue ? modalityValue : '');
   const [modalityOptionsList, setModalityOptionsList] = useState([]);
   const [updateModality, setUpdateModality] = useState([]);
+  const [subModality, setUpdateSubModality] = useState([]);
   const [updateTemplateInfo, setUpdateTemplateInfo] = useState('');
   const labId = 2;
 
@@ -137,7 +138,7 @@ const CreateTemplate = () => {
     //fetch(`${nodeAppHost}/read_modalities`)
     let authHeaders = localStorage.getItem('auth-t');
     console.log("local headers ", authHeaders);
-    fetch(`${nodeAppHost}/read_modalities`, {
+    fetch(`${nodeAppHost}/read_modalities/${labId}`, {
       method: 'GET',
       headers: {
         'Authorization': authHeaders
@@ -269,7 +270,13 @@ const CreateTemplate = () => {
   const handleSelectChange = event => {
     setSelectedOption(event.target.value);
   };
+  const handelChangeSubModality = event => {
+    console.log(" Before Sub Modality ", subModality);
+    setUpdateSubModality(event.target.value);
+    console.log(" After Sub Modality ", subModality);
+  };
   const handleSubmit = event => {
+    console.log("form values  ",event.target.input);
     event.preventDefault();
     // Handle form submission with selectedOption
     let contentValue = '';
@@ -277,13 +284,38 @@ const CreateTemplate = () => {
     if (contentRef.current) {
       contentValue = contentRef.current.innerHTML;
     }
-    console.log('labName', labName, 'Selected option:', selectedOption, 'contentRef ', value);
+    console.log('labName', labName, 'Selected option:', selectedOption, 'contentRef ', value, "subModality ", subModality);
 
     if (!modalityValue && !templateValue) {
+
       let authHeaders = localStorage.getItem('auth-t');
+
+      // fetch(`${nodeAppHost}/read_modalities_for_lab/${labId}/${subModality}`, {
+      //   method: 'GET',
+      //   headers: {
+      //     'Authorization': authHeaders
+      //   },
+      // })
+      //   .then(response => response.json())
+      //   .then(result => {
+      //     console.log('Modality Info result ', result);
+      //   })
+      //   .catch(err => {
+      //     console.log(err.message);
+      //   });
+
+
+
+
+
+
+
+
+
+      
       const url = `${nodeAppHost}/create_template`;
 
-      const data = { modality: selectedOption, template_content: value, lab_id: 2 };
+      const data = { modality: selectedOption, template_content: value, lab_id: 2, sub_modality:subModality };
       const options = {
         method: 'POST',
         headers: {
@@ -354,7 +386,7 @@ const CreateTemplate = () => {
         <form onSubmit={handleSubmit} >
           <div style={{ display: 'grid', justifyContent: 'center' }}>
             <div className="modalityDropdown">
-              <label htmlFor="dropdown">Modality: 1</label>
+              <label htmlFor="dropdown">Modality</label>
               <select
                 name="selectedOption"
                 disabled={modalityInfo && modalityInfo !== '' ? true : false}
@@ -381,6 +413,7 @@ const CreateTemplate = () => {
                   className="form-control"
                   placeholder="Enter Sub Modality"
                   name="sub_Modality"
+                  onChange={handelChangeSubModality}
                 />
               </p>
             </div>

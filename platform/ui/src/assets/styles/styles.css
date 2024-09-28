@@ -1599,3 +1599,25 @@ select.doctorsListCls {
 .emergency-placeholder ~ div.inline-flex.max-w-full{
   vertical-align: text-top;
 }
+div.modalityDropdown select{
+  font-family: monospace, sans-serif;
+}
+.templateForm .subModality input{
+  border-radius: 5px;
+  padding: 5px 10px;
+  font-family:monospace, sans-serif;
+  margin-left:10px;
+  font-weight:400;
+  color:#0a7c6c;
+  outline: none;
+}
+.templateForm .subModality p{
+  color:#0a7c6c;
+}
+.templateForm .subModality{
+  margin-bottom:10px;
+  margin-top:10px;
+}
+.templateForm .subModality input::placeholder {
+color: #c6d8d6 !important;
+}

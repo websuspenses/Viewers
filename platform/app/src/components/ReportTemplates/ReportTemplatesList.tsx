@@ -121,8 +121,10 @@ function ReportTemplatesList() {
               className={isActive ? 'templatesList_dark' : 'templates-item'}
             >
               <strong className={isActive ? 'templateTitleCls' : 'templateTitleCls_dark'}>
-                {item.modality}
+              {item.sub_modality}
               </strong>
+              <p className='sub-modality'>{item.modality}</p>
+              
               <div className="reports-justify-between items-center sm:flex">
                 <Stack
                   direction="row"
