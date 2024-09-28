@@ -57,6 +57,8 @@ function processResults(qidoStudies) {
       studyStatus: qidoStudy?.studyStatus || '',
       inCloud: qidoStudy?.inCloud || '',
       isEmergency: qidoStudy?.isEmergency || '',
+      isReportGenerated: qidoStudy?.isReportGenerated || '',
+      isReferralSent: qidoStudy?.isReferralSent || '',
       modalities: getString(getModalities(qidoStudy['00080060'], qidoStudy['00080061'])) || '',
     })
 });

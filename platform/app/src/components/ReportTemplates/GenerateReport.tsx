@@ -309,45 +309,127 @@ const GenerateReport = () => {
       body: JSON.stringify(data),
     };
 
+
+    const isReportGeneratedURL = `${hostName}/studies/${modalityValue}/addmetadata/isReportGenerated`;
+
+    let formData = { "data": 'true' };
+
+    const isReportGeneratedOptions = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: authHeaders,
+      },
+      body: JSON.stringify(formData),
+    };
+
+    // fetch(`${hostNameurl}studies/${studyInstanceUid}/addmetadata/isEmergency`, {
+    //   method: 'POST',
+    //   headers: {
+    //     'Content-Type': 'application/json',
+    //     'Authorization': authHeaders
+    //   },
+    //   body: JSON.stringify(formData),
+    // })
+    //   .then(response => response.json())
+    //   .then(result => {
+    //     console.log('Emergency info ', result);
+    //     window.location.reload();
+    //   })
+    //   .catch(err => {
+    //     console.log('Error  isEmergency API', err);
+    //     console.log(err.message);
+    //   });
+
     try {
       const res = fetch(url, options);
+      // Update is isReportGenerated flag here
 
-      if (res) {
-        console.log('Generate Report', res);
-        let url2 = `${hostName}studies/${modalityValue}/update_status`;
-        const statusBody = { "status": "Report Generated" };
-        const options2 = {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: authHeaders,
-          },
-          body: JSON.stringify(statusBody),
-        };
 
-        try {
-          const res1 = fetch(url2, options2);
-          if (res1) {
-            if (fiftyPerFlag == "true") {
-              alert("Report generated Successfully...");
-              //localStorage.setItem('fiftyPerFlag', 'false');
-              //localStorage.setItem('sid', "");
-              //localStorage.setItem('mdFlag', "");
-              window.location.reload();
-              //navigate('/workList');
-            } else {
-              navigate('/workList');
-              alert("Report generated Successfully...");
-              console.log('Status updated Generate report', res1);
+      const res2 = fetch(isReportGeneratedURL, isReportGeneratedOptions);
+
+
+      Promise.all([
+        res, res2
+      ])
+        .then(([response1, response2]) => {
+          console.log('Generate Report updated', response1, "response2 ", response2);
+          let url2 = `${hostName}studies/${modalityValue}/update_status`;
+          const statusBody = { "status": "Report Generated" };
+          const options2 = {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: authHeaders,
+            },
+            body: JSON.stringify(statusBody),
+          };
+
+          try {
+            const res1 = fetch(url2, options2);
+            if (res1) {
+              if (fiftyPerFlag == "true") {
+                alert("Report generated Successfully...");
+                //localStorage.setItem('fiftyPerFlag', 'false');
+                //localStorage.setItem('sid', "");
+                //localStorage.setItem('mdFlag', "");
+                window.location.reload();
+                //navigate('/workList');
+              } else {
+                navigate('/workList');
+                alert("Report generated Successfully...");
+                console.log('Status updated Generate report', res1);
+              }
             }
+            console.log('response ', res1);
+          } catch (error) {
+            console.error('Error:', error);
           }
-          console.log('response ', res1);
-        } catch (error) {
+        })
+        .catch(error => {
           console.error('Error:', error);
-        }
+        });
 
-        //navigate('/workList');
-      }
+
+
+
+
+      // if (res) {
+      //   console.log('Generate Report', res);
+      //   let url2 = `${hostName}studies/${modalityValue}/update_status`;
+      //   const statusBody = { "status": "Report Generated" };
+      //   const options2 = {
+      //     method: 'POST',
+      //     headers: {
+      //       'Content-Type': 'application/json',
+      //       Authorization: authHeaders,
+      //     },
+      //     body: JSON.stringify(statusBody),
+      //   };
+
+      //   try {
+      //     const res1 = fetch(url2, options2);
+      //     if (res1) {
+      //       if (fiftyPerFlag == "true") {
+      //         alert("Report generated Successfully...");
+      //         //localStorage.setItem('fiftyPerFlag', 'false');
+      //         //localStorage.setItem('sid', "");
+      //         //localStorage.setItem('mdFlag', "");
+      //         window.location.reload();
+      //         //navigate('/workList');
+      //       } else {
+      //         navigate('/workList');
+      //         alert("Report generated Successfully...");
+      //         console.log('Status updated Generate report', res1);
+      //       }
+      //     }
+      //     console.log('response ', res1);
+      //   } catch (error) {
+      //     console.error('Error:', error);
+      //   }
+
+      //   //navigate('/workList');
+      // }
     } catch (error) {
       console.error('Error:', error);
     }
