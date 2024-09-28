@@ -167,9 +167,9 @@ function CreateDoctorReferral(props) {
       <DialogContent>
         <div className="user-view _add-view">
           <div className="box">
-            <div className="row">
+            <div className="row doctor-name">
               <div className="col-sm-12 col-md-6">
-                <p>
+                <p className='doctor-name-p'>
                   <span>Doctor Name</span>
                   <input
                     type="text"

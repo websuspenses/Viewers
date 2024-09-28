@@ -1643,3 +1643,18 @@ color: #c6d8d6 !important;
 .templatesList .templateTitleCls_dark{
   font-weight:bold;
 }
+.templatesList .buttonAdjustCls{
+  justify-content: right;
+  margin-right: 20px;
+}
+.doctor-name input{
+  padding: 5px 10px;
+    font-family: monospace, sans-serif;
+    font-weight: 400;
+    color: #0a7c6c;
+    outline: none;
+}
+
+.doctor-name input.form-control::placeholder {
+  color: #c6d8d6 !important;
+}

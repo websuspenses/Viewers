@@ -130,8 +130,8 @@ const CreateTemplate = () => {
   const [selectedOption, setSelectedOption] = useState(modalityValue ? modalityValue : '');
   const [modalityOptionsList, setModalityOptionsList] = useState([]);
   const [updateModality, setUpdateModality] = useState([]);
-  const [subModality, setUpdateSubModality] = useState([]);
-  const [updateTemplateInfo, setUpdateTemplateInfo] = useState('');
+  const [subModality, setUpdateSubModality] = useState('');
+  const [updateTemplateInfo, setUpdateTemplateInfo] = useState([]);
   const labId = 2;
 
   useEffect(() => {
@@ -146,7 +146,7 @@ const CreateTemplate = () => {
     })
       .then(response => response.json())
       .then(actualData => {
-        console.log('Modality Info ', actualData);
+        console.log('Modalities list Info ', actualData);
         setModalityOptionsList(actualData.data);
       })
       .catch(err => {
@@ -167,8 +167,9 @@ const CreateTemplate = () => {
       })
         .then(response => response.json())
         .then(actualData => {
-          console.log('Modality Info ', actualData);
+          console.log('Modality Info ', actualData, actualData.data[0].template_content);
           setUpdateModality(actualData.data);
+          setUpdateSubModality(actualData && actualData.data[0].sub_modality);
           setUpdateTemplateInfo(actualData && actualData.data[0].template_content);
         })
         .catch(err => {
@@ -364,7 +365,7 @@ const CreateTemplate = () => {
     }
   };
   const handleRedirectPage = () => {
-    navigate('/workList');
+    navigate('/report-templates');
   }
 
   return (
@@ -389,7 +390,7 @@ const CreateTemplate = () => {
               <label htmlFor="dropdown">Modality</label>
               <select
                 name="selectedOption"
-                disabled={modalityInfo && modalityInfo !== '' ? true : false}
+                disabled={modalityValue && modalityValue !== '' ? true : false}
                 id="dropdown"
                 value={selectedOption}
                 onChange={handleSelectChange}
@@ -413,6 +414,7 @@ const CreateTemplate = () => {
                   className="form-control"
                   placeholder="Enter Sub Modality"
                   name="sub_Modality"
+                  value={subModality}
                   onChange={handelChangeSubModality}
                 />
               </p>

@@ -161,11 +161,14 @@ function DoctorReferralsList() {
                 key={item.doc_id}
                 className={isActive ? 'templatesList_dark' : 'templates-item'}
               >
+                <div className='modality-area'>
                 <strong className={isActive ? 'templateTitleCls' : 'templateTitleCls_dark'}>
                   {item.doc_name}
                 </strong>
-                <br />
-                <span style={{ fontWeight: 'italic' }}>{item.doc_specialization}, {item.doc_clinic}</span>
+                <p className='sub-modality' style={{ fontWeight: 'italic' }}>{item.doc_specialization}, {item.doc_clinic}</p>
+                </div>
+                
+
                 <div className="buttonAdjustCls items-center sm:flex">
                   <Stack
                     direction="row"
