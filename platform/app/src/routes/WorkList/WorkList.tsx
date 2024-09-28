@@ -145,6 +145,7 @@ function WorkList({
     setModalityFlag(mdFlag);
     localStorage.setItem('sid', sid);
     localStorage.setItem('mdFlag', mdFlag);
+    localStorage.setItem('ViewerLayoutFlag', "on");
   };
   const handleClose = () => {
     setAnchorEl(null);
@@ -215,14 +216,14 @@ function WorkList({
     localStorage.setItem('mdFlag', mArrayFlg);
     setModalityFlag(mArrayFlg);
     console.log(" isReportGenerated ----> ", isReportGenerated);
-    if(isReportGenerated !== 'true'){
+    if (isReportGenerated !== 'true') {
       generateDynamicDropdowns(sid, mArrayFlg);
     } else {
       setMDropDowns("");
       const bsurl = `/generate-report/${sid}/${mArrayFlg}/s`;
       navigate(bsurl);
     }
-    
+
 
   };
   const handleCloseNew = () => {
@@ -541,7 +542,7 @@ function WorkList({
       isReportGenerated
     } = study;
 
-console.log("Study info ----> ", study);
+    console.log("Study info ----> ", study);
     const studyDate =
       date &&
       moment(date, ['YYYYMMDD', 'YYYY.MM.DD'], true).isValid() &&

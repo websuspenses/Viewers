@@ -12,6 +12,7 @@ const ToolbarButton = ({
   label,
   commands,
   onInteraction,
+  onBlurInteraction,
   dropdownContent,
   //
   className,
@@ -53,6 +54,10 @@ const ToolbarButton = ({
               commands,
             });
           }}
+          onBlur={() => {
+            onBlurInteraction();
+          }}
+
           name={label}
           key={id}
           id={id}
@@ -75,6 +80,7 @@ ToolbarButton.propTypes = {
   className: PropTypes.string,
   commands: PropTypes.oneOfType([PropTypes.array, PropTypes.object, PropTypes.string]),
   onInteraction: PropTypes.func,
+  onBlurInteraction: PropTypes.func,
   icon: PropTypes.string.isRequired,
   label: PropTypes.string.isRequired,
   /** Tooltip content can be replaced for a customized content by passing a node to this value. */

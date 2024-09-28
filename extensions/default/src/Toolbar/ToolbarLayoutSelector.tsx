@@ -89,14 +89,17 @@ function ToolbarLayoutSelectorWithServices({ commandsManager, servicesManager, .
 
   const handleMouseEnter = () => {
     setIsDisabled(false);
+    localStorage.setItem('ViewerLayoutFlag', "");
   };
 
   const onSelection = useCallback(props => {
+    //alert("5555: " + isDisabled);
     commandsManager.run({
       commandName: 'setViewportGridLayout',
       commandOptions: { ...props },
     });
     setIsDisabled(true);
+    localStorage.setItem('ViewerLayoutFlag', "");
   }, []);
 
   const onSelectionPreset = useCallback(props => {
@@ -105,6 +108,7 @@ function ToolbarLayoutSelectorWithServices({ commandsManager, servicesManager, .
       commandOptions: { ...props },
     });
     setIsDisabled(true);
+    localStorage.setItem('ViewerLayoutFlag', "");
   }, []);
 
   return (
@@ -130,6 +134,9 @@ function LayoutSelector({
   tooltipDisabled,
   ...rest
 }) {
+
+  const viewerLFlag = localStorage.getItem('ViewerLayoutFlag');
+
   const [isOpen, setIsOpen] = useState(false);
 
   const { customizationService } = servicesManager.services;
@@ -140,27 +147,36 @@ function LayoutSelector({
   const closeOnOutsideClick = () => {
     if (isOpen) {
       setIsOpen(false);
+      localStorage.setItem('ViewerLayoutFlag', "");
     }
   };
 
   useEffect(() => {
-    window.addEventListener('click', closeOnOutsideClick);
-    return () => {
-      window.removeEventListener('click', closeOnOutsideClick);
-    };
+    if (!isOpen) {
+      window.addEventListener('click', closeOnOutsideClick);
+      return () => {
+        window.removeEventListener('click', closeOnOutsideClick);
+      };
+    }
   }, [isOpen]);
 
+
   const onInteractionHandler = () => {
+    // if (viewerLFlag === "on") {
+    //   setIsOpen(true);
+    // } else {
     setIsOpen(!isOpen);
+    //}
   };
   const DropdownContent = isOpen ? OHIFLayoutSelector : null;
 
   return (
     <ToolbarButton
       id="Layout"
-      label="Layout"
+      label="Layout 66"
       icon="tool-layout"
       onInteraction={onInteractionHandler}
+      onBlurInteraction={closeOnOutsideClick}
       className={className}
       rounded={rest.rounded}
       disableToolTip={tooltipDisabled}
@@ -231,7 +247,7 @@ LayoutSelector.propTypes = {
 LayoutSelector.defaultProps = {
   columns: 4,
   rows: 3,
-  onLayoutChange: () => {},
+  onLayoutChange: () => { },
 };
 
 export default ToolbarLayoutSelectorWithServices;
