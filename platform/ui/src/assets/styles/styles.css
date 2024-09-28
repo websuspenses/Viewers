@@ -1621,3 +1621,25 @@ div.modalityDropdown select{
 .templateForm .subModality input::placeholder {
 color: #c6d8d6 !important;
 }
+
+.templatesList .modality-area {
+  width:60%;
+  padding-top: 10px;
+}
+.templatesList .templates-item div.items-center{
+   width:30%;
+   float:right;
+   /* display: inline; */
+}
+.templatesList .templates-item{
+  display:flex;
+  justify-content:space-between;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 13px 27px -5px, rgba(0, 0, 0, 0.3) 0px 8px 16px -8px;
+}
+.templatesList .sub-modality{
+  color:#5b5b5b;
+  font-size:12px;
+}
+.templatesList .templateTitleCls_dark{
+  font-weight:bold;
+}

@@ -120,11 +120,14 @@ function ReportTemplatesList() {
               key={item.labName}
               className={isActive ? 'templatesList_dark' : 'templates-item'}
             >
-              <strong className={isActive ? 'templateTitleCls' : 'templateTitleCls_dark'}>
-              {item.sub_modality}
-              </strong>
-              <p className='sub-modality'>{item.modality}</p>
-              
+              <div className='modality-area'>
+                <strong className={isActive ? 'templateTitleCls' : 'templateTitleCls_dark'}>
+                  {item.sub_modality}
+                </strong>
+                <p className='sub-modality'>{item.modality}</p>
+              </div>
+
+
               <div className="reports-justify-between items-center sm:flex">
                 <Stack
                   direction="row"
