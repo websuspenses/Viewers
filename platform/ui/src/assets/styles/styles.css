@@ -1303,32 +1303,32 @@ button.leading-none {
 .commonIn-Progress {
   background-color: #dfdafd !important;
   border: 1px solid #dfdafd !important;
-  border-radius: 5px !important;
-  padding: 0px 5px !important;
+  border-radius: 10px !important;
+  padding: 14px 10px 7px !important;
   font-size: 0.8125rem;
 }
 
 .commonReferral {
   background-color: #f4f4d5 !important;
   border: 1px solid #f4f4d5 !important;
-  border-radius: 5px !important;
-  padding: 0px 5px !important;
+  border-radius: 10px !important;
+  padding: 14px 10px 7px !important;
   font-size: 0.8125rem;
 }
 
 .commonReport {
   background-color: #e1f4d8 !important;
   border: 1px solid #e1f4d8 !important;
-  border-radius: 5px !important;
-  padding: 0px 5px !important;
+  border-radius: 10px !important;
+  padding: 14px 10px 7px !important;
   font-size: 0.8125rem;
 }
 
 .commonEmergency {
   background-color: #f1b4bf !important;
   border: 1px solid #f1b4bf !important;
-  border-radius: 5px !important;
-  padding: 0px 5px !important;
+  border-radius: 10px !important;
+  padding: 14px 10px 7px !important;
   font-size: 0.8125rem;
 }
 
@@ -1441,8 +1441,8 @@ svg.mr-2.inline-flex.w-4.instances-svg.text-secondary-light g {
 .commonReady {
   background-color: #1958cb !important;
   border: 1px solid #f4f4d5 !important;
-  border-radius: 5px !important;
-  padding: 2px 5px !important;
+  border-radius: 10px !important;
+  padding: 12px 10px 5px !important;
   font-size: 0.8125rem;
   color: #ffffff;
 }
@@ -1543,7 +1543,8 @@ svg.mr-2.inline-flex.w-4.instances-svg.text-secondary-light g {
     url('../fonts/GothamBook.ttf#svgFontName') format('svg');
   font-weight: 300;
   font-style: normal;
-} 
+}
+
 /* @font-face {
   font-family: 'Gotham';
   src: url('../fonts/Gotham-Light.otf');
@@ -1570,4 +1571,31 @@ strong {
 
 .light {
   font-weight: 300;
+}
+
+.In-Progress .overflow-hidden.truncate {
+  overflow: visible;
+}
+
+select.doctorsListCls {
+  font-family: monospace, sans-serif;
+}
+
+[data-cy="options-dropdown"] .border-secondary-main {
+  border-color: rgb(238 238 238);
+}
+
+[data-cy="options-dropdown"] p.m-0.leading-tight.text-base.text-white {
+  padding-top: 5px;
+}
+
+[data-cy="options-dropdown"].rounded {
+  border: none;
+  box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+}
+.show-emergency span.emergency-placeholder{
+  vertical-align: text-top;
+}
+.emergency-placeholder ~ div.inline-flex.max-w-full{
+  vertical-align: text-top;
 }

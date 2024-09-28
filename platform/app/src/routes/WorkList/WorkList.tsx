@@ -150,7 +150,7 @@ function WorkList({
     setAnchorEl(null);
   };
 
-  const generateDynamicDropdowns = (sid, md) => {
+  const generateDynamicDropdowns = (sid, md, studyStatus) => {
     const authHeaders = localStorage.getItem('auth-t');
     fetch(`${iframeBaseUrl}/teleapp/get_sub_modalities/${md}`, {
       //fetch(`http://localhost/teleapp/get_sub_modalities/${md}`, {
@@ -161,7 +161,7 @@ function WorkList({
     })
       .then(response => response.json())
       .then(actualData => {
-        if (actualData.data.length > 1) {
+        if (actualData.data.length > 1 && studyStatus !== '') {
           const newDa = actualData.data && actualData.data?.map((data, key) => {
             return (
               <>
@@ -196,7 +196,7 @@ function WorkList({
 
   const [anchorElNew, setAnchorElNew] = React.useState<null | HTMLElement>(null);
   const openNew = Boolean(anchorElNew);
-  const handleClickNew = (event: React.MouseEvent<HTMLButtonElement>, sid: any, mdFlag: any) => {
+  const handleClickNew = (event: React.MouseEvent<HTMLButtonElement>, sid: any, mdFlag: any, studyStatus:any) => {
     event.preventDefault();
     setStuID(sid);
     setAnchorElNew(event.currentTarget);
@@ -214,7 +214,7 @@ function WorkList({
     //localStorage.setItem('mdFlag', mdFlag);
     localStorage.setItem('mdFlag', mArrayFlg);
     setModalityFlag(mArrayFlg);
-    generateDynamicDropdowns(sid, mArrayFlg);
+    generateDynamicDropdowns(sid, mArrayFlg, studyStatus);
 
   };
   const handleCloseNew = () => {
@@ -661,7 +661,7 @@ function WorkList({
                   aria-controls={openNew ? 'basic-menuNew' : undefined}
                   aria-haspopup="true"
                   aria-expanded={openNew ? 'true' : undefined}
-                  onClick={(event) => handleClickNew(event, studyInstanceUid, modalities)}
+                  onClick={(event) => handleClickNew(event, studyInstanceUid, modalities, studyStatus)}
                 >
                   {
                     <svg
