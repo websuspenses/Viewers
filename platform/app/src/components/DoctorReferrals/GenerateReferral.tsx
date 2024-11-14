@@ -93,6 +93,62 @@ function GenerateReferral(props) {
         console.log(err.message);
       });
   }
+  function sendReferralHelper(studyInstanceUid, URL) {
+    let authHeaders = localStorage.getItem('auth-t');
+    const url = `${nodeAppHost}/send_study_referral`;
+    const formData = {
+      sr_to_doctor: value,
+      sr_requester_id: 2,
+      sr_requester_comments: `Hello Doctor,Could you please check below URL: ${URL}`,
+    };
+
+    const options = {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': authHeaders
+      },
+      body: JSON.stringify(formData),
+    };
+
+
+
+
+
+
+    try {
+      const res = fetch(url, options);
+      if (res) {
+        let url = `${hostName}/studies/${studyInstanceUid}/update_status`;
+        const statusBody = { "status": "Referral sent" };
+        const options2 = {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: authHeaders,
+          },
+          body: JSON.stringify(statusBody),
+        };
+
+        try {
+          const res = fetch(url, options2);
+          if (res) {
+            alert("Referred Succesfully...")
+            navigate('/workList');
+            console.log('Status updated Save to server', res);
+          }
+          console.log('response ', res);
+        } catch (error) {
+          console.error('Error:', error);
+        }
+        //navigate('/workList');
+        handleClose();
+      }
+      console.log('response ', res);
+    } catch (error) {
+      console.error('Error:', error);
+    }
+  }
   const sendMessage = (referralUrl, studyInstanceUid) => {
 
 
@@ -120,71 +176,74 @@ function GenerateReferral(props) {
         .then(response => response.json())
         .then(tinyUrlResponse => {
           console.log('Tiny URL info ', tinyUrlResponse, tinyUrlResponse.data.tiny_url);
+          sendReferralHelper(studyInstanceUid, tinyUrlResponse.data.tiny_url);
+          // let authHeaders = localStorage.getItem('auth-t');
+          // const url = `${nodeAppHost}/send_study_referral`;
+          // const formData = {
+          //   sr_to_doctor: value,
+          //   sr_requester_id: 2,
+          //   sr_requester_comments: `Hello Doctor,Could you please check below URL: ${tinyUrlResponse.data.tiny_url}`,
+          // };
 
-          let authHeaders = localStorage.getItem('auth-t');
-          const url = `${nodeAppHost}/send_study_referral`;
-          const formData = {
-            sr_to_doctor: value,
-            sr_requester_id: 2,
-            sr_requester_comments: `Hello Doctor,Could you please check below URL: ${tinyUrlResponse.data.tiny_url}`,
-          };
-
-          const options = {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': authHeaders
-            },
-            body: JSON.stringify(formData),
-          };
-
-
+          // const options = {
+          //   method: 'POST',
+          //   headers: {
+          //     'Content-Type': 'application/json',
+          //     'Authorization': authHeaders
+          //   },
+          //   body: JSON.stringify(formData),
+          // };
 
 
 
 
-          try {
-            const res = fetch(url, options);
-            if (res) {
-              let url = `${hostName}/studies/${studyInstanceUid}/update_status`;
-              const statusBody = { "status": "Referral sent" };
-              const options2 = {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  Authorization: authHeaders,
-                },
-                body: JSON.stringify(statusBody),
-              };
 
-              try {
-                const res = fetch(url, options2);
-                if (res) {
-                  alert("Referred Succesfully...")
-                  navigate('/workList');
-                  console.log('Status updated Save to server', res);
-                }
-                console.log('response ', res);
-              } catch (error) {
-                console.error('Error:', error);
-              }
-              //navigate('/workList');
-              handleClose();
-            }
-            console.log('response ', res);
-          } catch (error) {
-            console.error('Error:', error);
-          }
+
+          // try {
+          //   const res = fetch(url, options);
+          //   if (res) {
+          //     let url = `${hostName}/studies/${studyInstanceUid}/update_status`;
+          //     const statusBody = { "status": "Referral sent" };
+          //     const options2 = {
+          //       method: 'POST',
+          //       headers: {
+          //         'Content-Type': 'application/json',
+          //         Authorization: authHeaders,
+          //       },
+          //       body: JSON.stringify(statusBody),
+          //     };
+
+          //     try {
+          //       const res = fetch(url, options2);
+          //       if (res) {
+          //         alert("Referred Succesfully...")
+          //         navigate('/workList');
+          //         console.log('Status updated Save to server', res);
+          //       }
+          //       console.log('response ', res);
+          //     } catch (error) {
+          //       console.error('Error:', error);
+          //     }
+          //     //navigate('/workList');
+          //     handleClose();
+          //   }
+          //   console.log('response ', res);
+          // } catch (error) {
+          //   console.error('Error:', error);
+          // }
 
 
         })
         .catch(err => {
           console.log(err.message);
+          sendReferralHelper(studyInstanceUid, referralUrl);
         });
 
 
-    } catch (error) {
+    } 
+    catch (error) {
       console.error('Error:', error);
+      sendReferralHelper(studyInstanceUid, referralUrl);
     }
   }
   const handleResetInform = () => {

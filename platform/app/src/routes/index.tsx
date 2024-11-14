@@ -21,6 +21,8 @@ import GenerateReport from '../components/ReportTemplates/GenerateReport';
 import DoctorReferralsList from '../components/DoctorReferrals/DoctorReferralsList';
 import CreateDoctorReferral from '../components/DoctorReferrals/CreateDoctorReferral';
 import GenerateReferral from '../components/DoctorReferrals/GenerateReferral';
+import SubscriptionTypes from '../components/Subscriptions/SubscriptionTypes';
+import LabsList from '../components/Labs/LabsList';
 
 const NotFoundServer = ({
   message = 'Unable to query for studies at this time. Check your data source configuration or network connection',
@@ -119,6 +121,15 @@ const bakedInRoutes = [
     path: '/doctor-referrals',
     children: DoctorReferralsList,
   },
+  {
+    path: '/subscription-types',
+    children: SubscriptionTypes,
+  },
+  {
+    path: '/labs',
+    children: LabsList,
+  },
+  
 ];
 
 // NOT FOUND (404)

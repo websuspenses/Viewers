@@ -340,7 +340,7 @@ const CreateTemplate = () => {
     } else {
       const url = `${nodeAppHost}/update_template`;
       let authHeaders = localStorage.getItem('auth-t');
-      const data = { modality: selectedOption, template_content: value };
+      const data = { modality: selectedOption, template_content: value, sub_modality: subModality};
       const options = {
         method: 'POST',
         headers: {

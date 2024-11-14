@@ -988,6 +988,20 @@ function WorkList({
       },
     },
     {
+      title: t('Header:Subscriptions'),
+      icon: 'templates',
+      onClick: () => {
+        navigate(`/subscription-types`);
+      },
+    },
+    {
+      title: t('Header:Labs'),
+      icon: 'templates',
+      onClick: () => {
+        navigate(`/labs`);
+      },
+    },
+    {
       title: t('Header:Dark/Light Mode'),
       icon: isActive ? "darkModeIcon" : 'lightModeIcon',
       onClick: () => {
