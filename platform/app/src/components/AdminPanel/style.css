@@ -657,7 +657,7 @@ body.bg-black-dashboard {
   
   .user-view p span {
 	display: inline-block;
-	min-width: 130px;
+	min-width: 150px;
   }
   
   .user-view p span:first-child {

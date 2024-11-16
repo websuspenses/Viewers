@@ -10,12 +10,25 @@ import { Header } from '@ohif/ui';
 import ConfirmationDialog from '../AdminPanel/Users/ConfirmationDialog';
 import { useNavigate } from 'react-router-dom';
 
+import CreateFetaureSubPermissions from './CreateFetaureSubPermissions';
+
 function ReportTemplatesList() {
   const navigate = useNavigate();
   const [isActive, setIsActive] = useState(false);
   const [subscriptionsData, setSubscriptionsData] = useState([]);
   const [subscriptionsFeturesData, setSubscriptionsFeaturesData] = useState([]);
   const [showconfirm, setShowConfirm] = useState(false);
+
+  const [showLabEditConfirm, setShowLabEditConfirm] = useState(false);
+  const [editLabItem, setEachLabItem] = useState('');
+  const [referralLabPopup, setLabPopup] = useState(false);
+
+  const [showLabConfirm, setShowLabConfirm] = useState(false);
+
+
+
+
+
 
   const labId = 2;
   const nodeAppHost = '/teleapp';
@@ -98,15 +111,34 @@ function ReportTemplatesList() {
   const handleDeleteTemplate = () => {
     setShowConfirm(true);
   };
-  const handleCloseConfirmation = () => {
-    setShowConfirm(false);
-  };
+  // const handleCloseConfirmation = () => {
+  //   setShowConfirm(false);
+  // };
   const handleRedirectPage = () => {
     navigate('/workList');
   }
 
-  const handleUpdateFeatureSubscription = () => {
+  const handleCloseConfirmation = () => {
+    if (showLabConfirm) {
+      setShowLabConfirm(false);
+    } else if (referralLabPopup) {
+      setLabPopup(false);
+    } else {
+      setShowLabEditConfirm(false);
+    }
+  };
 
+  const handleUpdateFeatureSubscription = (labSubId) => {
+
+    let newSubscriptionsArray = [];
+    for (const [key, value] of Object.entries(subscriptionsFeturesData)) {
+      console.log(`${key}: ${value}`);
+      newSubscriptionsArray.push(value);
+    }
+    const editSubData = newSubscriptionsArray.find(item => item.feature_id == labSubId);
+    console.log("editSubData 123 ", editSubData);
+    setEachLabItem(editSubData);
+    setShowLabEditConfirm(true);
   }
   return (
     <div>
@@ -147,40 +179,7 @@ function ReportTemplatesList() {
                 <strong className={isActive ? 'templateTitleCls' : 'templateTitleCls_dark'}>
                   {item.subscription_type_name}
                 </strong>
-                {/* <p className='sub-modality'>{item.modality}</p> */}
               </div>
-
-
-              {/* <div className="reports-justify-between items-center sm:flex">
-                <Stack
-                  direction="row"
-                  spacing={2}
-                >
-                  <Link
-                    to={`/create-template/${item.modality}/${item.template_id}`}
-                    style={{ textDecoration: 'none' }}
-                  >
-                    <Button
-                      variant="contained"
-                      color="success"
-                      className="createUserCls"
-                      startIcon={<EditIcon />}
-                    //onClick={() => setShowEditMode(true)}
-                    >
-                      Edit
-                    </Button>
-                  </Link>
-                  <Button
-                    variant="contained"
-                    color="success"
-                    className="createUserCls"
-                    startIcon={<DeleteIcon />}
-                    onClick={handleDeleteTemplate}
-                  >
-                    Delete
-                  </Button>
-                </Stack>
-              </div> */}
             </li>
           ))}
         </ul>
@@ -189,20 +188,20 @@ function ReportTemplatesList() {
 
       <div className="reportcontainer permissionsSection">
         <div className="createBtnCls Permissions">
-          <h2 className="subPermissions">Permissions</h2>
-          {/* <Link
-            to="/create-template"
-            style={{ textDecoration: 'none' }}
-          >
+          <h2 className="subPermissions">Features & Permissions</h2>
+        </div>
+        <div className="createBtnCls">
+          <Link style={{ textDecoration: 'none', width: '20%', textAlign: 'right' }}>
+
             <Button
               variant="contained"
               color="success"
               className="createUserCls"
-            //</div>onClick={() => setShowAddMode(true)
+              onClick={() => setLabPopup(true)}
             >
               Create Subscription
             </Button>
-          </Link> */}
+          </Link>
         </div>
         <table className="templatesList featuresSubscriptions">
           <tr className={isActive ? 'templatesList_dark' : 'templates-item'}><th></th><th>Basic</th><th>Standard</th><th>Premium</th><th></th></tr>
@@ -213,57 +212,48 @@ function ReportTemplatesList() {
               <td className="subscriptionInfo">{subscriptionsFeturesData[item].feature_is_available_for__standard ? "Yes" : "No"}</td>
               <td className="subscriptionInfo">{subscriptionsFeturesData[item].feature_is_available_for__premium ? "Yes" : "No"}</td>
               <td><Button
-              className="updateSuscriptionButton"
+                className="updateSuscriptionButton"
                 startIcon={<EditIcon />}
-                onClick={handleUpdateFeatureSubscription}
+                onClick={() => handleUpdateFeatureSubscription(subscriptionsFeturesData[item].feature_id)}
               ></Button></td>
             </tr>
           ))}
         </table>
-        {/* <ul className="templatesList">
-          {Object.keys(subscriptionsFeturesData).map((item) => (
-            <li
-              key={subscriptionsFeturesData[item].feature_name}
-              className={isActive ? 'templatesList_dark' : 'templates-item'}
-            >
-              <div className='modality-area'>
-                <strong className={isActive ? 'templateTitleCls' : 'templateTitleCls_dark'}>
-                  {subscriptionsFeturesData[item].feature_name}
-                </strong>
-                <table>
-                  <th></th>
-                </table>
-              </div>
 
-
-            </li>
-          ))}
-        </ul> */}
-        {/* <ul>
-                {Object.keys(subscriptionsFeturesData).map((key) => {
-                    const feature = subscriptionsFeturesData[key];
-                    return (
-                        <li key={feature.feature_id}>
-                            <h2>{feature.feature_name}</h2>
-                            <p><strong>Description:</strong> {feature.feature_description || "No description available"}</p>
-                            <p><strong>Available for Basic:</strong> {feature.feature_is_available_for__basic ? "Yes" : "No"}</p>
-                            <p><strong>Available for Standard:</strong> {feature.feature_is_available_for__standard ? "Yes" : "No"}</p>
-                            <p><strong>Available for Premium:</strong> {feature.feature_is_available_for__premium ? "Yes" : "No"}</p>
-                            <p><strong>Created Date:</strong> {feature.feature_access_created_date}</p>
-                        </li>
-                    );
-                })}
-            </ul> */}
       </div>
 
-
+      {showLabEditConfirm && (
+        <CreateFetaureSubPermissions
+          open={showLabEditConfirm}
+          handleClose={handleCloseConfirmation}
+          screen="EditScreen"
+          editData={editLabItem}
+        />
+      )}
       {showconfirm && (
+        <ConfirmationDialog
+          open={showconfirm}
+          handleClose={handleCloseConfirmation}
+          screen="DoctorReferralsList"
+        />
+      )}
+      {referralLabPopup && (
+        <CreateFetaureSubPermissions
+          open={referralLabPopup}
+          handleClose={handleCloseConfirmation}
+          screen="CreateScreen"
+          setLabPopup={setLabPopup}
+        />
+      )}
+
+
+      {/* {showconfirm && (
         <ConfirmationDialog
           open={showconfirm}
           handleClose={handleCloseConfirmation}
           screen="ReportTemplatesList"
         />
-      )}
+      )} */}
     </div>
   );
 }
