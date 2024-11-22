@@ -51,8 +51,8 @@ function CreateFetaureSubPermissions(props) {
     feature_is_available_for__standard: false,
     feature_is_available_for__premium: false,
     feature_description: '',
-    feature_access_updated_by:''
-    
+    feature_access_updated_by: ''
+
 
   });
 
@@ -111,7 +111,7 @@ function CreateFetaureSubPermissions(props) {
 
   useEffect(() => {
     console.log("editData ", editData);
-    if (editData) { 
+    if (editData) {
       setInitialValues({
         ...initialValues,
         feature_id: editData.feature_id,
@@ -122,6 +122,9 @@ function CreateFetaureSubPermissions(props) {
         feature_is_available_for__premium: editData.feature_is_available_for__premium,
         feature_description: editData.feature_description
       });
+      setIsChecked(editData.feature_is_available_for__basic);
+      setIsChecked1(editData.feature_is_available_for__standard);
+      setIsChecked2(editData.feature_is_available_for__premium);
     }
   }, [editData]);
 
@@ -129,7 +132,7 @@ function CreateFetaureSubPermissions(props) {
     event.preventDefault();
     if (
       initialValues.feature_name !== '' &&
-      initialValues.feature_unique_identifier !== '' 
+      initialValues.feature_unique_identifier !== ''
     ) {
 
       let authHeaders = localStorage.getItem('auth-t');
@@ -143,9 +146,9 @@ function CreateFetaureSubPermissions(props) {
         feature_is_available_for__standard: initialValues.feature_is_available_for__standard,
         feature_is_available_for__premium: initialValues.feature_is_available_for__premium,
         feature_description: initialValues.feature_description,
-        feature_access_updated_by:2,
-        feature_id:initialValues.feature_id
-        
+        feature_access_updated_by: 2,
+        feature_id: initialValues.feature_id
+
       };
       if (initialValues.feature_id !== '') {
         apitype = 'update';
@@ -175,8 +178,8 @@ function CreateFetaureSubPermissions(props) {
                 feature_is_available_for__standard: false,
                 feature_is_available_for__premium: false,
                 feature_description: '',
-                feature_access_updated_by:'',
-                feature_id:''
+                feature_access_updated_by: '',
+                feature_id: ''
               });
 
               if (apitype == 'update') {
@@ -200,25 +203,25 @@ function CreateFetaureSubPermissions(props) {
     }
   };
 
-  
+
   const onHandleChangeBasic = event => {
-    console.log('dropdown value', event.target.name, event.target.value, "checked ",  event.target.checked);
-    setIsChecked(event.target.checked); 
-    initialValues.feature_is_available_for__basic = event.target.value;
+    console.log('dropdown value', event.target.name, event.target.value, "checked ", event.target.checked);
+    setIsChecked(event.target.checked);
+    initialValues.feature_is_available_for__basic = event.target.checked;
   };
   const onHandleChangeStd = event => {
     console.log('dropdown value', event.target.name, event.target.value);
 
     // setSubValue(event.target.value);
-    setIsChecked1(event.target.checked); 
-    // initialValues.feature_is_available_for__standard = event.target.value;
+    setIsChecked1(event.target.checked);
+    initialValues.feature_is_available_for__standard = event.target.checked;
   };
   const onHandleChangePremium = event => {
     console.log('dropdown value', event.target.name, event.target.value);
 
     // setStatusValue(event.target.value);
-    setIsChecked2(event.target.checked); 
-    // initialValues.feature_is_available_for__premium = event.target.value;
+    setIsChecked2(event.target.checked);
+    initialValues.feature_is_available_for__premium = event.target.checked;
   };
 
   const handleResetForm = () => {
@@ -230,7 +233,7 @@ function CreateFetaureSubPermissions(props) {
       feature_is_available_for__standard: false,
       feature_is_available_for__premium: false,
       feature_description: '',
-      feature_id:''
+      feature_id: ''
     });
   };
 
@@ -283,7 +286,7 @@ function CreateFetaureSubPermissions(props) {
                     placeholder="Ex: fature_name"
                     name="feature_unique_identifier"
                     value={initialValues.feature_unique_identifier}
-                    disabled = {initialValues.feature_unique_identifier}
+                    disabled={initialValues.feature_unique_identifier}
                     onChange={handelChangeInput}
                   />
                 </p>
@@ -303,23 +306,26 @@ function CreateFetaureSubPermissions(props) {
               </div>
               <div className="col-sm-12 col-md-6">
                 <p className='doctor-name-p'>
-                  <span>Available for Basic?</span>
+                  <span className='CheckName'>Available for Basic? {isChecked}</span>
+                  {/* <p>The checkbox is {isChecked ? "checked" : "unchecked"}.</p> */}
                   <input
                     type="checkbox"
                     name="feature_is_available_for__basic"
+                    className="form-control chkBox"
                     onChange={onHandleChangeBasic}
                     checked={isChecked}
                     value={initialValues.feature_is_available_for__basic}
                   />
-                  
+
                 </p>
               </div>
               <div className="col-sm-12 col-md-6">
                 <p className='doctor-name-p'>
-                  <span>Available for Standard? </span>
+                  <span className='CheckName'>Available for Standard? {isChecked1}</span>
                   <input
                     type="checkbox"
                     name="feature_is_available_for__standard"
+                    className="form-control chkBox"
                     onChange={onHandleChangeStd}
                     checked={isChecked1}
                     value={initialValues.feature_is_available_for__standard}
@@ -328,10 +334,11 @@ function CreateFetaureSubPermissions(props) {
               </div>
               <div className="col-sm-12 col-md-6">
                 <p className='doctor-name-p'>
-                  <span>Available for Premium? </span>
+                  <span className='CheckName'>Available for Premium? {isChecked2}</span>
                   <input
                     type="checkbox"
                     name="feature_is_available_for__premium"
+                    className="form-control chkBox"
                     onChange={onHandleChangePremium}
                     checked={isChecked2}
                     value={initialValues.feature_is_available_for__premium}
