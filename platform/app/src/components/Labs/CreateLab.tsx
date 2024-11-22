@@ -34,7 +34,8 @@ function CreateLab(props) {
     lab_city: '',
     lab_state: '',
     lab_zipcode: '',
-    lab_phone:''
+    lab_phone:'',
+    lab_updated_by:''
   });
   console.log("setUpdateError function...", sendUpdateMessage);
 
@@ -57,7 +58,8 @@ function CreateLab(props) {
         lab_city: editData.lab_city,
         lab_state: editData.lab_state,
         lab_zipcode: editData.lab_zipcode,
-        lab_phone:editData.lab_phone
+        lab_phone:editData.lab_phone,
+        lab_updated_by:'2'
       });
     }
   }, [editData]);
@@ -82,7 +84,8 @@ function CreateLab(props) {
         lab_city: initialValues.lab_city,
         lab_state: initialValues.lab_state,
         lab_zipcode: initialValues.lab_zipcode,
-        lab_phone:initialValues.lab_phone
+        lab_phone:initialValues.lab_phone,
+        lab_updated_by:initialValues.lab_updated_by
       };
       if (initialValues.lab_id !== '') {
         apitype = 'update';

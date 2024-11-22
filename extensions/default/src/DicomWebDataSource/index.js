@@ -158,31 +158,32 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
             .then(response => response.json())
             .then(result => {
               console.log('result ', result);
-              if(result.StudyID){
+              if (result.StudyID) {
                 let url = `${dicomWebConfig.wadoRoot}/studies/${studyInstanceUid}/update_status`;
-                  const statusBody = {"status":"Ready to Refer"};
-                  const options = {
-                    method: 'POST',
-                    headers: qidoDicomWebClient.headers,
-                    body: JSON.stringify(statusBody),
-                  };
-              
-                  try {
-                    const res = fetch(url, options);
-                    if (res) {
-                      //navigate('/workList');
-                      console.log('Status updated Save to server', res);
-                    }
-                    console.log('response ', res);
-                  } catch (error) {
-                    console.error('Error:', error);
+                const statusBody = { "status": "Ready to Refer" };
+                const options = {
+                  method: 'POST',
+                  headers: qidoDicomWebClient.headers,
+                  body: JSON.stringify(statusBody),
+                };
+
+                try {
+                  const res = fetch(url, options);
+                  if (res) {
+                    //navigate('/workList');
+                    console.log('Status updated Save to server', res);
                   }
+                  console.log('response ', res);
+                } catch (error) {
+                  console.error('Error:', error);
+                }
               }
             })
             .catch(err => {
               console.log(err.message);
             });
         },
+
       },
       series: {
         // mapParams: mapParams.bind(),
@@ -592,10 +593,10 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
 
   if (dicomWebConfig.supportsReject) {
     const authHeaders = userAuthenticationService.getAuthorizationHeader();
-        if (authHeaders && authHeaders.Authorization) {
-          implementation.reject = dcm4cheeReject(authHeaders.Authorization, dicomWebConfig.wadoRoot);
-        }
-    
+    if (authHeaders && authHeaders.Authorization) {
+      implementation.reject = dcm4cheeReject(authHeaders.Authorization, dicomWebConfig.wadoRoot);
+    }
+
   }
 
   return IWebApiDataSource.create(implementation);

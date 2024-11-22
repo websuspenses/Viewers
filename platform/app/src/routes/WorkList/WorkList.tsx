@@ -64,6 +64,7 @@ function WorkList({
 
   const items1 = JSON.parse(localStorage.getItem('active_dark'));
   const hostNameurl = '/pacs/dicom-web/';
+  const keyCloakhost = '/keycloak';
   const iframeBaseUrl = window.location.origin;
 
   const { hotkeyDefinitions, hotkeyDefaults } = hotkeysManager;
@@ -96,6 +97,9 @@ function WorkList({
   const [loadStudentID, setloadStudentID] = useState("");
   const [modalityFlag, setModalityFlag] = useState("");
   const [mDropDowns, setMDropDowns] = useState("");
+
+  const [rolesInfo, setRolesData] = useState(); // State to store fetched data
+
 
   /*
    * The default sort value keep the filters synchronized with runtime conditional sorting
@@ -314,6 +318,55 @@ function WorkList({
     }
   }, []);
 
+
+
+
+  // useEffect(() => {
+  //   const result = dataSource.query.studies.getUserRoles();
+  //   console.log("UserRoles result ", result);
+  // }, []);
+
+
+
+  useEffect(() => {
+    let isMounted = true;
+    try {
+      const authHeaders = localStorage.getItem('auth-t');
+      let url = `${keyCloakhost}/realms/orthanc/protocol/openid-connect/userinfo`;
+      console.log("URL ", url);
+
+
+      const options = {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeaders
+        }
+      };
+
+
+       fetch(url, options)
+        .then(response => response.json())
+        .then(result => {
+          console.log('user Roles----> ', result);
+          setRolesData(result);
+
+          console.log('user rolesInfo ----> ', rolesInfo);
+        })
+        .catch(err => {
+          console.log(err.message);
+        });
+
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+
+  }, []);
+
+
+
+
+
   function handleChangeSwitch() {
     localStorage.setItem('active_dark', JSON.stringify(!isActive));
     setIsActive(!isActive);
@@ -446,6 +499,14 @@ function WorkList({
       .then(response => response.json())
       .then(data => {
         console.log('IsEmergency Info ', data);
+
+
+
+        const result = dataSource.query.studies.getUserRoles();
+        console.log("UserRoles111 result ", result);
+
+
+
         let text = "Do you want to make this study as Emergency!!!";
         let formData = { "data": 'true' };
         if (data.isEmergency !== '') {
@@ -704,6 +765,7 @@ function WorkList({
                   </Menu>
                 }
               </>
+              {JSON.stringify(rolesInfo && rolesInfo.realm_access.roles.includes('save_to_server'))}
               {hideOption && (inCloud !== "Yes") && <Link title="Save to Server" to="">
                 <svg
                   onClick={() => saveToServer(studyInstanceUid)}
