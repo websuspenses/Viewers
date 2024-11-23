@@ -7,7 +7,13 @@ import LegacyButtonGroup from '../LegacyButtonGroup';
 import Typography from '../Typography';
 import Select from '../Select';
 
-const StudyListPagination = ({ onChangePage, currentPage, perPage, onChangePerPage, isActive
+const StudyListPagination = ({
+  onChangePage,
+  currentPage,
+  perPage,
+  onChangePerPage,
+  numOfStudies,
+  isActive,
 }) => {
   const { t } = useTranslation('StudyList');
 
@@ -17,18 +23,19 @@ const StudyListPagination = ({ onChangePage, currentPage, perPage, onChangePerPa
   };
 
   const ranges = [
+    { value: '10', label: '10' },
     { value: '25', label: '25' },
     { value: '50', label: '50' },
     { value: '100', label: '100' },
   ];
-  const [selectedRange, setSelectedRange] = useState(ranges.find(r => r.value === perPage));
+  const [selectedRange, setSelectedRange] = useState(ranges.find(r => Number(r.value) === perPage));
   const onSelectedRange = selectedRange => {
     setSelectedRange(selectedRange);
     onChangePerPage(selectedRange.value);
   };
 
   return (
-    <div className={isActive ? "bg-black-on py-10" : "bg-black py-10"}>
+    <div className={isActive ? 'bg-black-on py-10' : 'bg-black py-10'}>
       <div className="container relative m-auto px-8">
         <div className="flex justify-between">
           <div className="flex items-center">
@@ -44,11 +51,15 @@ const StudyListPagination = ({ onChangePage, currentPage, perPage, onChangePerPa
               hideSelectedOptions={true}
               onChange={onSelectedRange}
             />
-            <Typography className={isActive ? "resultsPerPage_dark" : "text-base opacity-60"}>{t('ResultsPerPage')}</Typography>
+            <Typography className={isActive ? 'resultsPerPage_dark' : 'text-base opacity-60'}>
+              {t('ResultsPerPage')}
+            </Typography>
           </div>
           <div className="">
             <div className="flex items-center">
-              <Typography className={isActive ? "resultsPerPage_dark" : "mr-4 text-base opacity-60"}>
+              <Typography
+                className={isActive ? 'resultsPerPage_dark' : 'mr-4 text-base opacity-60'}
+              >
                 {t('Page')} {currentPage}
               </Typography>
               {/* TODO Revisit design of LegacyButtonGroup later - for now use LegacyButton for its children.*/}
@@ -58,8 +69,9 @@ const StudyListPagination = ({ onChangePage, currentPage, perPage, onChangePerPa
                   className="px-2 py-2 text-base"
                   //color="translucent"
                   //border="primary"
-                  color={isActive ? "primaryActive_dark_color" : "translucent"}
-                  border={isActive ? "primaryActive_dark_border" : "primary"}
+                  color={isActive ? 'primaryActive_dark_color' : 'translucent'}
+                  border={isActive ? 'primaryActive_dark_border' : 'primary'}
+                  disabled={currentPage === 1}
                   variant="outlined"
                   onClick={() => navigateToPage(1)}
                 >
@@ -70,10 +82,11 @@ const StudyListPagination = ({ onChangePage, currentPage, perPage, onChangePerPa
                   className="py-2 px-2 text-base"
                   // color="translucent"
                   // border="primary"
-                  color={isActive ? "primaryActive_dark_color" : "translucent"}
-                  border={isActive ? "primaryActive_dark_border" : "primary"}
+                  color={isActive ? 'primaryActive_dark_color' : 'translucent'}
+                  border={isActive ? 'primaryActive_dark_border' : 'primary'}
                   variant="outlined"
                   onClick={() => navigateToPage(currentPage - 1)}
+                  disabled={currentPage === 1}
                 >
                   {t('Previous')}
                 </LegacyButton>
@@ -82,10 +95,11 @@ const StudyListPagination = ({ onChangePage, currentPage, perPage, onChangePerPa
                   className="py-2 px-4 text-base"
                   // color="translucent"
                   // border="primary"
-                  color={isActive ? "primaryActive_dark_color" : "translucent"}
-                  border={isActive ? "primaryActive_dark_border" : "primary"}
+                  color={isActive ? 'primaryActive_dark_color' : 'translucent'}
+                  border={isActive ? 'primaryActive_dark_border' : 'primary'}
                   variant="outlined"
                   onClick={() => navigateToPage(currentPage + 1)}
+                  disabled={numOfStudies === 0 || numOfStudies < perPage}
                 >
                   {t('Next')}
                 </LegacyButton>

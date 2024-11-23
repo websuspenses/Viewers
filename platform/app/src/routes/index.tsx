@@ -86,14 +86,6 @@ const bakedInRoutes = [
     children: Local.bind(null, { modePath: 'viewer/dicomlocal' }),
   },
   {
-    path: '/',
-    children: WorkList,
-  },
-  {
-    path: '/workList',
-    children: WorkList,
-  },
-  {
     path: '/dashboard',
     children: DashBoard,
   },
@@ -129,7 +121,6 @@ const bakedInRoutes = [
     path: '/labs',
     children: LabsList,
   },
-  
 ];
 
 // NOT FOUND (404)

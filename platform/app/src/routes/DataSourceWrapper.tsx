@@ -255,7 +255,7 @@ function _getQueryFilterValues(query, queryLimit) {
     sortBy: query.get('sortBy'),
     sortDirection: query.get('sortDirection'),
     // Offset...
-    offset: Math.floor((pageNumber * resultsPerPage) / queryLimit) * (queryLimit - 1),
+    offset: (pageNumber - 1) * resultsPerPage,
     config: query.get('configUrl'),
   };
 

@@ -11,7 +11,7 @@ import IconButton from '../IconButton';
 import Dropdown from '../Dropdown';
 
 import { ToggleSwitch } from '@ohif/ui';
-let windowWidth = window.innerWidth;
+const windowWidth = window.innerWidth;
 function Header({
   children,
   menuOptions,
@@ -32,7 +32,7 @@ function Header({
   // TODO: this should be passed in as a prop instead and the react-router-dom
   // dependency should be dropped
 
-  let windowWidth = window.innerWidth;
+  const windowWidth = window.innerWidth;
   let isMobile = false;
   if (windowWidth < 768) {
     isMobile = true;
@@ -50,7 +50,7 @@ function Header({
   // const handleRedirectPage = () => {
   //   alert(2222)
   // }
-  console.log('handleRedirectPage', handleRedirectPage)
+  // console.log('handleRedirectPage', handleRedirectPage)
   return (
     <NavBar
       className="justify-between border-b-4 border-black"
@@ -61,16 +61,16 @@ function Header({
       <div
         //className="flex flex-1 justify-between"
         className={
-          isActive ? 'navbarAlignCls flex flex-1 header-flex justify-between' : 'flex flex-1 header-flex justify-between'
+          isActive
+            ? 'navbarAlignCls header-flex flex flex-1 justify-between'
+            : 'header-flex flex flex-1 justify-between'
         }
       >
-        <div className="flex items-center mobile-logo">
+        <div className="mobile-logo flex items-center">
           {/* // TODO: Should preserve filter/sort
               // Either injected service? Or context (like react router's `useLocation`?) */}
           <div
-            className={classNames(
-              'mr-3 inline-flex items-center cursor-pointer'
-            )}
+            className={classNames('mr-3 inline-flex cursor-pointer items-center')}
             onClick={onClickReturn}
             data-cy="return-to-work-list"
           >
@@ -83,12 +83,11 @@ function Header({
               </a>
             ) */}
 
-
             {!isMobile ? (
-
               // <Link title="Work List" to={`/workList`}>
-              <a data-id={handleRedirectPage} href="javascript:void(0)"
-
+              <a
+                data-id={handleRedirectPage}
+                href="javascript:void(0)"
                 // onClick={(e) => {
                 //   e.preventDefault();
                 //   navigate(-1);
@@ -101,10 +100,11 @@ function Header({
                   className="text-primary-active w-8"
                 />
               </a>
+            ) : (
               // </Link>
 
-            ) : ('')
-            }
+              ''
+            )}
             <div className="ml-4">
               {/* {WhiteLabeling?.createLogoComponentFn?.(React, props) || } */}
               {isActive ? (
@@ -112,7 +112,7 @@ function Header({
                   width="250"
                   height="140"
                   // src="./ohif-logo.svg"
-                  src='/ohif-logo.svg'
+                  src="/ohif-logo.svg"
                   id="imgsource"
                 />
               ) : (
@@ -121,28 +121,28 @@ function Header({
                   height="140"
                   id="imgsource_dark"
                   // src="./ohif-whitebg-logo.svg"
-                  src='/ohif-whitebg-logo.svg'
+                  src="/ohif-whitebg-logo.svg"
                 />
               )}
             </div>
           </div>
         </div>
-        <div className="flex items-center mobile-tools">{children}</div>
+        <div className="mobile-tools flex items-center">{children}</div>
         {/* <div ><ToggleSwitch handleChange={handleChange} IsActive={isActive}  /></div> */}
         <div className="flex items-center">
           {/* <span className="text-common-light mr-3 text-lg">{t('INVESTIGATIONAL USE ONLY 111')}</span> */}
           <span className="text-common-light mr-3 text-lg">
             {t('')}
             {screen === 'WorkList' ||
-              screen === 'ReportTemplateList' ||
-              screen === 'GenerateReport' ? (
+            screen === 'ReportTemplateList' ||
+            screen === 'GenerateReport' ? (
               <div>
                 {/* <ToggleSwitch
                   handleChange={handleChange}
                   IsActive={isActive}
                   screen={screen}
                 /> */}
-                <div className='secondary-logo'>
+                <div className="secondary-logo">
                   <img src="/bhashyam-infotech-logo.png" />
                 </div>
               </div>

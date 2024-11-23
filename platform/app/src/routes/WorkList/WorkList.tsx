@@ -45,7 +45,6 @@ const { availableLanguages, defaultLanguage, currentLanguage } = i18n;
 const seriesInStudiesMap = new Map();
 //var defaultLoad = true;
 
-
 /**
  * TODO:
  * - debounce `setFilterValues` (150ms?)
@@ -61,7 +60,6 @@ function WorkList({
   servicesManager,
   ...props
 }) {
-
   const items1 = JSON.parse(localStorage.getItem('active_dark'));
   const hostNameurl = '/pacs/dicom-web/';
   const keyCloakhost = '/keycloak';
@@ -92,14 +90,13 @@ function WorkList({
   const [iframeImageflag, setIframeImageflag] = useState<string>('disableIframeFlag');
   const [iframeWindowflag, setIframeWindowflag] = useState<string>('iframeDisable');
   const [iframeBlockFlag, setIframeBlockFlag] = useState(true);
-  const [stuID, setStuID] = useState("");
+  const [stuID, setStuID] = useState('');
   const [defaultLoad, setDefaultLoad] = useState(true);
-  const [loadStudentID, setloadStudentID] = useState("");
-  const [modalityFlag, setModalityFlag] = useState("");
-  const [mDropDowns, setMDropDowns] = useState("");
+  const [loadStudentID, setloadStudentID] = useState('');
+  const [modalityFlag, setModalityFlag] = useState('');
+  const [mDropDowns, setMDropDowns] = useState('');
 
   const [rolesInfo, setRolesData] = useState(); // State to store fetched data
-
 
   /*
    * The default sort value keep the filters synchronized with runtime conditional sorting
@@ -113,7 +110,7 @@ function WorkList({
     shouldUseDefaultSort && canSort ? { sortBy: 'studyDate', sortDirection: 'ascending' } : {};
   const sortedStudies = studies;
   const hostname = window.location.hostname;
-  let hideOption = hostname == 'ciaiteleradiology.com' ? false : true;
+  const hideOption = hostname == 'ciaiteleradiology.com' ? false : true;
   if (canSort) {
     studies.sort((s1, s2) => {
       if (shouldUseDefaultSort) {
@@ -149,7 +146,7 @@ function WorkList({
     setModalityFlag(mdFlag);
     localStorage.setItem('sid', sid);
     localStorage.setItem('mdFlag', mdFlag);
-    localStorage.setItem('ViewerLayoutFlag', "on");
+    localStorage.setItem('ViewerLayoutFlag', 'on');
   };
   const handleClose = () => {
     setAnchorEl(null);
@@ -167,26 +164,28 @@ function WorkList({
       .then(response => response.json())
       .then(actualData => {
         if (actualData.data.length > 1) {
-          const newDa = actualData.data && actualData.data?.map((data, key) => {
-            return (
-              <>
-                <MenuItem key={key} id={data.sub_modality}
-                  onClick={() => {
-                    const bsurl = `/generate-report/${sid}/${data.template_id}/m`;
-                    navigate(bsurl);
-                  }}
-                >
-                  {data.sub_modality}
-                </MenuItem>
-              </>
-            )
-          }
-          )
+          const newDa =
+            actualData.data &&
+            actualData.data?.map((data, key) => {
+              return (
+                <>
+                  <MenuItem
+                    key={key}
+                    id={data.sub_modality}
+                    onClick={() => {
+                      const bsurl = `/generate-report/${sid}/${data.template_id}/m`;
+                      navigate(bsurl);
+                    }}
+                  >
+                    {data.sub_modality}
+                  </MenuItem>
+                </>
+              );
+            });
 
           setMDropDowns(newDa);
-
         } else {
-          setMDropDowns("");
+          setMDropDowns('');
           const bsurl = `/generate-report/${sid}/${md}/s`;
           navigate(bsurl);
         }
@@ -194,20 +193,22 @@ function WorkList({
       .catch(err => {
         console.log(err.message);
       });
-
-  }
-
-
+  };
 
   const [anchorElNew, setAnchorElNew] = React.useState<null | HTMLElement>(null);
   const openNew = Boolean(anchorElNew);
-  const handleClickNew = (event: React.MouseEvent<HTMLButtonElement>, sid: any, mdFlag: any, isReportGenerated) => {
+  const handleClickNew = (
+    event: React.MouseEvent<HTMLButtonElement>,
+    sid: any,
+    mdFlag: any,
+    isReportGenerated
+  ) => {
     event.preventDefault();
     setStuID(sid);
     setAnchorElNew(event.currentTarget);
     //setModalityFlag(mdFlag);
 
-    var myArrayFlg = mdFlag.replace(/\\/g, "-");
+    const myArrayFlg = mdFlag.replace(/\\/g, '-');
     //var myArrayFlg = 'MR\SR'.replace(/\\/g, "-");
     let mArrayFlg = myArrayFlg;
     if (myArrayFlg.length > 2) {
@@ -219,39 +220,37 @@ function WorkList({
     //localStorage.setItem('mdFlag', mdFlag);
     localStorage.setItem('mdFlag', mArrayFlg);
     setModalityFlag(mArrayFlg);
-    console.log(" isReportGenerated ----> ", isReportGenerated);
+    console.log(' isReportGenerated ----> ', isReportGenerated);
     if (isReportGenerated !== 'true') {
       generateDynamicDropdowns(sid, mArrayFlg);
     } else {
-      setMDropDowns("");
+      setMDropDowns('');
       const bsurl = `/generate-report/${sid}/${mArrayFlg}/s`;
       navigate(bsurl);
     }
-
-
   };
   const handleCloseNew = () => {
     setAnchorElNew(null);
   };
 
   const handleDocModal = () => {
-    const bsurl = '/viewer?StudyInstanceUIDs=' + stuID
+    const bsurl = '/viewer?StudyInstanceUIDs=' + stuID;
     navigate(bsurl);
   };
   const handleSegmentationModal = () => {
-    const bsurl = '/segmentation?StudyInstanceUIDs=' + stuID
+    const bsurl = '/segmentation?StudyInstanceUIDs=' + stuID;
     navigate(bsurl);
   };
   const handleTMTVModal = () => {
-    const bsurl = '/tmtv?StudyInstanceUIDs=' + stuID
+    const bsurl = '/tmtv?StudyInstanceUIDs=' + stuID;
     navigate(bsurl);
   };
   const handleMicroscopyModal = () => {
-    const bsurl = '/microscopy?StudyInstanceUIDs=' + stuID
+    const bsurl = '/microscopy?StudyInstanceUIDs=' + stuID;
     navigate(bsurl);
   };
   const handleDynamicVolumeModal = () => {
-    const bsurl = '/dynamic-volume?StudyInstanceUIDs=' + stuID
+    const bsurl = '/dynamic-volume?StudyInstanceUIDs=' + stuID;
     navigate(bsurl);
   };
 
@@ -264,6 +263,7 @@ function WorkList({
   }, [isLoadingData, expandedRows]);
 
   const setFilterValues = val => {
+    console.log('setFilterValues', val);
     if (filterValues.pageNumber === val.pageNumber) {
       val.pageNumber = 1;
     }
@@ -273,14 +273,16 @@ function WorkList({
 
   const onPageNumberChange = newPageNumber => {
     const oldPageNumber = filterValues.pageNumber;
-    const rollingPageNumberMod = Math.floor(101 / filterValues.resultsPerPage);
-    const rollingPageNumber = oldPageNumber % rollingPageNumberMod;
-    const isNextPage = newPageNumber > oldPageNumber;
-    const hasNextPage = Math.max(rollingPageNumber, 1) * resultsPerPage < numOfStudies;
-
-    if (isNextPage && !hasNextPage) {
+    // const rollingPageNumberMod = Math.floor(101 / filterValues.resultsPerPage);
+    // const rollingPageNumber = oldPageNumber % rollingPageNumberMod;
+    // const isNextPage = newPageNumber > oldPageNumber;
+    // const hasNextPage = Math.max(rollingPageNumber, 1) * resultsPerPage < numOfStudies;
+    if (oldPageNumber < newPageNumber && numOfStudies < filterValues.resultsPerPage) {
       return;
     }
+    // if (isNextPage && !hasNextPage) {
+    //   return;
+    // }
     setFilterValues({ ...filterValues, pageNumber: newPageNumber });
   };
 
@@ -318,34 +320,27 @@ function WorkList({
     }
   }, []);
 
-
-
-
   // useEffect(() => {
   //   const result = dataSource.query.studies.getUserRoles();
   //   console.log("UserRoles result ", result);
   // }, []);
 
-
-
   useEffect(() => {
-    let isMounted = true;
+    const isMounted = true;
     try {
       const authHeaders = localStorage.getItem('auth-t');
-      let url = `${keyCloakhost}/realms/orthanc/protocol/openid-connect/userinfo`;
-      console.log("URL ", url);
-
+      const url = `${keyCloakhost}/realms/orthanc/protocol/openid-connect/userinfo`;
+      console.log('URL ', url);
 
       const options = {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': authHeaders
-        }
+          Authorization: authHeaders,
+        },
       };
 
-
-       fetch(url, options)
+      fetch(url, options)
         .then(response => response.json())
         .then(result => {
           console.log('user Roles----> ', result);
@@ -356,16 +351,10 @@ function WorkList({
         .catch(err => {
           console.log(err.message);
         });
-
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error('Error fetching data:', error);
     }
-
   }, []);
-
-
-
-
 
   function handleChangeSwitch() {
     localStorage.setItem('active_dark', JSON.stringify(!isActive));
@@ -375,16 +364,15 @@ function WorkList({
     //alert(1234)
     navigate('/workList');
     //navigate(-1);
-  }
-
+  };
   const saveToServer = async studyId => {
     try {
-      let text = "Do you really want to Save this into Server...? It will take sometime to process your request";
+      const text =
+        'Do you really want to Save this into Server...? It will take sometime to process your request';
       if (confirm(text) == true) {
         const result = await dataSource.query.studies.sendToCloud(studyId);
-        console.log("saveToServer result ", result);
+        console.log('saveToServer result ', result);
       }
-
     } catch (ex) {
       // TODO: UI Notification Service
       console.warn(ex);
@@ -474,44 +462,37 @@ function WorkList({
     return !isEqual(filterValues, defaultFilterValues);
   };
 
-  const handleViewerImage = (studyInstanceUid) => {
+  const handleViewerImage = studyInstanceUid => {
     // setDefaultLoad(true)
     // setloadStudentID(stuID)
     // setIframeImageflag("enableIframeFlag");
     // setIframeWindowflag('iframeEnable');
     // setIframeBlockFlag(false);
     // handleClose();
-
-
-
-  }
+  };
 
   const handleEmergency = (event, studyInstanceUid) => {
-
-    let authHeaders = localStorage.getItem('auth-t');
+    console.log('handleEmergency', dataSource.query.headers.getHeaders());
+    const authHeaders = localStorage.getItem('auth-t');
 
     fetch(`${hostNameurl}studies/${studyInstanceUid}/metadata/isEmergency`, {
       method: 'GET',
       headers: {
-        'Authorization': authHeaders
+        Authorization: authHeaders,
       },
     })
       .then(response => response.json())
       .then(data => {
         console.log('IsEmergency Info ', data);
 
-
-
         const result = dataSource.query.studies.getUserRoles();
-        console.log("UserRoles111 result ", result);
+        console.log('UserRoles111 result ', result);
 
-
-
-        let text = "Do you want to make this study as Emergency!!!";
-        let formData = { "data": 'true' };
+        let text = 'Do you want to make this study as Emergency!!!';
+        let formData = { data: 'true' };
         if (data.isEmergency !== '') {
-          formData = { "data": '' };
-          text = "Do you want to Remove Emergency status of this Study?";
+          formData = { data: '' };
+          text = 'Do you want to Remove Emergency status of this Study?';
         }
         if (confirm(text) == true) {
           event.preventDefault();
@@ -519,7 +500,7 @@ function WorkList({
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': authHeaders
+              Authorization: authHeaders,
             },
             body: JSON.stringify(formData),
           })
@@ -532,57 +513,59 @@ function WorkList({
               console.log('Error  isEmergency API', err);
               console.log(err.message);
             });
-
-
-
-
-
         }
-
-
-
       })
       .catch(err => {
         console.log(err.message);
       });
-  }
+  };
 
-
-  const closeImageViewer = (event) => {
+  const closeImageViewer = event => {
     event.preventDefault();
 
-    setIframeImageflag("disableIframeFlag");
+    setIframeImageflag('disableIframeFlag');
     setIframeWindowflag('iframeDisable');
     setIframeBlockFlag(true);
-  }
+  };
 
-
-  const clearOldUser = (event) => {
+  const clearOldUser = event => {
     localStorage.setItem('fiftyPerFlag', 'false');
-    localStorage.setItem('sid', "");
-    localStorage.setItem('mdFlag', "");
-  }
+    localStorage.setItem('sid', '');
+    localStorage.setItem('mdFlag', '');
+  };
 
   const handleIframeInfo = () => {
     setTimeout(() => {
-      if (document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo') && document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo').length > 0) {
-        document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo')[0].style.display = "none";
-        let elementCls = document.getElementById("imageViewerId").contentWindow.document.getElementsByClassName('bg-black')[0];
+      if (
+        document
+          .querySelector('iframe')
+          .contentWindow.document.getElementsByClassName('mobile-logo') &&
+        document
+          .querySelector('iframe')
+          .contentWindow.document.getElementsByClassName('mobile-logo').length > 0
+      ) {
+        document
+          .querySelector('iframe')
+          .contentWindow.document.getElementsByClassName('mobile-logo')[0].style.display = 'none';
+        const elementCls = document
+          .getElementById('imageViewerId')
+          .contentWindow.document.getElementsByClassName('bg-black')[0];
 
         if (elementCls && isActive) {
           elementCls.classList.remove('bg-black');
           elementCls.classList.add('bg-black-on');
         }
-
       }
     }, 3000);
     setDefaultLoad(false);
-  }
+  };
+  console.log('Called this page', resultsPerPage);
+  // const rollingPageNumberMod = Math.floor(25 / resultsPerPage);
+  // const rollingPageNumber = (pageNumber - 1) % rollingPageNumberMod;
+  // const offset = resultsPerPage * rollingPageNumber;
+  // const offsetAndTake = offset + resultsPerPage;
 
-  const rollingPageNumberMod = Math.floor(25 / resultsPerPage);
-  const rollingPageNumber = (pageNumber - 1) % rollingPageNumberMod;
-  const offset = resultsPerPage * rollingPageNumber;
-  const offsetAndTake = offset + resultsPerPage;
+  //console.log(rollingPageNumberMod, rollingPageNumber, offset, offsetAndTake);
   const tableDataSource = sortedStudies.map((study, key) => {
     const rowKey = key + 1;
     const isExpanded = expandedRows.some(k => k === rowKey);
@@ -600,10 +583,10 @@ function WorkList({
       inCloud,
       isEmergency,
       isReferralSent,
-      isReportGenerated
+      isReportGenerated,
     } = study;
 
-    console.log("Study info ----> ", study);
+    // console.log('Study info ----> ', study);
     const studyDate =
       date &&
       moment(date, ['YYYYMMDD', 'YYYY.MM.DD'], true).isValid() &&
@@ -612,7 +595,6 @@ function WorkList({
       time &&
       moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).isValid() &&
       moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).format('hh:mm A');
-
 
     // const isValidMode = mode.isValidMode({
     //   modalities: modalitiesToCheck,
@@ -639,11 +621,11 @@ function WorkList({
         {
           key: 'patientName',
           content: patientName ? (
-            <div className={(isEmergency == 'true' ? 'show-emergency' : '')}>
-              <span className='emergency-placeholder'></span>
+            <div className={isEmergency == 'true' ? 'show-emergency' : ''}>
+              <span className="emergency-placeholder"></span>
               <TooltipClipboard ActiveMode={isActive}>{patientName}</TooltipClipboard>
               <br />
-              <span className='extra-padding'>
+              <span className="extra-padding">
                 <TooltipClipboard ActiveMode={isActive}>{description}</TooltipClipboard>
               </span>
             </div>
@@ -692,14 +674,14 @@ function WorkList({
                 name="group-layers"
                 className={
                   isActive
-                    ? classnames('mr-2 inline-flex w-4 instances-svg', {
-                      'copyIcon-expandDarkCls': isExpanded,
-                      'copyIcon-darkModeCls': !isExpanded,
-                    })
-                    : classnames('mr-2 inline-flex w-4 instances-svg', {
-                      'text-primary-active': isExpanded,
-                      'text-secondary-light': !isExpanded,
-                    })
+                    ? classnames('instances-svg mr-2 inline-flex w-4', {
+                        'copyIcon-expandDarkCls': isExpanded,
+                        'copyIcon-darkModeCls': !isExpanded,
+                      })
+                    : classnames('instances-svg mr-2 inline-flex w-4', {
+                        'text-primary-active': isExpanded,
+                        'text-secondary-light': !isExpanded,
+                      })
                 }
               />
               {instances}
@@ -713,7 +695,12 @@ function WorkList({
           title: 'In-Progress',
           //content: studyStatus ? studyStatus : 'In-Progress',
           content: studyStatus ? (
-            <span data-id={studyInstanceUid} className={'common' + studyStatus}>{studyStatus}</span>
+            <span
+              data-id={studyInstanceUid}
+              className={'common' + studyStatus}
+            >
+              {studyStatus}
+            </span>
           ) : (
             <span className={'commonIn-Progress'}>{'In-Progress'}</span>
           ),
@@ -731,7 +718,9 @@ function WorkList({
                   aria-controls={openNew ? 'basic-menuNew' : undefined}
                   aria-haspopup="true"
                   aria-expanded={openNew ? 'true' : undefined}
-                  onClick={(event) => handleClickNew(event, studyInstanceUid, modalities, isReportGenerated)}
+                  onClick={event =>
+                    handleClickNew(event, studyInstanceUid, modalities, isReportGenerated)
+                  }
                 >
                   {
                     <svg
@@ -744,12 +733,12 @@ function WorkList({
                       viewBox="0 0 1024 1024"
                       xmlns="http://www.w3.org/2000/svg"
                     >
-                      <path d="M948.735317 609.719602c-3.562129 3.63376-6.732331 6.949272-9.549493 10.144034-2.837628 3.189645-5.335519 5.857405-7.451716 7.998161-2.842745 2.886747-5.310959 4.984524-7.4159 6.383384l-90.278119-89.465614c4.238534-3.586688 9.003048-7.831362 14.314007-12.772908 5.310959-5.02341 9.729595-8.915044 13.294794-11.753695 8.481162-7.828292 17.683754-11.149944 27.608801-10.145058 9.886161 1.091868 18.035772 3.409656 24.420179 6.950296 7.081279 3.585665 14.688537 9.79304 22.843264 18.632359 8.128121 8.919137 14.344706 18.277272 18.563798 28.29544 2.13564 5.640464 3.560082 12.768815 4.281513 21.293979C960.057177 593.762165 956.500165 601.979314 948.735317 609.719602L948.735317 609.719602 948.735317 609.719602 948.735317 609.719602zM785.153682 772.752746l-73.275887 73.487711c-9.925047 9.925047-18.23327 18.494213-24.965601 25.575492-6.730285 7.0383-10.446933 10.969842-11.169387 11.670807-3.520173 2.843768-7.407714 5.858428-11.6749 9.096169-4.219091 3.140527-8.503675 5.858428-12.744255 7.954159-4.241604 2.14178-10.778484 4.765537-19.62599 8.042163-8.858762 3.189645-17.884322 6.164397-27.087938 9.008164-9.202593 2.843768-18.059308 5.336542-26.560936 7.433296-8.481162 2.185782-14.872732 3.584642-19.10308 4.282536-8.53028 1.449002-14.192234 0.357134-17.011442-3.184529-2.838651-3.550873-3.541663-9.583263-2.119267-18.10331 0.719384-4.282536 2.119267-10.671037 4.241604-19.152199 2.140757-8.56405 4.614088-17.270339 7.456832-26.098401 2.816139-8.92016 5.462408-17.269315 7.973602-25.096585 2.452865-7.780197 4.41659-13.114692 5.79396-15.914458 4.28663-9.267061 9.945513-17.397229 17.011442-24.52251l13.836123-13.860682 26.5374-26.625404c10.627035-10.671037 22.297842-22.556739 35.042097-35.675524 12.743232-13.114692 25.484418-26.097378 38.2123-38.865169 30.472012-30.5549 64.817238-64.660672 103.054097-102.258988l89.185228 89.451288L785.153682 772.752746 785.153682 772.752746 785.153682 772.752746zM696.507736 219.197304c0-14.559601-11.799744-26.361391-26.338878-26.361391l-52.702316 0 0-52.682873 105.409748 0c14.539134 0 26.340925 11.758812 26.340925 26.360368l0 358.368994-52.709479 57.993832L696.507736 219.197304 696.507736 219.197304 696.507736 219.197304 696.507736 219.197304zM564.753993 245.557672l-26.361391 0c-14.538111 0-26.340925-11.80179-26.340925-26.360368L512.051677 113.787556c0-14.557554 11.802814-26.360368 26.340925-26.360368l26.361391 0c14.539134 0 26.346041 11.802814 26.346041 26.360368l0 105.409748C591.100034 233.754858 579.293127 245.557672 564.753993 245.557672L564.753993 245.557672 564.753993 245.557672zM327.577199 140.15304l158.113087 0 0 52.682873L327.577199 192.835913 327.577199 140.15304 327.577199 140.15304zM274.869766 245.557672l-26.340925 0c-14.557554 0-26.365484-11.80179-26.365484-26.360368L222.163357 113.787556c0-14.557554 11.80793-26.360368 26.365484-26.360368l26.340925 0c14.539134 0 26.367531 11.802814 26.367531 26.360368l0 105.409748C301.236274 233.754858 289.408901 245.557672 274.869766 245.557672L274.869766 245.557672 274.869766 245.557672zM116.753609 219.197304l0 579.784826c0 14.558577 11.80793 26.361391 26.365484 26.361391l332.979744 0-47.920406 52.68185L90.389148 878.025371c-14.535041 0-26.341948-11.757788-26.341948-26.317389L64.0472 166.513408c0-14.602579 11.80793-26.360368 26.341948-26.360368l105.433284 0 0 52.682873-52.702316 0C128.556423 192.835913 116.753609 204.637704 116.753609 219.197304L116.753609 219.197304 116.753609 219.197304 116.753609 219.197304zM617.465518 654.048203c0 7.262404-5.9055 13.162788-13.183254 13.162788L208.98522 667.210991c-7.281847 0-13.163811-5.901407-13.163811-13.162788l0-26.356274c0-7.306406 5.881964-13.162788 13.163811-13.162788l395.297045 0c7.27673 0 13.183254 5.857405 13.183254 13.162788L617.465518 654.048203 617.465518 654.048203zM604.283288 456.376145 208.98522 456.376145c-7.281847 0-13.163811-5.9055-13.163811-13.163811l0-26.360368c0-7.300266 5.881964-13.158694 13.163811-13.158694l395.297045 0c7.27673 0 13.183254 5.858428 13.183254 13.158694l0 26.360368C617.465518 450.470645 611.560018 456.376145 604.283288 456.376145L604.283288 456.376145 604.283288 456.376145 604.283288 456.376145zM604.283288 456.376145" /></svg>
-
+                      <path d="M948.735317 609.719602c-3.562129 3.63376-6.732331 6.949272-9.549493 10.144034-2.837628 3.189645-5.335519 5.857405-7.451716 7.998161-2.842745 2.886747-5.310959 4.984524-7.4159 6.383384l-90.278119-89.465614c4.238534-3.586688 9.003048-7.831362 14.314007-12.772908 5.310959-5.02341 9.729595-8.915044 13.294794-11.753695 8.481162-7.828292 17.683754-11.149944 27.608801-10.145058 9.886161 1.091868 18.035772 3.409656 24.420179 6.950296 7.081279 3.585665 14.688537 9.79304 22.843264 18.632359 8.128121 8.919137 14.344706 18.277272 18.563798 28.29544 2.13564 5.640464 3.560082 12.768815 4.281513 21.293979C960.057177 593.762165 956.500165 601.979314 948.735317 609.719602L948.735317 609.719602 948.735317 609.719602 948.735317 609.719602zM785.153682 772.752746l-73.275887 73.487711c-9.925047 9.925047-18.23327 18.494213-24.965601 25.575492-6.730285 7.0383-10.446933 10.969842-11.169387 11.670807-3.520173 2.843768-7.407714 5.858428-11.6749 9.096169-4.219091 3.140527-8.503675 5.858428-12.744255 7.954159-4.241604 2.14178-10.778484 4.765537-19.62599 8.042163-8.858762 3.189645-17.884322 6.164397-27.087938 9.008164-9.202593 2.843768-18.059308 5.336542-26.560936 7.433296-8.481162 2.185782-14.872732 3.584642-19.10308 4.282536-8.53028 1.449002-14.192234 0.357134-17.011442-3.184529-2.838651-3.550873-3.541663-9.583263-2.119267-18.10331 0.719384-4.282536 2.119267-10.671037 4.241604-19.152199 2.140757-8.56405 4.614088-17.270339 7.456832-26.098401 2.816139-8.92016 5.462408-17.269315 7.973602-25.096585 2.452865-7.780197 4.41659-13.114692 5.79396-15.914458 4.28663-9.267061 9.945513-17.397229 17.011442-24.52251l13.836123-13.860682 26.5374-26.625404c10.627035-10.671037 22.297842-22.556739 35.042097-35.675524 12.743232-13.114692 25.484418-26.097378 38.2123-38.865169 30.472012-30.5549 64.817238-64.660672 103.054097-102.258988l89.185228 89.451288L785.153682 772.752746 785.153682 772.752746 785.153682 772.752746zM696.507736 219.197304c0-14.559601-11.799744-26.361391-26.338878-26.361391l-52.702316 0 0-52.682873 105.409748 0c14.539134 0 26.340925 11.758812 26.340925 26.360368l0 358.368994-52.709479 57.993832L696.507736 219.197304 696.507736 219.197304 696.507736 219.197304 696.507736 219.197304zM564.753993 245.557672l-26.361391 0c-14.538111 0-26.340925-11.80179-26.340925-26.360368L512.051677 113.787556c0-14.557554 11.802814-26.360368 26.340925-26.360368l26.361391 0c14.539134 0 26.346041 11.802814 26.346041 26.360368l0 105.409748C591.100034 233.754858 579.293127 245.557672 564.753993 245.557672L564.753993 245.557672 564.753993 245.557672zM327.577199 140.15304l158.113087 0 0 52.682873L327.577199 192.835913 327.577199 140.15304 327.577199 140.15304zM274.869766 245.557672l-26.340925 0c-14.557554 0-26.365484-11.80179-26.365484-26.360368L222.163357 113.787556c0-14.557554 11.80793-26.360368 26.365484-26.360368l26.340925 0c14.539134 0 26.367531 11.802814 26.367531 26.360368l0 105.409748C301.236274 233.754858 289.408901 245.557672 274.869766 245.557672L274.869766 245.557672 274.869766 245.557672zM116.753609 219.197304l0 579.784826c0 14.558577 11.80793 26.361391 26.365484 26.361391l332.979744 0-47.920406 52.68185L90.389148 878.025371c-14.535041 0-26.341948-11.757788-26.341948-26.317389L64.0472 166.513408c0-14.602579 11.80793-26.360368 26.341948-26.360368l105.433284 0 0 52.682873-52.702316 0C128.556423 192.835913 116.753609 204.637704 116.753609 219.197304L116.753609 219.197304 116.753609 219.197304 116.753609 219.197304zM617.465518 654.048203c0 7.262404-5.9055 13.162788-13.183254 13.162788L208.98522 667.210991c-7.281847 0-13.163811-5.901407-13.163811-13.162788l0-26.356274c0-7.306406 5.881964-13.162788 13.163811-13.162788l395.297045 0c7.27673 0 13.183254 5.857405 13.183254 13.162788L617.465518 654.048203 617.465518 654.048203zM604.283288 456.376145 208.98522 456.376145c-7.281847 0-13.163811-5.9055-13.163811-13.163811l0-26.360368c0-7.300266 5.881964-13.158694 13.163811-13.158694l395.297045 0c7.27673 0 13.183254 5.858428 13.183254 13.158694l0 26.360368C617.465518 450.470645 611.560018 456.376145 604.283288 456.376145L604.283288 456.376145 604.283288 456.376145 604.283288 456.376145zM604.283288 456.376145" />
+                    </svg>
                   }
                   {/* </Link> */}
                 </span>
-                {mDropDowns &&
+                {mDropDowns && (
                   <Menu
                     id="basic-menuNew"
                     anchorEl={anchorElNew}
@@ -759,28 +748,34 @@ function WorkList({
                       'aria-labelledby': 'basic-buttonNew',
                     }}
                   >
-
                     {mDropDowns}
-
                   </Menu>
-                }
+                )}
               </>
               {JSON.stringify(rolesInfo && rolesInfo.realm_access.roles.includes('save_to_server'))}
-              {hideOption && (inCloud !== "Yes") && <Link title="Save to Server" to="">
-                <svg
-                  onClick={() => saveToServer(studyInstanceUid)}
-                  xmlns="http://www.w3.org/2000/svg"
-                  version="1.1"
-                  viewBox="-5.0 -10.0 110.0 135.0"
-                  fill="#0a7c6c"
-                  id="Capa_1"
-                  width="35px"
-                  height="30px"
+              {hideOption && inCloud !== 'Yes' && (
+                <Link
+                  title="Save to Server"
+                  to=""
                 >
-                  <path d="M88.03,50c1.17-2.81,1.76-5.77,1.76-8.81c0-12.77-10.39-23.16-23.16-23.16c-7.73,0-14.99,3.93-19.27,10.34  c-2.12-0.9-4.37-1.36-6.69-1.36c-7.56,0-14.13,4.88-16.37,12C12.77,39.37,3.5,48.87,3.5,60.48c0,11.85,9.64,21.49,21.49,21.49h15.16  c0.83,0,1.5-0.67,1.5-1.5s-0.67-1.5-1.5-1.5H24.99c-10.19,0-18.49-8.29-18.49-18.49C6.5,50.29,14.79,42,24.99,42  c0.05,0,0.1,0,0.14,0.01c0.09,0.01,0.18,0.01,0.27,0.01l1.21,0.03l0.28-1.18c1.54-6.4,7.2-10.86,13.78-10.86  c2.3,0,4.51,0.54,6.56,1.62l1.27,0.66l0.72-1.24c3.61-6.18,10.28-10.03,17.41-10.03c11.12,0,20.16,9.04,20.16,20.16  c0,3.06-0.69,6.02-2.05,8.81l-0.66,1.36l1.36,0.65c4.97,2.39,8.06,7.29,8.06,12.78c0,7.82-6.36,14.19-14.19,14.19H51.5V48.19  l8.16,14.14c0.28,0.48,0.78,0.75,1.3,0.75c0.25,0,0.51-0.06,0.75-0.2c0.72-0.41,0.96-1.33,0.55-2.05L51.3,41.84  c-0.01-0.01-0.02-0.02-0.02-0.03c-0.06-0.1-0.13-0.2-0.22-0.28c0,0,0,0,0,0c-0.08-0.08-0.18-0.15-0.27-0.21  c-0.03-0.02-0.06-0.03-0.09-0.05c-0.08-0.04-0.16-0.07-0.24-0.1c-0.03-0.01-0.06-0.02-0.09-0.03c-0.12-0.03-0.23-0.05-0.36-0.05  s-0.24,0.02-0.36,0.05c-0.03,0.01-0.06,0.02-0.09,0.03c-0.08,0.03-0.17,0.06-0.24,0.1c-0.03,0.02-0.06,0.03-0.09,0.05  c-0.1,0.06-0.19,0.13-0.27,0.21c0,0,0,0,0,0c-0.08,0.08-0.15,0.18-0.22,0.28c-0.01,0.01-0.02,0.02-0.02,0.03L37.74,60.83  c-0.41,0.72-0.17,1.63,0.55,2.05c0.72,0.42,1.63,0.17,2.05-0.55l8.16-14.14v32.28c0,0.83,0.67,1.5,1.5,1.5h29.31  c9.48,0,17.19-7.71,17.19-17.19C96.5,58.72,93.22,53.07,88.03,50z" />
-                </svg>
-              </Link>}
-              <Link title="Refer" to="">
+                  <svg
+                    onClick={() => saveToServer(studyInstanceUid)}
+                    xmlns="http://www.w3.org/2000/svg"
+                    version="1.1"
+                    viewBox="-5.0 -10.0 110.0 135.0"
+                    fill="#0a7c6c"
+                    id="Capa_1"
+                    width="35px"
+                    height="30px"
+                  >
+                    <path d="M88.03,50c1.17-2.81,1.76-5.77,1.76-8.81c0-12.77-10.39-23.16-23.16-23.16c-7.73,0-14.99,3.93-19.27,10.34  c-2.12-0.9-4.37-1.36-6.69-1.36c-7.56,0-14.13,4.88-16.37,12C12.77,39.37,3.5,48.87,3.5,60.48c0,11.85,9.64,21.49,21.49,21.49h15.16  c0.83,0,1.5-0.67,1.5-1.5s-0.67-1.5-1.5-1.5H24.99c-10.19,0-18.49-8.29-18.49-18.49C6.5,50.29,14.79,42,24.99,42  c0.05,0,0.1,0,0.14,0.01c0.09,0.01,0.18,0.01,0.27,0.01l1.21,0.03l0.28-1.18c1.54-6.4,7.2-10.86,13.78-10.86  c2.3,0,4.51,0.54,6.56,1.62l1.27,0.66l0.72-1.24c3.61-6.18,10.28-10.03,17.41-10.03c11.12,0,20.16,9.04,20.16,20.16  c0,3.06-0.69,6.02-2.05,8.81l-0.66,1.36l1.36,0.65c4.97,2.39,8.06,7.29,8.06,12.78c0,7.82-6.36,14.19-14.19,14.19H51.5V48.19  l8.16,14.14c0.28,0.48,0.78,0.75,1.3,0.75c0.25,0,0.51-0.06,0.75-0.2c0.72-0.41,0.96-1.33,0.55-2.05L51.3,41.84  c-0.01-0.01-0.02-0.02-0.02-0.03c-0.06-0.1-0.13-0.2-0.22-0.28c0,0,0,0,0,0c-0.08-0.08-0.18-0.15-0.27-0.21  c-0.03-0.02-0.06-0.03-0.09-0.05c-0.08-0.04-0.16-0.07-0.24-0.1c-0.03-0.01-0.06-0.02-0.09-0.03c-0.12-0.03-0.23-0.05-0.36-0.05  s-0.24,0.02-0.36,0.05c-0.03,0.01-0.06,0.02-0.09,0.03c-0.08,0.03-0.17,0.06-0.24,0.1c-0.03,0.02-0.06,0.03-0.09,0.05  c-0.1,0.06-0.19,0.13-0.27,0.21c0,0,0,0,0,0c-0.08,0.08-0.15,0.18-0.22,0.28c-0.01,0.01-0.02,0.02-0.02,0.03L37.74,60.83  c-0.41,0.72-0.17,1.63,0.55,2.05c0.72,0.42,1.63,0.17,2.05-0.55l8.16-14.14v32.28c0,0.83,0.67,1.5,1.5,1.5h29.31  c9.48,0,17.19-7.71,17.19-17.19C96.5,58.72,93.22,53.07,88.03,50z" />
+                  </svg>
+                </Link>
+              )}
+              <Link
+                title="Refer"
+                to=""
+              >
                 <svg
                   onClick={() => handleShowModal(studyInstanceUid)}
                   xmlns="http://www.w3.org/2000/svg"
@@ -798,7 +793,6 @@ function WorkList({
                 </svg>
               </Link>
               <>
-
                 <span
                   id="basic-button"
                   aria-controls={open ? 'basic-menu' : undefined}
@@ -806,7 +800,7 @@ function WorkList({
                   aria-expanded={open ? 'true' : undefined}
                   //onClick={handleClick}
                   //onClick={(event) => handleViewerImage(event, studyInstanceUid)}
-                  onClick={(event) => handleClick(event, studyInstanceUid, modalities)}
+                  onClick={event => handleClick(event, studyInstanceUid, modalities)}
                 >
                   <svg
                     fill="#0a7c6c"
@@ -816,22 +810,21 @@ function WorkList({
                     viewBox="0 0 24 28"
                     width="35px"
                     height="30px"
-
                     id="basic-button"
                     aria-controls={open ? 'basic-menu' : undefined}
                     aria-haspopup="true"
                     aria-expanded={open ? 'true' : undefined}
-                  // onClick={handleClick}
-                  //onClick={(event) => handleClick(event, studyInstanceUid, modalities)}
-
+                    // onClick={handleClick}
+                    //onClick={(event) => handleClick(event, studyInstanceUid, modalities)}
                   >
-                    <g id="_01_align_center" data-name="01 align center">
+                    <g
+                      id="_01_align_center"
+                      data-name="01 align center"
+                    >
                       <path d="M23.821,11.181v0C22.943,9.261,19.5,3,12,3S1.057,9.261.179,11.181a1.969,1.969,0,0,0,0,1.64C1.057,14.739,4.5,21,12,21s10.943-6.261,11.821-8.181A1.968,1.968,0,0,0,23.821,11.181ZM12,19c-6.307,0-9.25-5.366-10-6.989C2.75,10.366,5.693,5,12,5c6.292,0,9.236,5.343,10,7C21.236,13.657,18.292,19,12,19Z" />
                       <path d="M12,7a5,5,0,1,0,5,5A5.006,5.006,0,0,0,12,7Zm0,8a3,3,0,1,1,3-3A3,3,0,0,1,12,15Z" />
                     </g>
                   </svg>
-
-
                 </span>
                 <Menu
                   id="basic-menu"
@@ -849,58 +842,79 @@ function WorkList({
                     //onClick={(event) => handleViewerImage(event, studyInstanceUid)}
                     //onClick={(event) => handleClick(event, studyInstanceUid, modalities)}
                     onClick={() => handleDocModal()}
-                  >View Study</MenuItem>
+                  >
+                    View Study
+                  </MenuItem>
                   {/* <MenuItem
                     onClick={handleClose}
                   ><a href={`${window.location.origin}/viewer?StudyInstanceUIDs=${stuID}`} target="_blank">Open In Another Tab</a></MenuItem> */}
-                  <MenuItem
-                    onClick={() => handleSegmentationModal()}
-                  >Segmentation</MenuItem>
-                  <MenuItem
-                    onClick={() => handleTMTVModal()}
-                  >Total Metabolic Tumor Volume</MenuItem>
-                  <MenuItem
-                    onClick={() => handleMicroscopyModal()}
-                  >Microscopy</MenuItem>
-                  <MenuItem
-                    onClick={() => handleDynamicVolumeModal()}
-                  >4D PT/CT</MenuItem>
+                  <MenuItem onClick={() => handleSegmentationModal()}>Segmentation</MenuItem>
+                  <MenuItem onClick={() => handleTMTVModal()}>
+                    Total Metabolic Tumor Volume
+                  </MenuItem>
+                  <MenuItem onClick={() => handleMicroscopyModal()}>Microscopy</MenuItem>
+                  <MenuItem onClick={() => handleDynamicVolumeModal()}>4D PT/CT</MenuItem>
                 </Menu>
               </>
 
-
-              <Link title="Add" to="javascript:void(0)"
-                onClick={(event) => handleEmergency(event, studyInstanceUid)}
-
+              <Link
+                title="Add"
+                to="javascript:void(0)"
+                onClick={event => handleEmergency(event, studyInstanceUid)}
               >
-
-                <svg xmlns="http://www.w3.org/2000/svg" width="35" height="30" viewBox="0 0 128 128">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="35"
+                  height="30"
+                  viewBox="0 0 128 128"
+                >
                   <title>Emergency</title>
                   <g>
                     <g>
                       <g>
-                        <path d="M55.672,30.778V27.1a5.4,5.4,0,0,1,5.405-5.4h0a5.4,5.4,0,0,1,5.405,5.4v3.682Z" fill={(isEmergency !== 'true' ? '#ff9000' : '#5b5b5b')} />
-                        <path d="M30.49,87.108,34.149,80.1a22.264,22.264,0,0,0,2.527-10.3V54.579a24.4,24.4,0,0,1,24.4-24.4h0a24.4,24.4,0,0,1,24.4,24.4V69.8a22.264,22.264,0,0,0,2.527,10.3l3.658,7.011Z" fill={(isEmergency !== 'true' ? '#ffd92e' : '#5b5b5b')} />
-                        <path d="M70.632,96.754a9.555,9.555,0,0,1-19.109,0Z" fill={(isEmergency !== 'true' ? '#ffd92e' : '#5b5b5b')} />
-                        <path d="M30.567,87.108H91.881a3.34,3.34,0,0,1,3.34,3.34v6.306a0,0,0,0,1,0,0H26.934a0,0,0,0,1,0,0V90.741A3.633,3.633,0,0,1,30.567,87.108Z" fill={(isEmergency !== 'true' ? '#ff9000' : '#5b5b5b')} />
+                        <path
+                          d="M55.672,30.778V27.1a5.4,5.4,0,0,1,5.405-5.4h0a5.4,5.4,0,0,1,5.405,5.4v3.682Z"
+                          fill={isEmergency !== 'true' ? '#ff9000' : '#5b5b5b'}
+                        />
+                        <path
+                          d="M30.49,87.108,34.149,80.1a22.264,22.264,0,0,0,2.527-10.3V54.579a24.4,24.4,0,0,1,24.4-24.4h0a24.4,24.4,0,0,1,24.4,24.4V69.8a22.264,22.264,0,0,0,2.527,10.3l3.658,7.011Z"
+                          fill={isEmergency !== 'true' ? '#ffd92e' : '#5b5b5b'}
+                        />
+                        <path
+                          d="M70.632,96.754a9.555,9.555,0,0,1-19.109,0Z"
+                          fill={isEmergency !== 'true' ? '#ffd92e' : '#5b5b5b'}
+                        />
+                        <path
+                          d="M30.567,87.108H91.881a3.34,3.34,0,0,1,3.34,3.34v6.306a0,0,0,0,1,0,0H26.934a0,0,0,0,1,0,0V90.741A3.633,3.633,0,0,1,30.567,87.108Z"
+                          fill={isEmergency !== 'true' ? '#ff9000' : '#5b5b5b'}
+                        />
                       </g>
-                      <circle cx="85.479" cy="58.643" r="15.587" fill="#f25a3c" />
+                      <circle
+                        cx="85.479"
+                        cy="58.643"
+                        r="15.587"
+                        fill="#f25a3c"
+                      />
                     </g>
                     <g>
-                      <path d="M85.479,61.9a1.3,1.3,0,0,1-1.3-1.3V51.643a1.3,1.3,0,0,1,2.6,0V60.6A1.3,1.3,0,0,1,85.479,61.9Z" fill="#e9f3fb" />
-                      <circle cx="85.479" cy="65.282" r="1.67" fill="#e9f3fb" />
+                      <path
+                        d="M85.479,61.9a1.3,1.3,0,0,1-1.3-1.3V51.643a1.3,1.3,0,0,1,2.6,0V60.6A1.3,1.3,0,0,1,85.479,61.9Z"
+                        fill="#e9f3fb"
+                      />
+                      <circle
+                        cx="85.479"
+                        cy="65.282"
+                        r="1.67"
+                        fill="#e9f3fb"
+                      />
                     </g>
                   </g>
                 </svg>
-
-
               </Link>
-
-
             </div>
           ),
           gridCol: 6,
-        }
+        },
       ],
       // Todo: This is actually running for all rows, even if they are
       // not clicked on.
@@ -916,13 +930,13 @@ function WorkList({
           seriesTableDataSource={
             seriesInStudiesMap.has(studyInstanceUid)
               ? seriesInStudiesMap.get(studyInstanceUid).map(s => {
-                return {
-                  description: s.description || '(empty)',
-                  seriesNumber: s.seriesNumber ?? '',
-                  modality: s.modality || '',
-                  instances: s.numSeriesInstances || '',
-                };
-              })
+                  return {
+                    description: s.description || '(empty)',
+                    seriesNumber: s.seriesNumber ?? '',
+                    modality: s.modality || '',
+                    instances: s.numSeriesInstances || '',
+                  };
+                })
               : []
           }
           isActive={isActive}
@@ -957,7 +971,8 @@ function WorkList({
                     key={i}
                     to={
                       path +
-                      `${dataPath ? '../../' : ''}${mode.routeName}${dataPath || ''
+                      `${dataPath ? '../../' : ''}${mode.routeName}${
+                        dataPath || ''
                       }?${query.toString()}`
                     }
                     onClick={event => {
@@ -967,7 +982,7 @@ function WorkList({
                         event.preventDefault();
                       }
                     }}
-                  // to={`${mode.routeName}/dicomweb?StudyInstanceUIDs=${studyInstanceUid}`}
+                    // to={`${mode.routeName}/dicomweb?StudyInstanceUIDs=${studyInstanceUid}`}
                   >
                     {/* TODO revisit the completely rounded style of buttons used for launching a mode from the worklist later - for now use LegacyButton*/}
                     <LegacyButton
@@ -975,8 +990,8 @@ function WorkList({
                       variant={isValidMode ? 'contained' : 'disabled'}
                       disabled={!isValidMode}
                       endIcon={<Icon name="launch-arrow" />} // launch-arrow | launch-info
-                      onClick={() => { }}
-                    // className={isActive ? 'bg-primary-light_dark' : ''}
+                      onClick={() => {}}
+                      // className={isActive ? 'bg-primary-light_dark' : ''}
                     >
                       {t(`Modes:${mode.displayName}`)}
                     </LegacyButton>
@@ -993,7 +1008,7 @@ function WorkList({
     };
   });
 
-  const hasStudies = numOfStudies > 0;
+  const hasStudies = numOfStudies > 0 || pageNumber > 0;
   const versionNumber = process.env.VERSION_NUMBER;
   const commitHash = process.env.COMMIT_HASH;
 
@@ -1065,13 +1080,12 @@ function WorkList({
     },
     {
       title: t('Header:Dark/Light Mode'),
-      icon: isActive ? "darkModeIcon" : 'lightModeIcon',
+      icon: isActive ? 'darkModeIcon' : 'lightModeIcon',
       onClick: () => {
         //navigate(`/doctor-referrals`);
         handleChangeSwitch();
       },
     },
-
   ];
 
   if (appConfig.oidc) {
@@ -1090,43 +1104,38 @@ function WorkList({
   const uploadProps =
     dicomUploadComponent && dataSource.getConfig()?.dicomUploadEnabled
       ? {
-        title: 'Upload files',
-        closeButton: true,
-        shouldCloseOnEsc: false,
-        shouldCloseOnOverlayClick: false,
-        content: dicomUploadComponent.bind(null, {
-          dataSource,
-          onComplete: () => {
-            hide();
-            onRefresh();
-          },
-          onStarted: () => {
-            show({
-              ...uploadProps,
-              // when upload starts, hide the default close button as closing the dialogue must be handled by the upload dialogue itself
-              closeButton: false,
-            });
-          },
-        }),
-      }
+          title: 'Upload files',
+          closeButton: true,
+          shouldCloseOnEsc: false,
+          shouldCloseOnOverlayClick: false,
+          content: dicomUploadComponent.bind(null, {
+            dataSource,
+            onComplete: () => {
+              hide();
+              onRefresh();
+            },
+            onStarted: () => {
+              show({
+                ...uploadProps,
+                // when upload starts, hide the default close button as closing the dialogue must be handled by the upload dialogue itself
+                closeButton: false,
+              });
+            },
+          }),
+        }
       : undefined;
 
   const { component: dataSourceConfigurationComponent } =
     customizationService.get('ohif.dataSourceConfigurationComponent') ?? {};
 
   return (
-
-
     <div
       className={
         isActive
           ? 'bg-black-on trad-bg-black flex h-screen flex-col'
           : 'trad-bg-black flex h-screen flex-col bg-black'
       }
-
-
     >
-
       <Header
         isSticky
         menuOptions={menuOptions}
@@ -1134,11 +1143,9 @@ function WorkList({
         WhiteLabeling={appConfig.whiteLabeling}
         isActive={isActive}
         handleChange={handleChangeSwitch}
-        screen={iframeBlockFlag ? "WorkList" : 'Viewer'}
+        screen={iframeBlockFlag ? 'WorkList' : 'Viewer'}
         handleRedirectPage={handleRedirectPage}
         iframeBlockFlag={iframeBlockFlag}
-
-
       />
 
       {referralPopup && (
@@ -1150,7 +1157,6 @@ function WorkList({
       )}
 
       <div style={{ display: 'flex', margin: '10px' }}>
-
         <div
           // className={
           //   isActive
@@ -1164,9 +1170,10 @@ function WorkList({
               : `ohif-scrollbar flex grow flex-col overflow-y-auto ${iframeImageflag} `
           }
 
-        //style={{ width: '50%' }}
+          //style={{ width: '50%' }}
         >
-          <StudyListFilter style={{ minWidth: '1280px' }}
+          <StudyListFilter
+            style={{ minWidth: '1280px' }}
             numOfStudies={pageNumber * resultsPerPage > 100 ? 101 : numOfStudies}
             filtersMeta={filtersMeta}
             filterValues={{ ...filterValues, ...defaultSortValues }}
@@ -1175,15 +1182,19 @@ function WorkList({
             isFiltering={isFiltering(filterValues, defaultFilterValues)}
             onUploadClick={uploadProps ? () => show(uploadProps) : undefined}
             getDataSourceConfigurationComponent={
-              dataSourceConfigurationComponent ? () => dataSourceConfigurationComponent() : undefined
+              dataSourceConfigurationComponent
+                ? () => dataSourceConfigurationComponent()
+                : undefined
             }
             isActive={isActive}
           />
           {hasStudies ? (
-            <div className="flex grow flex-col" style={{ minWidth: '1250px' }}>
+            <div
+              className="flex grow flex-col"
+              style={{ minWidth: '1250px' }}
+            >
               <StudyListTable
-
-                tableDataSource={tableDataSource.slice(offset, offsetAndTake)}
+                tableDataSource={tableDataSource}
                 numOfStudies={numOfStudies}
                 querying={querying}
                 filtersMeta={filtersMeta}
@@ -1195,23 +1206,21 @@ function WorkList({
                   onChangePerPage={onResultsPerPageChange}
                   currentPage={pageNumber}
                   perPage={resultsPerPage}
+                  numOfStudies={numOfStudies}
                   isActive={isActive}
                 />
               </div>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center pt-48">
-              {appConfig.showLoadingIndicator && isLoadingData ?
-                (
-                  <LoadingIndicatorProgress className={'h-full w-full bg-black'} />
-                )
-                : (
-                  <EmptyStudies isActive={isActive} />
-                )}
+              {appConfig.showLoadingIndicator && isLoadingData ? (
+                <LoadingIndicatorProgress className={'h-full w-full bg-black'} />
+              ) : (
+                <EmptyStudies isActive={isActive} />
+              )}
             </div>
           )}
         </div>
-
 
         {/* <div
           className={`${iframeWindowflag}${' imageViewerId'}`}
@@ -1236,10 +1245,7 @@ function WorkList({
 
         </div> */}
       </div>
-
-
-    </div >
-
+    </div>
   );
 }
 

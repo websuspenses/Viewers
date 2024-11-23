@@ -132,20 +132,22 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
         : new api.DICOMwebClient(wadoConfig);
     },
     query: {
+      headers: {
+        getHeaders: function () {
+          return getAuthrorizationHeader();
+        },
+      },
       studies: {
         mapParams: mapParams.bind(),
         search: async function (origParams) {
           qidoDicomWebClient.headers = getAuthrorizationHeader();
-          console.log("qidoDicomWebClient.headers ", qidoDicomWebClient.headers);
           localStorage.setItem('auth-t', qidoDicomWebClient.headers.Authorization);
           const { studyInstanceUid, seriesInstanceUid, ...mappedParams } =
             mapParams(origParams, {
               supportsFuzzyMatching: dicomWebConfig.supportsFuzzyMatching,
               supportsWildcard: dicomWebConfig.supportsWildcard,
             }) || {};
-
           const results = await qidoSearch(qidoDicomWebClient, undefined, undefined, mappedParams);
-          console.log("results ---> ", results);
           return processResults(results);
         },
 
@@ -153,14 +155,13 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
           //const navigate = useNavigate();
           qidoDicomWebClient.headers = getAuthrorizationHeader();
           const url = dicomWebConfig.wadoRoot + '/studies/' + studyInstanceUid + '/send_to_cloud';
-          console.log("URL ", url);
           await fetch(url, qidoDicomWebClient)
             .then(response => response.json())
             .then(result => {
               console.log('result ', result);
               if (result.StudyID) {
                 let url = `${dicomWebConfig.wadoRoot}/studies/${studyInstanceUid}/update_status`;
-                const statusBody = { "status": "Ready to Refer" };
+                const statusBody = { status: 'Ready to Refer' };
                 const options = {
                   method: 'POST',
                   headers: qidoDicomWebClient.headers,
@@ -183,7 +184,6 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
               console.log(err.message);
             });
         },
-
       },
       series: {
         // mapParams: mapParams.bind(),
@@ -596,7 +596,6 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
     if (authHeaders && authHeaders.Authorization) {
       implementation.reject = dcm4cheeReject(authHeaders.Authorization, dicomWebConfig.wadoRoot);
     }
-
   }
 
   return IWebApiDataSource.create(implementation);

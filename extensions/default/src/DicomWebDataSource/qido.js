@@ -44,7 +44,7 @@ function processResults(qidoStudies) {
 
   const studies = [];
 
-  qidoStudies.forEach(qidoStudy =>{
+  qidoStudies.forEach(qidoStudy => {
     studies.push({
       studyInstanceUid: getString(qidoStudy['0020000D']),
       date: getString(qidoStudy['00080020']), // YYYYMMDD
@@ -60,8 +60,8 @@ function processResults(qidoStudies) {
       isReportGenerated: qidoStudy?.isReportGenerated || '',
       isReferralSent: qidoStudy?.isReferralSent || '',
       modalities: getString(getModalities(qidoStudy['00080060'], qidoStudy['00080061'])) || '',
-    })
-});
+    });
+  });
 
   return studies;
 }
@@ -108,34 +108,27 @@ export function processSeriesResults(qidoSeries) {
  * @returns {Promise<results>} - Promise that resolves results
  */
 async function search(dicomWebClient, studyInstanceUid, seriesInstanceUid, queryParameters) {
-  console.log("searchResult queryParameters-->", queryParameters, dicomWebClient);
   // let searchResult = await dicomWebClient.searchForStudies({
   //   studyInstanceUid: undefined,
   //   queryParams: queryParameters,
   // });
-  
-  let options={
+
+  let options = {
     dicomWebClient,
     queryParams: queryParameters,
-  }
+  };
   let searchResult;
   let queryParamsObj = new URLSearchParams(queryParameters).toString();
-  const url = dicomWebClient.wadoURL + '/allstudies?'+queryParamsObj;
-  console.log("searchResult url-->", url);
-  //const url = 'http://localhost/pacs/dicom-web/allstudies?limit=101&offset=0&fuzzymatching=true&includefield=00081030%2C00080060';
-    console.log("URL ", url);
-    await fetch(url, dicomWebClient)
-      .then(response => response.json())
-      .then(result => {
-        console.log('Study Response ', result);
-        searchResult = result;
-      })
-      .catch(err => {
-        console.log(err.message);
-      });
-
-  
-console.log("searchResult -->", searchResult);
+  const url = dicomWebClient.wadoURL + '/allstudies?' + queryParamsObj;
+  await fetch(url, dicomWebClient)
+    .then(response => response.json())
+    .then(result => {
+      console.log('Study Response ', result);
+      searchResult = result;
+    })
+    .catch(err => {
+      console.log(err.message);
+    });
   return searchResult;
 }
 
@@ -196,7 +189,7 @@ function mapParams(params, options = {}) {
     StudyDescription: withWildcard(params.studyDescription),
     ModalitiesInStudy: params.modalitiesInStudy,
     // Other
-    limit: params.limit || 25,
+    limit: params.limit || params.resultsPerPage || 25,
     offset: params.offset || 0,
     fuzzymatching: options.supportsFuzzyMatching === true,
     includefield: commaSeparatedFields, // serverSupportsQIDOIncludeField ? commaSeparatedFields : 'all',
