@@ -63,7 +63,7 @@ function WorkList({
   const items1 = JSON.parse(localStorage.getItem('active_dark'));
   const hostNameurl = '/pacs/dicom-web/';
   const keyCloakhost = '/keycloak';
-  const iframeBaseUrl = window.location.origin;
+  const nodeAppHost = '/teleapp';
 
   const { hotkeyDefinitions, hotkeyDefaults } = hotkeysManager;
   const { show, hide } = useModal();
@@ -95,8 +95,13 @@ function WorkList({
   const [loadStudentID, setloadStudentID] = useState('');
   const [modalityFlag, setModalityFlag] = useState('');
   const [mDropDowns, setMDropDowns] = useState('');
+  const [subscriptionFeatures, setSubscriptionFeatures] = useState();
 
   const [rolesInfo, setRolesData] = useState(); // State to store fetched data
+  const [authHeaders, setAuthHeaders] = useState('');
+
+  const [showViewer, setShowButton] = useState(false);
+
 
   /*
    * The default sort value keep the filters synchronized with runtime conditional sorting
@@ -152,13 +157,25 @@ function WorkList({
     setAnchorEl(null);
   };
 
+
+  useEffect(() => {
+    const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`));
+    let authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
+    console.log("local headers ", authHeaders);
+    setAuthHeaders(authHeaders);
+  }, []);
+
   const generateDynamicDropdowns = (sid, md) => {
-    const authHeaders = localStorage.getItem('auth-t');
-    fetch(`${iframeBaseUrl}/teleapp/get_sub_modalities/${md}`, {
-      //fetch(`http://localhost/teleapp/get_sub_modalities/${md}`, {
+    fetch(`${nodeAppHost}/get_sub_modalities/${md}`, {
       method: 'GET',
       headers: {
         Authorization: authHeaders,
+        'Content-Type': 'application/json',
+        'clientId': window.config.oidc[0].client_id,
+        'realm': window.config.oidc[0].client_id,
+        'isAccess': 'get_sub_modalities',
+        'labId': sessionStorage.getItem('labId'),
+        'userSub': sessionStorage.getItem('user_sub')
       },
     })
       .then(response => response.json())
@@ -320,41 +337,90 @@ function WorkList({
     }
   }, []);
 
-  // useEffect(() => {
-  //   const result = dataSource.query.studies.getUserRoles();
-  //   console.log("UserRoles result ", result);
-  // }, []);
 
   useEffect(() => {
     const isMounted = true;
-    try {
-      const authHeaders = localStorage.getItem('auth-t');
-      const url = `${keyCloakhost}/realms/orthanc/protocol/openid-connect/userinfo`;
-      console.log('URL ', url);
+    const nodeAppHost = '/teleapp';
+    console.log('user Roles authHeaders----> ', authHeaders);
+    const clientId = window.config.oidc[0].client_id;
+    if (authHeaders) {
+      try {
+        const userInfoUrl = `${keyCloakhost}/realms/orthanc/protocol/openid-connect/userinfo`;
+        const labSubscriptionsURL = `${nodeAppHost}/get_lab_subscriptions/2`;
 
-      const options = {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: authHeaders,
-        },
-      };
+        const options = {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: authHeaders,
+            'clientId': clientId,
+            'realm': clientId,
+            'isAccess': 'get_lab_subscriptions'
+          },
+        };
 
-      fetch(url, options)
-        .then(response => response.json())
-        .then(result => {
-          console.log('user Roles----> ', result);
-          setRolesData(result);
+        const options2 = {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: authHeaders,
+            'clientId': clientId,
+            'realm': clientId,
+          },
+        };
 
-          console.log('user rolesInfo ----> ', rolesInfo);
-        })
-        .catch(err => {
-          console.log(err.message);
-        });
-    } catch (error) {
-      console.error('Error fetching data:', error);
+        Promise.all([
+          fetch(userInfoUrl, options).then(response => response.json()),
+          fetch(labSubscriptionsURL, options2).then(response => response.json())
+        ])
+          .then(([userInfoResult, labSubscriptions]) => {
+            console.log('userInfoResult ----> ', userInfoResult);
+            if (userInfoResult?.realm_access?.roles) {
+              setRolesData(userInfoResult.realm_access.roles);
+            }
+            if (!sessionStorage.getItem('user_sub')) {
+              sessionStorage.setItem('user_sub', '');
+            }
+            sessionStorage.setItem('user_sub', userInfoResult.sub);
+
+            console.log('labSubscriptions ---> ', labSubscriptions.data);
+            if (!sessionStorage.getItem('labsubsinfo')) {
+              sessionStorage.setItem('labsubsinfo', '');
+            }
+            if (labSubscriptions?.data?.features[0]?.features_list) {
+              setSubscriptionFeatures(labSubscriptions?.data?.features[0]?.features_list);
+              sessionStorage.setItem('labsubsinfo', labSubscriptions?.data?.features[0]?.features_list);
+            }
+
+            if (!sessionStorage.getItem('labId')) {
+              sessionStorage.setItem('labId', '');
+            }
+            if (labSubscriptions?.data?.labSubscriptions[0]?.lab_id) {
+              sessionStorage.setItem('labId', labSubscriptions?.data?.labSubscriptions[0]?.lab_id);
+            }
+
+
+          })
+          .catch(err => {
+            console.log(err.message);
+          });
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
     }
-  }, []);
+  }, [authHeaders]);
+
+  const isShowFeature = (value) => {
+    let finalResult = false;
+    if (subscriptionFeatures && rolesInfo) {
+      finalResult = subscriptionFeatures.includes(value) && rolesInfo.includes(value);
+    }
+    return finalResult;
+  };
+
+
+
+
 
   function handleChangeSwitch() {
     localStorage.setItem('active_dark', JSON.stringify(!isActive));
@@ -473,7 +539,7 @@ function WorkList({
 
   const handleEmergency = (event, studyInstanceUid) => {
     console.log('handleEmergency', dataSource.query.headers.getHeaders());
-    const authHeaders = localStorage.getItem('auth-t');
+    //const authHeaders = localStorage.getItem('auth-t');
 
     fetch(`${hostNameurl}studies/${studyInstanceUid}/metadata/isEmergency`, {
       method: 'GET',
@@ -485,15 +551,13 @@ function WorkList({
       .then(data => {
         console.log('IsEmergency Info ', data);
 
-        const result = dataSource.query.studies.getUserRoles();
-        console.log('UserRoles111 result ', result);
-
         let text = 'Do you want to make this study as Emergency!!!';
         let formData = { data: 'true' };
         if (data.isEmergency !== '') {
           formData = { data: '' };
           text = 'Do you want to Remove Emergency status of this Study?';
         }
+        console.log('isEmergency formData ', formData, 'text ', text);
         if (confirm(text) == true) {
           event.preventDefault();
           fetch(`${hostNameurl}studies/${studyInstanceUid}/addmetadata/isEmergency`, {
@@ -675,13 +739,13 @@ function WorkList({
                 className={
                   isActive
                     ? classnames('instances-svg mr-2 inline-flex w-4', {
-                        'copyIcon-expandDarkCls': isExpanded,
-                        'copyIcon-darkModeCls': !isExpanded,
-                      })
+                      'copyIcon-expandDarkCls': isExpanded,
+                      'copyIcon-darkModeCls': !isExpanded,
+                    })
                     : classnames('instances-svg mr-2 inline-flex w-4', {
-                        'text-primary-active': isExpanded,
-                        'text-secondary-light': !isExpanded,
-                      })
+                      'text-primary-active': isExpanded,
+                      'text-secondary-light': !isExpanded,
+                    })
                 }
               />
               {instances}
@@ -712,7 +776,7 @@ function WorkList({
           content: (
             <div className="actions-container">
               {/* <Link onClick={clearOldUser} title="Genarate report" to={`/generate-report/${studyInstanceUid}/${modalities}`}> */}
-              <>
+              {isShowFeature('create_study_report') && (<>
                 <span
                   id="basic-buttonNew"
                   aria-controls={openNew ? 'basic-menuNew' : undefined}
@@ -751,9 +815,9 @@ function WorkList({
                     {mDropDowns}
                   </Menu>
                 )}
-              </>
-              {JSON.stringify(rolesInfo && rolesInfo.realm_access.roles.includes('save_to_server'))}
-              {hideOption && inCloud !== 'Yes' && (
+              </>)}
+              {/* {JSON.stringify(rolesInfo && rolesInfo.includes('save_to_server'))} */}
+              {hideOption && inCloud !== 'Yes' && isShowFeature('save_to_server') && (
                 <Link
                   title="Save to Server"
                   to=""
@@ -772,7 +836,7 @@ function WorkList({
                   </svg>
                 </Link>
               )}
-              <Link
+              {isShowFeature('refer_study_to_doctor') && (<Link
                 title="Refer"
                 to=""
               >
@@ -791,7 +855,7 @@ function WorkList({
                     <path d="m92.191 79.16c0.55078-1.2812 0.85938-2.6406 0.91016-4.0391 0.14844-2.8984-1.1289-5.9609-3.1602-7.8984l-4.1211-4.1289-8.2617-8.2305c-0.91016-0.89844-1.5508-2.9414-4.2109-0.39844-2.8711 2.75-0.67969 3.3711 0.14062 4.2617 2.5898 2.7891 5.2617 5.4883 7.9609 8.1719l4.0586 4.0117 0.48828 0.48828c0.10938 0.12109 0.23047 0.23047 0.32812 0.37109 0.21094 0.25 0.37891 0.53125 0.53125 0.82031 0 0.019531 0.019531 0.039062 0.019531 0.058594-0.17969 0.03125-0.35938 0.058593-0.51953 0.050781-10.891-0.57812-21.789 0.89062-32.672-1.8398-1.2695-0.32031-3.1094-0.69922-3.0703 4.3008 0.03125 4.1016 1.7695 3.6406 2.9492 3.6602 5.3281 0.078126 10.648-0.48828 15.98-0.48828 5.3281 0 10.719 0.011719 16.078-0.019531-1.1992 1.1289-2.5391 2.3516-3.8398 3.4805-2.8711 2.5117-5.8516 4.8984-9.0195 7.1016-1.4805 1.0312-3.5703 2.5703 0.011719 6.0703 2.9414 2.8711 4.3203 0.82031 5.4883-0.32031 2.6602-2.6016 5.1992-5.3203 7.7383-8.0391l3.8086-4.0781c0.76172-0.78906 1.6992-1.8711 2.3516-3.3398z" />
                   </g>
                 </svg>
-              </Link>
+              </Link>)}
               <>
                 <span
                   id="basic-button"
@@ -814,8 +878,8 @@ function WorkList({
                     aria-controls={open ? 'basic-menu' : undefined}
                     aria-haspopup="true"
                     aria-expanded={open ? 'true' : undefined}
-                    // onClick={handleClick}
-                    //onClick={(event) => handleClick(event, studyInstanceUid, modalities)}
+                  // onClick={handleClick}
+                  //onClick={(event) => handleClick(event, studyInstanceUid, modalities)}
                   >
                     <g
                       id="_01_align_center"
@@ -857,7 +921,7 @@ function WorkList({
                 </Menu>
               </>
 
-              <Link
+              {isShowFeature('make_study_as_emergency') && (<Link
                 title="Add"
                 to="javascript:void(0)"
                 onClick={event => handleEmergency(event, studyInstanceUid)}
@@ -910,7 +974,7 @@ function WorkList({
                     </g>
                   </g>
                 </svg>
-              </Link>
+              </Link>)}
             </div>
           ),
           gridCol: 6,
@@ -930,13 +994,13 @@ function WorkList({
           seriesTableDataSource={
             seriesInStudiesMap.has(studyInstanceUid)
               ? seriesInStudiesMap.get(studyInstanceUid).map(s => {
-                  return {
-                    description: s.description || '(empty)',
-                    seriesNumber: s.seriesNumber ?? '',
-                    modality: s.modality || '',
-                    instances: s.numSeriesInstances || '',
-                  };
-                })
+                return {
+                  description: s.description || '(empty)',
+                  seriesNumber: s.seriesNumber ?? '',
+                  modality: s.modality || '',
+                  instances: s.numSeriesInstances || '',
+                };
+              })
               : []
           }
           isActive={isActive}
@@ -971,8 +1035,7 @@ function WorkList({
                     key={i}
                     to={
                       path +
-                      `${dataPath ? '../../' : ''}${mode.routeName}${
-                        dataPath || ''
+                      `${dataPath ? '../../' : ''}${mode.routeName}${dataPath || ''
                       }?${query.toString()}`
                     }
                     onClick={event => {
@@ -982,7 +1045,7 @@ function WorkList({
                         event.preventDefault();
                       }
                     }}
-                    // to={`${mode.routeName}/dicomweb?StudyInstanceUIDs=${studyInstanceUid}`}
+                  // to={`${mode.routeName}/dicomweb?StudyInstanceUIDs=${studyInstanceUid}`}
                   >
                     {/* TODO revisit the completely rounded style of buttons used for launching a mode from the worklist later - for now use LegacyButton*/}
                     <LegacyButton
@@ -990,8 +1053,8 @@ function WorkList({
                       variant={isValidMode ? 'contained' : 'disabled'}
                       disabled={!isValidMode}
                       endIcon={<Icon name="launch-arrow" />} // launch-arrow | launch-info
-                      onClick={() => {}}
-                      // className={isActive ? 'bg-primary-light_dark' : ''}
+                      onClick={() => { }}
+                    // className={isActive ? 'bg-primary-light_dark' : ''}
                     >
                       {t(`Modes:${mode.displayName}`)}
                     </LegacyButton>
@@ -1057,25 +1120,12 @@ function WorkList({
         navigate(`/report-templates`);
       },
     },
+
     {
       title: t('Header:Doctors Referrals'),
       icon: 'doctorReferrals',
       onClick: () => {
         navigate(`/doctor-referrals`);
-      },
-    },
-    {
-      title: t('Header:Subscriptions'),
-      icon: 'templates',
-      onClick: () => {
-        navigate(`/subscription-types`);
-      },
-    },
-    {
-      title: t('Header:Labs'),
-      icon: 'templates',
-      onClick: () => {
-        navigate(`/labs`);
       },
     },
     {
@@ -1104,25 +1154,25 @@ function WorkList({
   const uploadProps =
     dicomUploadComponent && dataSource.getConfig()?.dicomUploadEnabled
       ? {
-          title: 'Upload files',
-          closeButton: true,
-          shouldCloseOnEsc: false,
-          shouldCloseOnOverlayClick: false,
-          content: dicomUploadComponent.bind(null, {
-            dataSource,
-            onComplete: () => {
-              hide();
-              onRefresh();
-            },
-            onStarted: () => {
-              show({
-                ...uploadProps,
-                // when upload starts, hide the default close button as closing the dialogue must be handled by the upload dialogue itself
-                closeButton: false,
-              });
-            },
-          }),
-        }
+        title: 'Upload files',
+        closeButton: true,
+        shouldCloseOnEsc: false,
+        shouldCloseOnOverlayClick: false,
+        content: dicomUploadComponent.bind(null, {
+          dataSource,
+          onComplete: () => {
+            hide();
+            onRefresh();
+          },
+          onStarted: () => {
+            show({
+              ...uploadProps,
+              // when upload starts, hide the default close button as closing the dialogue must be handled by the upload dialogue itself
+              closeButton: false,
+            });
+          },
+        }),
+      }
       : undefined;
 
   const { component: dataSourceConfigurationComponent } =
@@ -1170,7 +1220,7 @@ function WorkList({
               : `ohif-scrollbar flex grow flex-col overflow-y-auto ${iframeImageflag} `
           }
 
-          //style={{ width: '50%' }}
+        //style={{ width: '50%' }}
         >
           <StudyListFilter
             style={{ minWidth: '1280px' }}

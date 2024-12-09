@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, Link } from 'react-router-dom';
 import SunEditor from 'suneditor-react';
 import 'suneditor/dist/css/suneditor.min.css';
 import '../ReportTemplates/report.css';
@@ -113,6 +113,8 @@ const CreateTemplate = () => {
 
   let labName = 'Test CT Scan Center';
   const nodeAppHost = '/teleapp';
+  const clientId = window.config.oidc[0].client_id;
+
 
   labName = labName.replace(/ /g, '_') + '.json';
   const params = useParams();
@@ -132,37 +134,64 @@ const CreateTemplate = () => {
   const [updateModality, setUpdateModality] = useState([]);
   const [subModality, setUpdateSubModality] = useState('');
   const [updateTemplateInfo, setUpdateTemplateInfo] = useState([]);
-  const labId = 2;
+  const [authHeaders, setAuthHeaders] = useState('');
+  const [rolesInfo, setuserRoles] = useState('');
+  const [subscriptionFeatures, setLabsubsInfo] = useState('');
+  const labId = sessionStorage.getItem('labId') || '';
 
   useEffect(() => {
-    //fetch(`${nodeAppHost}/read_modalities`)
-    let authHeaders = localStorage.getItem('auth-t');
+
     console.log("local headers ", authHeaders);
-    fetch(`${nodeAppHost}/read_modalities/${labId}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': authHeaders
-      },
-    })
-      .then(response => response.json())
-      .then(actualData => {
-        console.log('Modalities list Info ', actualData);
-        setModalityOptionsList(actualData.data);
+    if (authHeaders) {
+      fetch(`${nodeAppHost}/read_modalities/${labId}`, {
+        method: 'GET',
+        headers: {
+          'Authorization': authHeaders,
+          'clientId': clientId,
+          'realm': clientId,
+          'Content-Type': 'application/json',
+          'isAccess': 'read_modalities',
+          'labId': labId,
+          'userSub': sessionStorage.getItem('user_sub') || ''
+        },
       })
-      .catch(err => {
-        console.log(err.message);
-      });
+        .then(response => response.json())
+        .then(actualData => {
+          console.log('Modalities list Info ', actualData);
+          setModalityOptionsList(actualData.data);
+        })
+        .catch(err => {
+          console.log(err.message);
+        });
+    }
+
+  }, [authHeaders]);
+
+  useEffect(() => {
+    const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`));
+    let authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
+    console.log("local headers ", authHeaders);
+    setAuthHeaders(authHeaders);
+    setuserRoles(sessInfo.profile?.realm_access?.roles);
+
+    // Read labsubsinfo from sessionStorage
+    const storedLabsubsInfo = sessionStorage.getItem('labsubsinfo') || '';
+    setLabsubsInfo(storedLabsubsInfo);
   }, []);
 
   useEffect(() => {
-    if (modalityValue) {
-      // fetch(`${nodeAppHost}/read_study_template/${labId}/${templateValue}`)
-      let authHeaders = localStorage.getItem('auth-t');
+    if (modalityValue && authHeaders) {
       console.log("local headers --> read_study_template ", authHeaders);
       fetch(`${nodeAppHost}/read_study_template/${labId}/${templateValue}`, {
         method: 'GET',
         headers: {
-          'Authorization': authHeaders
+          'Authorization': authHeaders,
+          'clientId': clientId,
+          'realm': clientId,
+          'Content-Type': 'application/json',
+          'isAccess': 'read_study_template',
+          'labId': labId,
+          'userSub': sessionStorage.getItem('user_sub') || ''
         },
       })
         .then(response => response.json())
@@ -176,7 +205,7 @@ const CreateTemplate = () => {
           console.log(err.message);
         });
     }
-  }, [modalityValue]);
+  }, [modalityValue, authHeaders]);
 
   // Set body style
   useEffect(() => {
@@ -185,6 +214,16 @@ const CreateTemplate = () => {
       document.body.classList.remove('bg-black');
     };
   }, []);
+
+  const isShowFeature = (value) => {
+    let finalResult = false;
+    //console.log("subscriptionFeatures ", subscriptionFeatures, "rolesInfo ", rolesInfo);
+    if (subscriptionFeatures && rolesInfo) {
+      finalResult = subscriptionFeatures.includes(value) && rolesInfo.includes(value);
+    }
+    console.log("subscriptionFeatures ", subscriptionFeatures, "rolesInfo ", rolesInfo, "finalResult ", finalResult);
+    return finalResult;
+  };
 
   useEffect(() => {
     if (isActive) {
@@ -230,21 +269,6 @@ const CreateTemplate = () => {
     setValue(content);
   };
 
-  // function onImageUploadBefore() {
-  //   return (files, _info, _core, uploadHandler) => {
-  //     console.log("Files ", files);
-  //       const formData = new FormData();
-  //      let data= formData.append("file", files[0]);
-
-  //       const options = {
-  //         method: 'POST',
-  //         body: JSON.stringify(data),
-  //       };
-  //      const res = fetch("http://localhost:3300/create",options);
-
-  //       console.log("Result",res);
-  //   };
-  // }
   function handleImageUploadBefore(files, info, uploadHandler) {
     // uploadHandler is a function
     console.log(files, info);
@@ -277,7 +301,7 @@ const CreateTemplate = () => {
     console.log(" After Sub Modality ", subModality);
   };
   const handleSubmit = event => {
-    console.log("form values  ",event.target.input);
+    console.log("form values  ", event.target.input);
     event.preventDefault();
     // Handle form submission with selectedOption
     let contentValue = '';
@@ -288,40 +312,19 @@ const CreateTemplate = () => {
     console.log('labName', labName, 'Selected option:', selectedOption, 'contentRef ', value, "subModality ", subModality);
 
     if (!modalityValue && !templateValue) {
-
-      let authHeaders = localStorage.getItem('auth-t');
-
-      // fetch(`${nodeAppHost}/read_modalities_for_lab/${labId}/${subModality}`, {
-      //   method: 'GET',
-      //   headers: {
-      //     'Authorization': authHeaders
-      //   },
-      // })
-      //   .then(response => response.json())
-      //   .then(result => {
-      //     console.log('Modality Info result ', result);
-      //   })
-      //   .catch(err => {
-      //     console.log(err.message);
-      //   });
-
-
-
-
-
-
-
-
-
-      
       const url = `${nodeAppHost}/create_template`;
 
-      const data = { modality: selectedOption, template_content: value, lab_id: 2, sub_modality:subModality };
+      const data = { modality: selectedOption, template_content: value, lab_id: labId, sub_modality: subModality };
       const options = {
         method: 'POST',
         headers: {
+          'Authorization': authHeaders,
+          'clientId': clientId,
+          'realm': clientId,
           'Content-Type': 'application/json',
-          'Authorization': authHeaders
+          'isAccess': 'add_report_template',
+          'labId': labId,
+          'userSub': sessionStorage.getItem('user_sub') || ''
         },
         body: JSON.stringify(data),
       };
@@ -339,14 +342,18 @@ const CreateTemplate = () => {
       }
     } else {
       const url = `${nodeAppHost}/update_template`;
-      let authHeaders = localStorage.getItem('auth-t');
-      const data = { modality: selectedOption, template_content: value, sub_modality: subModality};
+      //let authHeaders = localStorage.getItem('auth-t');
+      const data = { modality: selectedOption, template_content: value, sub_modality: subModality };
       const options = {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': authHeaders
-          // Add any additional headers if needed
+          'Authorization': authHeaders,
+          'clientId': clientId,
+          'realm': clientId,
+          'isAccess': 'add_report_template',
+          'labId': labId,
+          'userSub': sessionStorage.getItem('user_sub') || ''
         },
         body: JSON.stringify(data),
       };
@@ -380,8 +387,9 @@ const CreateTemplate = () => {
         handleRedirectPage={handleRedirectPage}
         screen="ReportTemplateList"
       />
-      <div className="templateForm">
-        <h1 className="templateHeaderCls">
+
+      {isShowFeature('add_report_template') && <div className="templateForm">
+        <h1 className="doctors-list-title">
           {modalityValue ? 'Update Template' : 'Create Template'}
         </h1>
         <form onSubmit={handleSubmit} >
@@ -419,11 +427,6 @@ const CreateTemplate = () => {
                 />
               </p>
             </div>
-            {/* <SunEditor
-              setOptions={editorOptions}
-              onImageUploadBefore={handleImageUploadBefore}
-              onChange={onChangeHandler}
-            /> */}
             <SunEditor
               autoFocus={true}
               lang="en"
@@ -441,9 +444,20 @@ const CreateTemplate = () => {
             </button>
           </div>
         </form>
-      </div>
+      </div>}
+      {!isShowFeature('add_report_template') && <div className="noAccessCls"><h1>Access Denied</h1>
+        <p>Sorry, you do not have the necessary permissions to view this page.</p>
+        <p>If you believe this is a mistake, please contact the administrator.</p>
+        <p><Link
+          to="/workList"
+        >
+          <li>
+            <span>Go Back to Home</span>
+          </li>
+        </Link></p></div>}
     </div>
   );
 };
+
 
 export default CreateTemplate;

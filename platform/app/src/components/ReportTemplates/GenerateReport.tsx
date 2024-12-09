@@ -98,7 +98,7 @@ const editorOptions = {
 const GenerateReport = () => {
   const iframeBaseUrl = window.location.origin;
   const navigate = useNavigate();
-  const labId = 2;
+  const labId = sessionStorage.getItem('labId') || '';
   const hostName = '/pacs/dicom-web/';
   const nodeAppHost = '/teleapp';
   // labName = labName.replace(/ /g, '_') + '.json';
@@ -120,52 +120,75 @@ const GenerateReport = () => {
 
   const [modalitydata, setModalityData] = useState('<p>sample modality</p>');
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [authHeaders, setAuthHeaders] = useState('');
+  const clientId = window.config.oidc[0].client_id;
 
   useEffect(() => {
     //fetch(`${hostName}studies/${modalityValue}/metadata/reportRaw`);
-    const authHeaders = localStorage.getItem('auth-t');
+    //const authHeaders = localStorage.getItem('auth-t');
     console.log('local headers --> read_study_template ', authHeaders);
-    fetch(`${hostName}studies/${modalityValue}/metadata/reportRaw`, {
-      method: 'GET',
-      headers: {
-        Authorization: authHeaders,
-      },
-    })
-      .then(response => response.json())
-      .then(actualData => {
-        console.log('Modality Info 1st API  ', actualData);
-        getModalityData(actualData.reportRaw);
+    if (authHeaders) {
+      console.log('Inside local headers --> read_study_template ', authHeaders);
+      fetch(`${hostName}studies/${modalityValue}/metadata/reportRaw`, {
+        method: 'GET',
+        headers: {
+          Authorization: authHeaders,
+        },
       })
-      .catch(err => {
-        console.log(err.message);
-      });
-    GetStudyData();
+        .then(response => response.json())
+        .then(actualData => {
+          console.log('Modality Info 1st API  ', actualData);
+          getModalityData(actualData.reportRaw);
+        })
+        .catch(err => {
+          console.log(err.message);
+        });
+      GetStudyData();
+    }
+  }, [authHeaders]);
+
+  useEffect(() => {
+    const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`));
+    let authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
+    console.log("local headers ", authHeaders);
+    setAuthHeaders(authHeaders);
   }, []);
 
   useEffect(() => {
     //fetch(`${nodeAppHost}/read_study_template_for_generate/${labId}/${modality}`)
-    const authHeaders = localStorage.getItem('auth-t');
+    //const authHeaders = localStorage.getItem('auth-t');
     console.log('local headers --> read_study_template ', authHeaders);
-    fetch(`${nodeAppHost}/read_study_template_for_generate/${labId}/${modality}/${reportType}`, {
-      method: 'GET',
-      headers: {
-        Authorization: authHeaders,
-      },
-    })
-      .then(response => response.json())
-      .then(actualData => {
-        console.log('actualData', actualData);
-        let updatedTemplateInfo;
-        if (modalityInfo === '') {
-          console.log('Modality template Info 2nd API IF', modalitydata);
-          const p_modality = modalitydata['00080061'] ? modalitydata['00080061'].Value[0] : '';
-          const p_name = modalitydata['00100010']
-            ? modalitydata['00100010'].Value[0].Alphabetic
-            : '';
+    if (authHeaders) {
+      fetch(`${nodeAppHost}/read_study_template_for_generate/${labId}/${modality}/${reportType}`, {
+        method: 'GET',
+        // headers: {
+        //   Authorization: authHeaders,
+        // },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeaders,
+          'clientId': clientId,
+          'realm': clientId,
+          'isAccess': 'read_study_template_for_generate',
+          'labId': labId,
+          'abcdefg': 'AAAAA',
+          'x1234': 'BBBBB_'+labId,
+        },
+      })
+        .then(response => response.json())
+        .then(actualData => {
+          console.log('actualData', actualData);
+          let updatedTemplateInfo;
+          if (modalityInfo === '') {
+            console.log('Modality template Info 2nd API IF', modalitydata);
+            const p_modality = modalitydata['00080061'] ? modalitydata['00080061'].Value[0] : '';
+            const p_name = modalitydata['00100010']
+              ? modalitydata['00100010'].Value[0].Alphabetic
+              : '';
 
-          const p_desc = modalitydata['00081030'] ? modalitydata['00081030'].Value[0] : '';
-          const p_age = modalitydata['00101010'] ? modalitydata['00101010'].Value[0] : '';
-          const patientInfo = `
+            const p_desc = modalitydata['00081030'] ? modalitydata['00081030'].Value[0] : '';
+            const p_age = modalitydata['00101010'] ? modalitydata['00101010'].Value[0] : '';
+            const patientInfo = `
             <p class="patient-info-span" style="width: 200px">
 
               <b>Patient name :</b>&nbsp;${p_name}
@@ -178,23 +201,22 @@ const GenerateReport = () => {
               <b>Date:</b>&nbsp;
               ${formattedDate}
             </p>`;
-          console.log('Modality template Info 2nd API IF patientInfo', patientInfo);
-          updatedTemplateInfo = patientInfo + '<br/>' + actualData.data.template_content;
-        } else {
-          console.log('Modality template Info 2nd API ELSE ', modalityInfo);
-          updatedTemplateInfo = modalityInfo;
-        }
+            console.log('Modality template Info 2nd API IF patientInfo', patientInfo);
+            updatedTemplateInfo = patientInfo + '<br/>' + actualData.data.template_content;
+          } else {
+            console.log('Modality template Info 2nd API ELSE ', modalityInfo);
+            updatedTemplateInfo = modalityInfo;
+          }
 
-        getModalityTemplateDate(updatedTemplateInfo);
-      })
-      .catch(err => {
-        console.log(err.message);
-      });
-  }, [modalitydata, modalityInfo]);
+          getModalityTemplateDate(updatedTemplateInfo);
+        })
+        .catch(err => {
+          console.log(err.message);
+        });
+    }
+  }, [modalitydata, modalityInfo, authHeaders]);
 
   function GetStudyData() {
-    //fetch(`${hostName}studies?StudyInstanceUID=${modalityValue}&&includefield=00101010,00101040,00081030`);
-    const authHeaders = localStorage.getItem('auth-t');
     console.log('local headers --> read_study_template ', authHeaders);
     fetch(
       `${hostName}studies?StudyInstanceUID=${modalityValue}&&includefield=00101010,00101040,00081030`,
@@ -297,7 +319,7 @@ const GenerateReport = () => {
 
     const contentValue = '';
     console.log('contentRef.current.innerHTML', value);
-    const authHeaders = localStorage.getItem('auth-t');
+    //const authHeaders = localStorage.getItem('auth-t');
     const url = `${hostName}studies/${modalityValue}/addmetadata/reportRaw`;
     const data = { data: value };
     const options = {
@@ -434,37 +456,7 @@ const GenerateReport = () => {
       console.error('Error:', error);
     }
   };
-  const handleSubmit1 = event => {
-    event.preventDefault();
 
-    // Handle form submission with selectedOption
-    const contentValue = '';
-    console.log('contentRef.current.innerHTML', value);
-    // console.log('labName', labName, 'Selected option:', selectedOption, 'contentRef ', value);
-
-    const authHeaders = localStorage.getItem('auth-t');
-    const url = `${hostName}/studies/${modalityValue}/addmetadata/reportRaw`;
-    const data = { data: data + value };
-    const options = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: authHeaders,
-      },
-      body: JSON.stringify(data),
-    };
-
-    try {
-      const res = fetch(url, options);
-      if (res) {
-        navigate('/workList');
-      }
-      //const json = res.json();
-      console.log('response ', res);
-    } catch (error) {
-      console.error('Error:', error);
-    }
-  };
 
   const handleRedirectPage = () => {
     navigate('/workList');
@@ -487,26 +479,7 @@ const GenerateReport = () => {
         <h1 className="templateHeaderCls">Study Report</h1>
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', justifyContent: 'center' }}>
-            {/* <div className="modalityDropdown">
-              <label htmlFor="dropdown">Modality:</label>
-              <select
-                name="selectedOption"
-                disabled={modalityInfo && modalityInfo !== '' ? true : false}
-                id="dropdown"
-                value={selectedOption}
-                onChange={handleSelectChange}
-              >
-                <option value="">Select</option>
-                {options.map((option, index) => (
-                  <option
-                    key={index}
-                    value={option.value}
-                  >
-                    {option.value}
-                  </option>
-                ))}
-              </select>
-            </div> */}
+            
 
             <SunEditor
               ref={editorRef}

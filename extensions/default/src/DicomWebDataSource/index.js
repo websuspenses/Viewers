@@ -141,7 +141,7 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
         mapParams: mapParams.bind(),
         search: async function (origParams) {
           qidoDicomWebClient.headers = getAuthrorizationHeader();
-          localStorage.setItem('auth-t', qidoDicomWebClient.headers.Authorization);
+         // localStorage.setItem('auth-t', qidoDicomWebClient.headers.Authorization);
           const { studyInstanceUid, seriesInstanceUid, ...mappedParams } =
             mapParams(origParams, {
               supportsFuzzyMatching: dicomWebConfig.supportsFuzzyMatching,

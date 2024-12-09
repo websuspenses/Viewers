@@ -110,3 +110,10 @@
   text-align: right;
   justify-content:space-around
 }
+h1.doctors-list-title {
+  font-size:32px;
+  color:#097460;
+  text-align:center;
+  margin:0 auto;
+  font-weight: 700 !important;
+}

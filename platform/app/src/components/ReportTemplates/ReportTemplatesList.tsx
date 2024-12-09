@@ -15,29 +15,66 @@ function ReportTemplatesList() {
   const [isActive, setIsActive] = useState(false);
   const [templateData, setData] = useState([]);
   const [showconfirm, setShowConfirm] = useState(false);
+  const [authHeaders, setAuthHeaders] = useState('');
+  const [rolesInfo, setuserRoles] = useState('');
+  const [subscriptionFeatures, setLabsubsInfo] = useState('');
 
-  const labId = 2;
+
+  const labId = sessionStorage.getItem('labId') || '';
   const nodeAppHost = '/teleapp';
 
   useEffect(() => {
-    //fetch(`${nodeAppHost}/read_templates/${labId}`)
-    let authHeaders = localStorage.getItem('auth-t');
+    //let authHeaders = localStorage.getItem('auth-t');
+    const clientId = window.config.oidc[0].client_id;
+
     console.log("local headers read_templates ", authHeaders);
-    fetch(`${nodeAppHost}/read_templates/${labId}`, {
-      method: 'GET',
-      headers: {
-        'Authorization': authHeaders
-      },
-    })
-      .then(response => response.json())
-      .then(actualData => {
-        console.log('actualData ', actualData);
-        setData(actualData.data);
+    if (authHeaders) {
+      fetch(`${nodeAppHost}/read_templates`, {
+        method: 'GET',
+        headers: {
+          'Authorization': authHeaders,
+          'clientId': clientId,
+          'realm': clientId,
+          'Content-Type': 'application/json',
+          'isAccess': 'view_template_list',
+          'labId': labId
+        },
       })
-      .catch(err => {
-        console.log(err.message);
-      });
+        .then(response => response.json())
+        .then(actualData => {
+          console.log('actualData ', actualData);
+          setData(actualData.data);
+        })
+        .catch(err => {
+          console.log(err.message);
+        });
+    }
+
+
+  }, [authHeaders]);
+
+
+  const isShowFeature = (value) => {
+    let finalResult = false;
+    console.log("subscriptionFeatures ", subscriptionFeatures, "rolesInfo ", rolesInfo);
+    if (subscriptionFeatures && rolesInfo) {
+      finalResult = subscriptionFeatures.includes(value) && rolesInfo.includes(value);
+    }
+    return finalResult;
+  };
+
+  useEffect(() => {
+    const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`));
+    let authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
+    console.log("local headers sessInfo", sessInfo);
+    setAuthHeaders(authHeaders);
+    setuserRoles(sessInfo.profile?.realm_access?.roles);
+
+    // Read labsubsinfo from sessionStorage
+    const storedLabsubsInfo = sessionStorage.getItem('labsubsinfo') || '';
+    setLabsubsInfo(storedLabsubsInfo);
   }, []);
+
 
   // Set body style
   useEffect(() => {
@@ -99,7 +136,7 @@ function ReportTemplatesList() {
       />
       <div className="reportcontainer">
         <div className="createBtnCls">
-          <Link
+          {isShowFeature('add_report_template') && <Link 
             to="/create-template"
             style={{ textDecoration: 'none' }}
           >
@@ -111,10 +148,11 @@ function ReportTemplatesList() {
             >
               Create Template
             </Button>
-          </Link>
+          </Link>}
         </div>
-        <ul className="templatesList">
-          {/* {templateData[0]} */}
+        <h1 className='doctors-list-title'>Template Library</h1>
+        {isShowFeature('view_template_list') && <ul className="templatesList">
+
           {templateData.map(item => (
             <li
               key={item.labName}
@@ -147,7 +185,7 @@ function ReportTemplatesList() {
                       Edit
                     </Button>
                   </Link>
-                  <Button
+                  {isShowFeature('delete_template') && <Button
                     variant="contained"
                     color="success"
                     className="createUserCls"
@@ -155,12 +193,22 @@ function ReportTemplatesList() {
                     onClick={handleDeleteTemplate}
                   >
                     Delete
-                  </Button>
+                  </Button>}
                 </Stack>
               </div>
             </li>
           ))}
-        </ul>
+        </ul>}
+        {!isShowFeature('view_template_list') && <div className="noDataCls"><h1>Access Denied</h1>
+          <p>Sorry, you do not have the necessary permissions to view this page.</p>
+          <p>If you believe this is a mistake, please contact the administrator.</p>
+          <p><Link
+            to="/workList"
+          >
+            <li>
+              <span>Go Back to Home</span>
+            </li>
+          </Link></p></div>}
       </div>
       {showconfirm && (
         <ConfirmationDialog

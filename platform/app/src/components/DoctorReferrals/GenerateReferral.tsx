@@ -7,191 +7,229 @@ import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
-import Dialog from '@mui/material/Dialog';
+import Dialog, { DialogProps } from '@mui/material/Dialog';
 import { useNavigate } from 'react-router-dom';
 
-const BootstrapDialog = styled(Dialog)(({ theme }) => ({
+interface Doctor {
+  doc_id: string;
+  doc_name: string;
+  doc_specialization: string;
+  doc_clinic: string;
+  doc_phone_number: string;
+  doc_email: string;
+}
+
+interface Props {
+  open: boolean;
+  handleClose: () => void;
+  StudyInstanceUId: string;
+}
+
+const BootstrapDialog = styled(Dialog)<DialogProps>(() => ({
   '& .MuiDialogContent-root': {
-    padding: theme.spacing(2),
+    padding: '16px',
   },
   '& .MuiDialogActions-root': {
-    padding: theme.spacing(1),
+    padding: '8px',
   },
   '& .MuiPaper-root': {
     width: '550px !important',
   },
-}));
+})) as typeof Dialog;
 
-function generaterandomString(length) {
-  let result = '';
+function generateRandomString(length: number): string {
   const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
   const charactersLength = characters.length;
-  let counter = 0;
-  while (counter < length) {
+  let result = '';
+  for (let i = 0; i < length; i++) {
     result += characters.charAt(Math.floor(Math.random() * charactersLength));
-    counter += 1;
   }
   return result;
 }
 
-function GenerateReferral(props) {
+function GenerateReferral(props: Props) {
   const navigate = useNavigate();
   const { open, handleClose, StudyInstanceUId } = props;
   const nodeAppHost = '/teleapp';
   const hostName = '/pacs/dicom-web/';
   const [value, setValue] = useState('');
-  const [doctorsData, setDoctorsData] = useState([]);
+  const [doctorsData, setDoctorsData] = useState<Doctor[]>([]);
+  const [authHeaders, setAuthHeaders] = useState('');
+  const [error, setError] = useState('');
 
-  const handleChange = event => {
-    console.log('dropdown value', event.target.name, doctorsData);
-
+  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setValue(event.target.value);
+    setError('');
   };
 
-  // const object = doctorsData && doctorsData.find(item => item.doc_id === value);
-  // console.log('object', object, value);
-
   useEffect(() => {
-    let authHeaders = localStorage.getItem('auth-t');
-    console.log("local headers ", authHeaders);
-    fetch(`${nodeAppHost}/get_referral_doctors`, {
-      method: 'GET',
-      headers: {
-        'Authorization': authHeaders
-      },
-    })
-      .then(response => response.json())
-      .then(actualData => {
-        console.log('actualData ', actualData);
-        setDoctorsData(actualData.data);
-      })
-      .catch(err => {
-        console.log(err.message);
-      });
+    try {
+      const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`) || '{}');
+      const headers = `${sessInfo.token_type} ${sessInfo.access_token}`;
+      setAuthHeaders(headers);
+    } catch (error) {
+      console.error('Error getting auth headers:', error);
+      setError('Authentication error occurred');
+    }
   }, []);
 
-  function sendStudyReferral(event) {
-    event.preventDefault();
-    //const url = 'http://ciaiteleradiology.com/teleapp/send_study_referral';
+  useEffect(() => {
+    if (!authHeaders) return;
 
-    let authHeaders = localStorage.getItem('auth-t');
+    const fetchDoctors = async () => {
 
-    let referralUrl = '';
-    fetch(`${hostName}studies/${StudyInstanceUId}/get_cloud_url`, {
-      method: 'GET',
-      headers: {
-        Authorization: authHeaders,
-      },
-    })
-      .then(response => response.json())
-      .then(result => {
-        console.log('Cloud URL info ', result);
-        referralUrl = result.url;
-        sendMessage(referralUrl, StudyInstanceUId);
-      })
-      .catch(err => {
-        console.log(err.message);
-      });
-  }
-  function sendReferralHelper(studyInstanceUid, URL) {
-    let authHeaders = localStorage.getItem('auth-t');
-    const url = `${nodeAppHost}/send_study_referral`;
-    const formData = {
-      sr_to_doctor: value,
-      sr_requester_id: 2,
-      sr_requester_comments: `Hello Doctor,Could you please check below URL: ${URL}`,
+    const clientId = window.config.oidc[0].client_id;
+      try {
+        const response = await fetch(`${nodeAppHost}/get_referral_doctors`, {
+          method: 'GET',
+          headers: {
+            'Authorization': authHeaders,
+            'clientId': clientId,
+            'realm': clientId,
+            'Content-Type': 'application/json',
+            'test-header': 'test',
+            'isAccess': 'view_referral_doctors_list',
+            'labId': sessionStorage.getItem('labId') || '',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const actualData = await response.json();
+        setDoctorsData(actualData.data);
+      } catch (err) {
+        console.error('Error fetching doctors:', err);
+        setError('Failed to load doctors list');
+      }
     };
 
-    const options = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': authHeaders
-      },
-      body: JSON.stringify(formData),
-    };
+    fetchDoctors();
+  }, [authHeaders, nodeAppHost]);
 
-
-
-
-
+  const sendReferralHelper = async (studyInstanceUid: string, URL: string) => {
+    const clientId = window.config.oidc[0].client_id;
+    if (!value) {
+      setError('Please select a doctor');
+      return;
+    }
 
     try {
-      const res = fetch(url, options);
-      if (res) {
-        let url = `${hostName}/studies/${studyInstanceUid}/update_status`;
-        const statusBody = { "status": "Referral sent" };
-        const options2 = {
+      const formData = {
+        sr_to_doctor: value,
+        sr_requester_id: 2,
+        sr_requester_comments: `Hello Doctor, Could you please check below URL: ${URL}`,
+      };
+
+      const options = {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': authHeaders,
+          'clientId': clientId,
+          'realm': clientId,
+        },
+        body: JSON.stringify(formData),
+      };
+
+      const response = await fetch(`${nodeAppHost}/send_study_referral`, options);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const statusBody = { "status": "Referral sent" };
+      const updateResponse = await fetch(
+        `${hostName}/studies/${studyInstanceUid}/update_status`,
+        {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            Authorization: authHeaders,
+            'Authorization': authHeaders,
+            'clientId': clientId,
+            'realm': clientId,
           },
           body: JSON.stringify(statusBody),
-        };
-
-        try {
-          const res = fetch(url, options2);
-          if (res) {
-            alert("Referred Succesfully...")
-            navigate('/workList');
-            console.log('Status updated Save to server', res);
-          }
-          console.log('response ', res);
-        } catch (error) {
-          console.error('Error:', error);
         }
-        //navigate('/workList');
-        handleClose();
+      );
+
+      if (!updateResponse.ok) {
+        throw new Error(`HTTP error! status: ${updateResponse.status}`);
       }
-      console.log('response ', res);
+
+      alert("Referred Successfully...");
+      navigate('/workList');
+      handleClose();
     } catch (error) {
       console.error('Error:', error);
+      setError(error instanceof Error ? error.message : 'Failed to send referral');
     }
-  }
-  const sendMessage = (referralUrl, studyInstanceUid) => {
+  };
 
+  const sendMessage = async (referralUrl: string, studyInstanceUid: string) => {
+    console.log('Referral URL:', referralUrl, "StudyInstanceUId:", studyInstanceUid);
+    try {
+      const body = {
+        "url": referralUrl,
+        "alias": "ciaitr" + generateRandomString(6)
+      };
 
+      const whatsAppSvcURL = 'https://api.tinyurl.com/create?api_token=5YCcwTA4TrhQhqh2M2mWq8UX9s4o3OpUDRWi58ItBI6JwsGKJ73srA8AoCoQ';
+      const response = await fetch(whatsAppSvcURL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'accept': 'application/json'
+        },
+        body: JSON.stringify(body),
+      });
+console.log('Whatsapp response', response);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-    // WhatsApp API info
-
-    const body = {
-      "url": referralUrl,
-      "alias": "ciaitr" + generaterandomString(6)
+      const tinyUrlResponse = await response.json();
+      await sendReferralHelper(studyInstanceUid, tinyUrlResponse.data.tiny_url);
+    } catch (error) {
+      console.error('Error generating tiny URL:', error);
+      await sendReferralHelper(studyInstanceUid, referralUrl);
     }
+  };
 
-    const whatsAppSvcURL = 'https://api.tinyurl.com/create?api_token=5YCcwTA4TrhQhqh2M2mWq8UX9s4o3OpUDRWi58ItBI6JwsGKJ73srA8AoCoQ';
-
-    const whatsAppSvcOptions = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'accept': 'application/json'
-      },
-      body: JSON.stringify(body),
+  const sendStudyReferral = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    
+    const clientId = window.config.oidc[0].client_id;
+    if (!value) {
+      setError('Please select a doctor');
+      return;
     }
 
     try {
-      fetch(whatsAppSvcURL, whatsAppSvcOptions)
-        .then(response => response.json())
-        .then(tinyUrlResponse => {
-          console.log('Tiny URL info ', tinyUrlResponse, tinyUrlResponse.data.tiny_url);
-          sendReferralHelper(studyInstanceUid, tinyUrlResponse.data.tiny_url);
-        })
-        .catch(err => {
-          console.log(err.message);
-          sendReferralHelper(studyInstanceUid, referralUrl);
-        });
+      const response = await fetch(`${hostName}studies/${StudyInstanceUId}/get_cloud_url`, {
+        method: 'GET',
+        headers: {
+          Authorization: authHeaders,
+          'clientId': clientId,
+          'realm': clientId,
+        },
+      });
 
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
 
-    } 
-    catch (error) {
+      const result = await response.json();
+      await sendMessage(result.url, StudyInstanceUId);
+    } catch (error) {
       console.error('Error:', error);
-      sendReferralHelper(studyInstanceUid, referralUrl);
+      setError(error instanceof Error ? error.message : 'Failed to get study URL');
     }
-  }
-  const handleResetInform = () => {
+  };
+
+  const handleResetForm = () => {
     setValue('');
+    setError('');
   };
 
   return (
@@ -230,20 +268,21 @@ function GenerateReferral(props) {
                 </label>
                 &nbsp;&nbsp;
                 <select
-                  className="doctorsListCls"
+                  className={`doctorsListCls ${error ? 'is-invalid' : ''}`}
                   value={value}
                   onChange={handleChange}
                 >
                   <option value="">Select</option>
-                  {doctorsData.map((option, index) => (
+                  {doctorsData.map((option) => (
                     <option
-                      key={index}
+                      key={option.doc_id}
                       value={option.doc_id}
                     >
                       {option.doc_name}
                     </option>
                   ))}
                 </select>
+                {error && <div className="invalid-feedback">{error}</div>}
               </div>
             </div>
           </div>
@@ -258,7 +297,7 @@ function GenerateReferral(props) {
             variant="contained"
             color="error"
             className="borderRadiusCls"
-            onClick={handleResetInform}
+            onClick={handleResetForm}
           >
             Clear
           </Button>
@@ -266,6 +305,7 @@ function GenerateReferral(props) {
             variant="contained"
             className="submitBtnMuiRefCls borderRadiusCls"
             onClick={sendStudyReferral}
+            disabled={!value}
           >
             Refer
           </Button>

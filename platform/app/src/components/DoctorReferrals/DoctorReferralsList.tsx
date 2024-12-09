@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ReactElement } from 'react';
 import '../ReportTemplates/report.css';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
@@ -12,19 +12,64 @@ import './ReferralStyle.css';
 import Tooltip from '@mui/material/Tooltip';
 import { useNavigate } from 'react-router-dom';
 
+// Declare window.config type
+declare global {
+  interface Window {
+    config: {
+      oidc: Array<{
+        authority: string;
+        client_id: string;
+      }>;
+    };
+  }
+}
+
+interface Doctor {
+  doc_id: string;
+  doc_name: string;
+  doc_specialization: string;
+  doc_clinic: string;
+  doc_phone_number: string;
+  doc_email: string;
+}
+
+interface HeaderProps {
+  isSticky: boolean;
+  menuOptions: any[];
+  isReturnEnabled: boolean;
+  WhiteLabeling: Record<string, unknown>;
+  isActive: boolean;
+  handleChange: () => void;
+  handleRedirectPage: () => void;
+  screen: string;
+  children: React.ReactNode;
+  onClickReturnButton: () => void;
+  modalityValue: string;
+  iframeBlockFlag: boolean;
+}
+
+// Create a wrapper component for Header
+const HeaderWrapper = (props: HeaderProps): ReactElement => {
+  if (!Header) return <></>;
+  return <div>{Header(props)}</div>;
+};
+
 function DoctorReferralsList() {
   const navigate = useNavigate();
   const [isActive, setIsActive] = useState(false);
   const [showconfirm, setShowConfirm] = useState(false);
   const [referralPopup, setReferralPopup] = useState(false);
   const [showEditConfirm, setShowEditConfirm] = useState(false);
-  const [doctorsList, setDoctorsList] = useState([]);
-  const [editItem, setEachItem] = useState('');
+  const [doctorsList, setDoctorsList] = useState<Doctor[]>([]);
+  const [editItem, setEachItem] = useState<Doctor | null>(null);
   const [updateError, setUpdateError] = useState('');
   const [isSuccess, setErrorStatus] = useState('');
+  const [rolesInfo, setuserRoles] = useState('');
+  const [subscriptionFeatures, setLabsubsInfo] = useState('');
+  const labId = sessionStorage.getItem('labId') || '';
 
   const nodeAppHost = '/teleapp';
-  // Set body style
+  
   useEffect(() => {
     document.body.classList.add('bg-black');
     document.body.classList.add('reportsList_ContainerCls');
@@ -38,13 +83,35 @@ function DoctorReferralsList() {
     readDoctorsList();
   }, []);
 
+  const isShowFeature = (value) => {
+    let finalResult = false;
+    console.log("subscriptionFeatures ", subscriptionFeatures, "rolesInfo ", rolesInfo);
+    if (subscriptionFeatures && rolesInfo) {
+      finalResult = subscriptionFeatures.includes(value) && rolesInfo.includes(value);
+    }
+    return finalResult;
+  };
+
   const readDoctorsList = () => {
-    let authHeaders = localStorage.getItem('auth-t');
-    console.log("local headers ", authHeaders);
+    const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`) || '{}');
+    const authHeaders = `${sessInfo.token_type} ${sessInfo.access_token}`;
+    const clientId = window.config.oidc[0].client_id;
+    setuserRoles(sessInfo.profile?.realm_access?.roles);
+
+    // Read labsubsinfo from sessionStorage
+    const storedLabsubsInfo = sessionStorage.getItem('labsubsinfo') || '';
+    setLabsubsInfo(storedLabsubsInfo);
+
     fetch(`${nodeAppHost}/get_referral_doctors`, {
       method: 'GET',
       headers: {
-        'Authorization': authHeaders
+        'Authorization': authHeaders,
+        'clientId': clientId,
+        'realm': clientId,
+        'Content-Type': 'application/json',
+        'test-header': 'test',
+        'isAccess': 'view_referral_doctors_list',
+        'labId': labId
       },
     })
       .then(response => response.json())
@@ -56,6 +123,7 @@ function DoctorReferralsList() {
         console.log(err.message);
       });
   }
+
   useEffect(() => {
     if (isActive) {
       document.body.classList.remove('bg-black');
@@ -67,7 +135,7 @@ function DoctorReferralsList() {
   }, [isActive]);
 
   useEffect(() => {
-    const items = JSON.parse(localStorage.getItem('active_dark'));
+    const items = JSON.parse(localStorage.getItem('active_dark') || 'false');
     if (items) {
       setIsActive(items);
     }
@@ -85,18 +153,13 @@ function DoctorReferralsList() {
   const handleDeleteTemplate = () => {
     setShowConfirm(true);
   };
-  // const handleEditItem = (id, item) => {
-  //   setEachItemID(id);
-  //   console.log('item', item);
-  //   setEachItem(item);
-  //   setShowEditConfirm(true);
-  // };
 
-  const handleEditItem = docId => {
+  const handleEditItem = (docId: string) => {
     const editData = doctorsList.find(item => item.doc_id === docId);
-    console.log("editData ", editData);
-    setEachItem(editData);
-    setShowEditConfirm(true);
+    if (editData) {
+      setEachItem(editData);
+      setShowEditConfirm(true);
+    }
   };
 
   const handleCloseConfirmation = () => {
@@ -109,8 +172,7 @@ function DoctorReferralsList() {
     }
   };
 
-  const sendUpdateMessage = (response) => {
-    console.log("sendUpdateMessage ", response.message);
+  const sendUpdateMessage = (response: { message: string; status: string }) => {
     setUpdateError(response.message);
     setErrorStatus(response.status);
     readDoctorsList();
@@ -119,13 +181,24 @@ function DoctorReferralsList() {
       setErrorStatus('');
     }, 3000);
   }
+
   const handleRedirectPage = () => {
     navigate('/workList');
   }
+
+  const onClickReturnButton = () => {
+    // Handle return button click if needed
+  };
+
+  const handleCreateReferral = (event: React.MouseEvent) => {
+    event.preventDefault();
+    setReferralPopup(true);
+  };
+
   return (
     <div>
-      <Header
-        isSticky
+      <HeaderWrapper
+        isSticky={true}
         menuOptions={[]}
         isReturnEnabled={false}
         WhiteLabeling={{}}
@@ -133,66 +206,76 @@ function DoctorReferralsList() {
         handleChange={handleChangeSwitch}
         handleRedirectPage={handleRedirectPage}
         screen="ReportTemplateList"
+        children={null}
+        onClickReturnButton={onClickReturnButton}
+        modalityValue=""
+        iframeBlockFlag={true}
       />
       <div className="reportcontainer">
-
-
-        <div className="createBtnCls">
+        <h1 className='doctors-list-title'>Study Review Specialists</h1>
+      {isShowFeature('create_referral_doctor') && <div className="createBtnCls">
           <div className="response-container">
             <span className={isSuccess === 'success' ? "success-message" : isSuccess === 'error' ? "error-message" : ''}>{updateError}</span>
           </div>
-          <Link style={{ textDecoration: 'none', width: '20%', textAlign: 'right' }}>
+          <div style={{ width: '20%', textAlign: 'right' }}>
             <Button
               variant="contained"
               color="success"
               className="createUserCls"
-              onClick={() => setReferralPopup(true)}
+              onClick={handleCreateReferral}
             >
               Create Referral
             </Button>
-          </Link>
-        </div>
+          </div>
+        </div>}
 
-        <ul className="templatesList">
-          {doctorsList &&
-            doctorsList.length > 0 &&
-            doctorsList.map(item => (
-              <li
-                key={item.doc_id}
-                className={isActive ? 'templatesList_dark' : 'templates-item'}
-              >
-                <div className='modality-area'>
+        {isShowFeature('view_referral_doctors_list') && <ul className="templatesList">
+          {doctorsList.map(item => (
+            <li
+              key={item.doc_id}
+              className={isActive ? 'templatesList_dark' : 'templates-item'}
+            >
+              <div className='modality-area'>
                 <strong className={isActive ? 'templateTitleCls' : 'templateTitleCls_dark'}>
                   {item.doc_name}
                 </strong>
                 <p className='sub-modality' style={{ fontWeight: 'italic' }}>{item.doc_specialization}, {item.doc_clinic}</p>
-                </div>
-                
-
-                <div className="buttonAdjustCls items-center sm:flex">
-                  <Stack
-                    direction="row"
-                    spacing={2}
-                  >
-                    <Tooltip title="Edit">
-                      <EditIcon
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => handleEditItem(item.doc_id)}
-                      />
-                    </Tooltip>
-                    <Tooltip title="Delete">
-                      <DeleteIcon
-                        style={{ cursor: 'pointer' }}
-                        onClick={handleDeleteTemplate}
-                      />
-                    </Tooltip>
-                  </Stack>
-                </div>
-              </li>
-            ))}
-        </ul>
+              </div>
+              
+              <div className="buttonAdjustCls items-center sm:flex">
+                <Stack
+                  direction="row"
+                  spacing={2}
+                >
+                  {isShowFeature('create_referral_doctor') && <Tooltip title="Edit">
+                    <EditIcon
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleEditItem(item.doc_id)}
+                    />
+                  </Tooltip>}
+                  {isShowFeature('delete_referral_doctor') && <Tooltip title="Delete">
+                    <DeleteIcon
+                      style={{ cursor: 'pointer' }}
+                      onClick={handleDeleteTemplate}
+                    />
+                  </Tooltip>}
+                </Stack>
+              </div>
+            </li>
+          ))}
+        </ul>}
+        {!isShowFeature('view_referral_doctors_list') && <div className="noDataCls"><h1>Access Denied</h1>
+          <p>Sorry, you do not have the necessary permissions to view this page.</p>
+          <p>If you believe this is a mistake, please contact the administrator.</p>
+          <p><Link
+            to="/workList"
+          >
+            <li>
+              <span>Go Back to Home</span>
+            </li>
+          </Link></p></div>}
       </div>
-      {showEditConfirm && (
+      {showEditConfirm && editItem && (
         <CreateDoctorReferral
           open={showEditConfirm}
           handleClose={handleCloseConfirmation}

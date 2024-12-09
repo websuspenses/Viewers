@@ -412,51 +412,59 @@ table.templatesList.featuresSubscriptions tr td:nth-child(1) {
 	box-shadow: unset;
 	background: unset !important;
 }
-.createBtnCls.Permissions{
-    justify-content:flex-start;
-    margin-top:20px;
+
+.createBtnCls.Permissions {
+	justify-content: flex-start;
+	margin-top: 20px;
 }
 
-ul.templatesList.subscriptionsList, .permissionsSection {
-    box-shadow: rgba(50, 50, 93, 0.25) 0px 13px 27px -5px, rgba(0, 0, 0, 0.3) 0px 8px 16px -8px;
+ul.templatesList.subscriptionsList,
+.permissionsSection {
+	box-shadow: rgba(50, 50, 93, 0.25) 0px 13px 27px -5px, rgba(0, 0, 0, 0.3) 0px 8px 16px -8px;
 }
+
 div.permissionsSection {
-    padding-top:20px;
+	padding-top: 20px;
 }
 
 
 h2.subPermissions {
-    color: #0a7c69;
-    padding-top: 20px;
-    font-size: 24px;
-    margin-left: 20px;
+	color: #0a7c69;
+	padding-top: 20px;
+	font-size: 24px;
+	margin-left: 20px;
 }
-.updateSuscriptionButton{
+
+.updateSuscriptionButton {
 	color: #0a7c69 !important;
 }
-.subscriptionInfo{
+
+.subscriptionInfo {
 	color: #5b5b5b;
 }
-table.templatesList.featuresSubscriptions tr th{
-    font-size:16px;
+
+table.templatesList.featuresSubscriptions tr th {
+	font-size: 16px;
 }
 
 
 span.lab-unique-span {
-    color: #0a7c6c !important;
-    padding-left: 10px;
-    border: 1px solid transparent;
-    padding-top: 10px;
-    border-radius: 5px;
-    box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
+	color: #0a7c6c !important;
+	padding-left: 10px;
+	border: 1px solid transparent;
+	padding-top: 10px;
+	border-radius: 5px;
+	box-shadow: rgba(50, 50, 93, 0.25) 0px 50px 100px -20px, rgba(0, 0, 0, 0.3) 0px 30px 60px -30px, rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
 }
-._add-view p input.form-control.chkBox{
-    width:20px;
+
+._add-view p input.form-control.chkBox {
+	width: 20px;
 	height: 20px;
-    margin:0 auto;
+	margin: 0 auto;
 }
-.doctor-name-p span.CheckName{
-    width:50%;
+
+.doctor-name-p span.CheckName {
+	width: 50%;
 }
 
 
@@ -469,25 +477,45 @@ span.lab-unique-span {
 	border: 2px solid #0a7c6c;
 	border-radius: 4px;
 	cursor: pointer;
-	background-color: #fff; /* Default background */
+	background-color: #fff;
+	/* Default background */
 	transition: background-color 0.3s ease, border-color 0.3s ease;
-  }
-  
-  /* Change background color when checked */
-  .doctor-name-p .chkBox:checked {
-	background-color: #0a7c6c !important; /* Red when checked */
+}
+
+/* Change background color when checked */
+.doctor-name-p .chkBox:checked {
+	background-color: #0a7c6c !important;
+	/* Red when checked */
 	border-color: #0a7c6c;
-	  
-  }
-  
-  .doctor-name-p .chkBox:checked::after {
+
+}
+
+.doctor-name-p .chkBox:checked::after {
 	content: "✔";
 	color: white;
 	font-size: 20px;
 	display: inline-block;
 	text-align: center;
 	line-height: 20px;
-  }
-  input.form-control.chkBox:checked {
-    /* display:none; */
+}
+
+div.noDataCls, div.noAccessCls {
+    margin: 0 auto;
+    text-align: center;
+    margin-top: 170px;
+    color: #0a7c69;
+    font-size: 28px;
+}
+
+div.noDataCls p, div.noAccessCls p {
+    margin: 0 auto;
+    text-align: center;
+    margin-top: 10px;
+    color: #0a7c69;
+    font-size: 16px;
+}
+div.noDataCls p a, div.noAccessCls p a {
+	margin-top: 50px;
+	color: #5b5b5b;
+	font-size: 12px;
 }
