@@ -94,6 +94,10 @@ function DoctorReferralsList() {
 
   const readDoctorsList = () => {
     const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`) || '{}');
+    
+    if (!sessInfo) {
+      navigate('/workList');
+    }
     const authHeaders = `${sessInfo.token_type} ${sessInfo.access_token}`;
     const clientId = window.config.oidc[0].client_id;
     setuserRoles(sessInfo.profile?.realm_access?.roles);

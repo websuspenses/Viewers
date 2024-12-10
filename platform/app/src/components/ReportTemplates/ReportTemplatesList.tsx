@@ -65,6 +65,9 @@ function ReportTemplatesList() {
 
   useEffect(() => {
     const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`));
+    if (!sessInfo) {
+      navigate('/workList');
+    }
     let authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
     console.log("local headers sessInfo", sessInfo);
     setAuthHeaders(authHeaders);
