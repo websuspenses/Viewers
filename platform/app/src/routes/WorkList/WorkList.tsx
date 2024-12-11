@@ -18,6 +18,7 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
+import SubscriptionFeaturesModal from '../../components/AdminPanel/SubscriptionFeaturesModal';
 
 import {
   Icon,
@@ -100,13 +101,22 @@ function WorkList({
   const [rolesInfo, setRolesData] = useState(); // State to store fetched data
   const [authHeaders, setAuthHeaders] = useState('');
 
-  const [showViewer, setShowButton] = useState(false);
+  const [userInfoData, setUserInfoResult] = useState({});
 
 
   /*
    * The default sort value keep the filters synchronized with runtime conditional sorting
    * Only applied if no other sorting is specified and there are less than 101 studies
    */
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = React.useState(false);
+
+  const handleOpenSubscriptionModal = () => {
+    setIsSubscriptionModalOpen(true);
+  };
+
+  const handleCloseSubscriptionModal = () => {
+    setIsSubscriptionModalOpen(false);
+  };
 
   const canSort = studiesTotal < STUDIES_LIMIT;
   const shouldUseDefaultSort = sortBy === '' || !sortBy;
@@ -375,6 +385,7 @@ function WorkList({
         ])
           .then(([userInfoResult, labSubscriptions]) => {
             console.log('userInfoResult ----> ', userInfoResult);
+            
             if (userInfoResult?.realm_access?.roles) {
               setRolesData(userInfoResult.realm_access.roles);
             }
@@ -387,6 +398,18 @@ function WorkList({
             if (!sessionStorage.getItem('labsubsinfo')) {
               sessionStorage.setItem('labsubsinfo', '');
             }
+            if(userInfoResult){
+              const userObj = {
+                user_name:userInfoResult.name,
+                user_email:userInfoResult.email,
+                user_roles:userInfoResult.realm_access.roles,
+                lab_name:labSubscriptions?.data?.labSubscriptions[0].lab_name || '',
+                lab_subscription:labSubscriptions?.data?.labSubscriptions[0].subscription_type_name || '',
+                lab_subscription_desc:labSubscriptions?.data?.labSubscriptions[0].subscription_description || '',
+              };
+              setUserInfoResult(userObj);
+            }
+
             if (labSubscriptions?.data?.features[0]?.features_list) {
               setSubscriptionFeatures(labSubscriptions?.data?.features[0]?.features_list);
               sessionStorage.setItem('labsubsinfo', labSubscriptions?.data?.features[0]?.features_list);
@@ -660,27 +683,10 @@ function WorkList({
       moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).isValid() &&
       moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).format('hh:mm A');
 
-    // const isValidMode = mode.isValidMode({
-    //   modalities: modalitiesToCheck,
-    //   study,
-    // });
-    // TODO: Modes need a default/target route? We mostly support a single one for now.
-    // We should also be using the route path, but currently are not
-    // mode.routeName
-    // mode.routes[x].path
-    // Don't specify default data source, and it should just be picked up... (this may not currently be the case)
-    // How do we know which params to pass? Today, it's just StudyInstanceUIDs and configUrl if exists
-
-    // const query1 = new URLSearchParams();
-    // if (filterValues.configUrl) {
-    //   query1.append('configUrl', filterValues.configUrl);
-    // }
-    // query1.append('StudyInstanceUIDs', studyInstanceUid);
-
-    // const originUrl = window.location.href;
-    // const path1 = originUrl.replace('/workList', '/');
+    
 
     return {
+      
       row: [
         {
           key: 'patientName',
@@ -1064,10 +1070,13 @@ function WorkList({
             })}
           </div>
         </StudyListExpandedRow>
+        
       ),
       onClickRow: () =>
         setExpandedRows(s => (isExpanded ? s.filter(n => rowKey !== n) : [...s, rowKey])),
       isExpanded,
+
+      
     };
   });
 
@@ -1119,6 +1128,18 @@ function WorkList({
       onClick: () => {
         navigate(`/report-templates`);
       },
+    },
+    // {
+    //   title: t('Header:Profile & Acessibility'),
+    //   icon: 'templates',
+    //   onClick: () => {
+    //     navigate(`/profile-accessibility`);
+    //   },
+    // },
+    {
+      title: t('Header:Profile'),
+      icon: 'info',
+      onClick: handleOpenSubscriptionModal
     },
 
     {
@@ -1205,6 +1226,12 @@ function WorkList({
           StudyInstanceUId={showStudyInstanceId}
         />
       )}
+      { subscriptionFeatures && userInfoData && (<SubscriptionFeaturesModal
+            open={isSubscriptionModalOpen}
+            handleClose={handleCloseSubscriptionModal}
+            userRolesInfo={userInfoData}
+            subscriptionFeaturesInfo = {subscriptionFeatures}
+          />)}
 
       <div style={{ display: 'flex', margin: '10px' }}>
         <div
