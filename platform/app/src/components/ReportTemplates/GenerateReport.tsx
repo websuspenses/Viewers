@@ -99,8 +99,8 @@ const GenerateReport = () => {
   const iframeBaseUrl = window.location.origin;
   const navigate = useNavigate();
   const labId = sessionStorage.getItem('labId') || '';
-  const hostName = '/pacs/dicom-web/';
-  const nodeAppHost = '/teleapp';
+  const hostName = process.env.REACT_APP_PACS_HOST;
+  const nodeAppHost = process.env.REACT_APP_HOST_NAME;
   // labName = labName.replace(/ /g, '_') + '.json';
   const params = useParams();
   console.log('Default param ', params);
@@ -172,7 +172,7 @@ const GenerateReport = () => {
           'isAccess': 'read_study_template_for_generate',
           'labId': labId,
           'abcdefg': 'AAAAA',
-          'x1234': 'BBBBB_'+labId,
+          'x1234': 'BBBBB_' + labId,
         },
       })
         .then(response => response.json())
@@ -345,24 +345,6 @@ const GenerateReport = () => {
       body: JSON.stringify(formData),
     };
 
-    // fetch(`${hostNameurl}studies/${studyInstanceUid}/addmetadata/isEmergency`, {
-    //   method: 'POST',
-    //   headers: {
-    //     'Content-Type': 'application/json',
-    //     'Authorization': authHeaders
-    //   },
-    //   body: JSON.stringify(formData),
-    // })
-    //   .then(response => response.json())
-    //   .then(result => {
-    //     console.log('Emergency info ', result);
-    //     window.location.reload();
-    //   })
-    //   .catch(err => {
-    //     console.log('Error  isEmergency API', err);
-    //     console.log(err.message);
-    //   });
-
     try {
       const res = fetch(url, options);
       // Update is isReportGenerated flag here
@@ -390,6 +372,8 @@ const GenerateReport = () => {
           try {
             const res1 = fetch(url2, options2);
             if (res1) {
+              sessionStorage.setItem('stuID', modalityValue);
+              sessionStorage.setItem('isReportGenerated', true);
               if (fiftyPerFlag == "true") {
                 alert("Report generated Successfully...");
                 //localStorage.setItem('fiftyPerFlag', 'false');
@@ -479,7 +463,7 @@ const GenerateReport = () => {
         <h1 className="templateHeaderCls">Study Report</h1>
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', justifyContent: 'center' }}>
-            
+
 
             <SunEditor
               ref={editorRef}

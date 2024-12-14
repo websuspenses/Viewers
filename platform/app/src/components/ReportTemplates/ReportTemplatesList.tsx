@@ -21,7 +21,7 @@ function ReportTemplatesList() {
 
 
   const labId = sessionStorage.getItem('labId') || '';
-  const nodeAppHost = '/teleapp';
+  const nodeAppHost = process.env.REACT_APP_HOST_NAME;
 
   useEffect(() => {
     //let authHeaders = localStorage.getItem('auth-t');

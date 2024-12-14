@@ -72,7 +72,7 @@ function CreateDoctorReferral(props: Props) {
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const nodeAppHost = '/teleapp';
+  const nodeAppHost = process.env.REACT_APP_HOST_NAME;
 
   const validateForm = () => {
     const newErrors: FormErrors = {};

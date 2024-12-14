@@ -68,7 +68,7 @@ function DoctorReferralsList() {
   const [subscriptionFeatures, setLabsubsInfo] = useState('');
   const labId = sessionStorage.getItem('labId') || '';
 
-  const nodeAppHost = '/teleapp';
+  const nodeAppHost = process.env.REACT_APP_HOST_NAME;
   
   useEffect(() => {
     document.body.classList.add('bg-black');

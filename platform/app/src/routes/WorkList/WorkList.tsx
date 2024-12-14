@@ -18,6 +18,7 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
+const dotenv = require('dotenv');
 import SubscriptionFeaturesModal from '../../components/AdminPanel/SubscriptionFeaturesModal';
 
 import {
@@ -62,9 +63,9 @@ function WorkList({
   ...props
 }) {
   const items1 = JSON.parse(localStorage.getItem('active_dark'));
-  const hostNameurl = '/pacs/dicom-web/';
-  const keyCloakhost = '/keycloak';
-  const nodeAppHost = '/teleapp';
+  const hostNameurl = process.env.REACT_APP_PACS_HOST;
+  const keyCloakhost = process.env.REACT_APP_KEYCLOAK_HOST;
+  const nodeAppHost = process.env.REACT_APP_HOST_NAME;
 
   const { hotkeyDefinitions, hotkeyDefaults } = hotkeysManager;
   const { show, hide } = useModal();
@@ -171,7 +172,7 @@ function WorkList({
   useEffect(() => {
     const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`));
     let authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
-    console.log("local headers ", authHeaders);
+    console.log("local headers process.env.REACT_APP_HOST_NAME ", authHeaders,process.env.REACT_APP_HOST_NAME);
     setAuthHeaders(authHeaders);
   }, []);
 
@@ -260,24 +261,36 @@ function WorkList({
     setAnchorElNew(null);
   };
 
-  const handleDocModal = () => {
+  const storeStidStatus = (stuID, isReportGenerated) => {
+    console.log("isReportGenerated Value ", isReportGenerated);
+    sessionStorage.setItem('stuID',stuID);
+    sessionStorage.setItem('isReportGenerated',isReportGenerated);
+  }
+  const handleDocModal = (isReportGenerated) => {
+    console.log("isReportGenerated Value 111", isReportGenerated);
     const bsurl = '/viewer?StudyInstanceUIDs=' + stuID;
+    storeStidStatus(stuID, isReportGenerated);
     navigate(bsurl);
+    
   };
-  const handleSegmentationModal = () => {
+  const handleSegmentationModal = (isReportGenerated) => {
     const bsurl = '/segmentation?StudyInstanceUIDs=' + stuID;
+    storeStidStatus(stuID, isReportGenerated);
     navigate(bsurl);
   };
-  const handleTMTVModal = () => {
+  const handleTMTVModal = (isReportGenerated) => {
     const bsurl = '/tmtv?StudyInstanceUIDs=' + stuID;
+    storeStidStatus(stuID, isReportGenerated);
     navigate(bsurl);
   };
-  const handleMicroscopyModal = () => {
+  const handleMicroscopyModal = (isReportGenerated) => {
     const bsurl = '/microscopy?StudyInstanceUIDs=' + stuID;
+    storeStidStatus(stuID, isReportGenerated);
     navigate(bsurl);
   };
-  const handleDynamicVolumeModal = () => {
+  const handleDynamicVolumeModal = (isReportGenerated) => {
     const bsurl = '/dynamic-volume?StudyInstanceUIDs=' + stuID;
+    storeStidStatus(stuID, isReportGenerated);
     navigate(bsurl);
   };
 
@@ -350,7 +363,6 @@ function WorkList({
 
   useEffect(() => {
     const isMounted = true;
-    const nodeAppHost = '/teleapp';
     console.log('user Roles authHeaders----> ', authHeaders);
     const clientId = window.config.oidc[0].client_id;
     if (authHeaders) {
@@ -911,19 +923,19 @@ function WorkList({
                     //onClick={() => handleViewerImage(stuID)}
                     //onClick={(event) => handleViewerImage(event, studyInstanceUid)}
                     //onClick={(event) => handleClick(event, studyInstanceUid, modalities)}
-                    onClick={() => handleDocModal()}
+                    onClick={() => handleDocModal(isReportGenerated)}
                   >
-                    View Study
+                    View Study - {isReportGenerated}
                   </MenuItem>
                   {/* <MenuItem
                     onClick={handleClose}
                   ><a href={`${window.location.origin}/viewer?StudyInstanceUIDs=${stuID}`} target="_blank">Open In Another Tab</a></MenuItem> */}
-                  <MenuItem onClick={() => handleSegmentationModal()}>Segmentation</MenuItem>
-                  <MenuItem onClick={() => handleTMTVModal()}>
+                  <MenuItem onClick={() => handleSegmentationModal(isReportGenerated)}>Segmentation</MenuItem>
+                  <MenuItem onClick={() => handleTMTVModal(isReportGenerated)}>
                     Total Metabolic Tumor Volume
                   </MenuItem>
-                  <MenuItem onClick={() => handleMicroscopyModal()}>Microscopy</MenuItem>
-                  <MenuItem onClick={() => handleDynamicVolumeModal()}>4D PT/CT</MenuItem>
+                  <MenuItem onClick={() => handleMicroscopyModal(isReportGenerated)}>Microscopy</MenuItem>
+                  <MenuItem onClick={() => handleDynamicVolumeModal(isReportGenerated)}>4D PT/CT</MenuItem>
                 </Menu>
               </>
 

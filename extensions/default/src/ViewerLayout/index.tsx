@@ -66,6 +66,7 @@ function ViewerLayout({
 
 
   const [iflf, setIflf] = useState(false);
+  const [isGenerated, setIsGenerated] = useState(false);
 
 
 
@@ -134,6 +135,8 @@ function ViewerLayout({
     };
   };
 
+  
+
   useEffect(() => {
     const { unsubscribe } = panelService.subscribe(
       panelService.EVENTS.PANELS_CHANGED,
@@ -187,6 +190,21 @@ function ViewerLayout({
     setModality(md_Flag);
 
   }
+  useEffect(() => {
+    const isReportGenerated = sessionStorage.getItem('isReportGenerated');
+
+    const storedStudy = sessionStorage.getItem('stuID');
+    console.log('storedStudy ', storedStudy, "stuID ", stuID);
+
+    if (isReportGenerated && isReportGenerated === 'true') {
+      
+      setIsGenerated(true);
+      console.log('isReportGenerated is true');
+    } else {
+      // The value does not exist or it is not 'true'
+      console.log('isReportGenerated is not true or does not exist');
+    }
+  }, []);
 
   const handleClose = () => {
     setAnchorEl(null);
@@ -232,9 +250,9 @@ function ViewerLayout({
           servicesManager={servicesManager}
           appConfig={appConfig}
         />
-        <div className='draftReport'>
+        {isGenerated && (<div className='draftReport'>
           <Button disabled={drEnableFlag} style={{ marginTop: '26px', marginLeft: '26px' }} onClick={openDraftReport}>Draft Report</Button>
-        </div>
+        </div>)}
       </div>
 
       <div style={{ display: 'flex' }}>
@@ -303,7 +321,7 @@ function ViewerLayout({
 
           <iframe id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId"
             //src={`${iframeBaseUrl}/generate-report/${loadStudentID}/${modality}`}
-            src={`${iframeBaseUrl}/generate-report/${stuID}/${modality}`}
+            src={`${iframeBaseUrl}/generate-report/${stuID}/${modality}/m`}
             //src={`${iframeBaseUrl}/viewer?StudyInstanceUIDs=${loadStudentID}`}
             width="100%"
             style={defaultLoad ? { height: "0px" } : { height: "92%" }}

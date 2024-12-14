@@ -50,8 +50,8 @@ function generateRandomString(length: number): string {
 function GenerateReferral(props: Props) {
   const navigate = useNavigate();
   const { open, handleClose, StudyInstanceUId } = props;
-  const nodeAppHost = '/teleapp';
-  const hostName = '/pacs/dicom-web/';
+  const nodeAppHost = process.env.REACT_APP_HOST_NAME;
+  const hostName = process.env.REACT_APP_PACS_HOST;
   const [value, setValue] = useState('');
   const [doctorsData, setDoctorsData] = useState<Doctor[]>([]);
   const [authHeaders, setAuthHeaders] = useState('');

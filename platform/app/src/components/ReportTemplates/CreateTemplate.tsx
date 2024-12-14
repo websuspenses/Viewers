@@ -112,7 +112,7 @@ const CreateTemplate = () => {
   const navigate = useNavigate();
 
   let labName = 'Test CT Scan Center';
-  const nodeAppHost = '/teleapp';
+  const nodeAppHost = process.env.REACT_APP_HOST_NAME;
   const clientId = window.config.oidc[0].client_id;
 
 
