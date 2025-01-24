@@ -1659,3 +1659,6 @@ color: #c6d8d6 !important;
 .doctor-name input.form-control::placeholder {
   color: #c6d8d6 !important;
 }
+div.label-status{
+  padding-left:55px;
+}

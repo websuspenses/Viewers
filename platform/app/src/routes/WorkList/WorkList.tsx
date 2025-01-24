@@ -754,7 +754,6 @@ function WorkList({
         {
           key: 'status',
           title: 'In-Progress',
-          //content: studyStatus ? studyStatus : 'In-Progress',
           content: studyStatus ? (
             <span
               data-id={studyInstanceUid}
@@ -900,7 +899,7 @@ function WorkList({
                   <MenuItem
                     onClick={() => handleDocModal(isReportGenerated)}
                   >
-                    View Study - {isReportGenerated}
+                    View Study
                   </MenuItem>
                   <MenuItem onClick={() => handleSegmentationModal(isReportGenerated)}>Segmentation</MenuItem>
                   <MenuItem onClick={() => handleTMTVModal(isReportGenerated)}>
@@ -996,7 +995,6 @@ function WorkList({
           isActive={isActive}
         >
           <div className="flex flex-row gap-2">
-            XXXXXXX - {appConfig.loadedModes}
             {appConfig.loadedModes.map((mode, i) => {
               const modalitiesToCheck = modalities.replaceAll('/', '\\');
 
@@ -1065,7 +1063,8 @@ function WorkList({
     };
   });
 
-  const hasStudies = numOfStudies > 0 || pageNumber > 0;
+  //const hasStudies = numOfStudies > 0 || pageNumber > 0;
+  const hasStudies = numOfStudies > 0;
   const versionNumber = process.env.VERSION_NUMBER;
   const commitHash = process.env.COMMIT_HASH;
 
@@ -1218,7 +1217,7 @@ function WorkList({
         subscriptionFeaturesInfo={subscriptionFeatures}
       />)}
 
-      <div style={{ display: 'flex', margin: '10px' }}>
+      <div style={{ display: 'flex', margin: '10px', flexGrow: '1'}}>
         <div
           // className={
           //   isActive
