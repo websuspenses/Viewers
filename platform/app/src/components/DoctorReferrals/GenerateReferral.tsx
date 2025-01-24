@@ -78,7 +78,7 @@ function GenerateReferral(props: Props) {
 
     const fetchDoctors = async () => {
 
-    const clientId = window.config.oidc[0].client_id;
+      const clientId = window.config.oidc[0].client_id;
       try {
         const response = await fetch(`${nodeAppHost}/get_referral_doctors`, {
           method: 'GET',
@@ -116,10 +116,18 @@ function GenerateReferral(props: Props) {
     }
 
     try {
+      // const formData = {
+      //   sr_to_doctor: value,
+      //   sr_requester_id: 2,
+      //   sr_requester_comments: `Hello Doctor, Could you please check below URL: ${URL}`,
+      // };
+
       const formData = {
         sr_to_doctor: value,
         sr_requester_id: 2,
         sr_requester_comments: `Hello Doctor, Could you please check below URL: ${URL}`,
+        sr_url: URL,
+        sr_host_name: nodeAppHost,
       };
 
       const options = {
@@ -166,39 +174,141 @@ function GenerateReferral(props: Props) {
     }
   };
 
+  const cryptoKey = window.crypto.subtle.generateKey(
+    {
+      name: "AES-GCM",
+      length: 256,
+    },
+    true,
+    ["encrypt", "decrypt"]
+  );
+
+  const encrypt = async (text) => {
+    const encodedText = new TextEncoder().encode(text);
+    const iv = window.crypto.getRandomValues(new Uint8Array(12));
+    const encryptedContent = await window.crypto.subtle.encrypt(
+      {
+        name: "AES-GCM",
+        iv: iv,
+      },
+      await cryptoKey,
+      encodedText
+    );
+    const encryptedArray = new Uint8Array(encryptedContent);
+    const encryptedString = btoa(String.fromCharCode(...iv, ...encryptedArray));
+    return encryptedString;
+  };
+
+  const decrypt = async (encryptedText) => {
+    const encryptedArray = Uint8Array.from(atob(encryptedText), (c) => c.charCodeAt(0));
+    const iv = encryptedArray.slice(0, 12);
+    const encryptedContent = encryptedArray.slice(12);
+    const decryptedContent = await window.crypto.subtle.decrypt(
+      {
+        name: "AES-GCM",
+        iv: iv,
+      },
+      await cryptoKey,
+      encryptedContent
+    );
+    const decodedText = new TextDecoder().decode(decryptedContent);
+    return decodedText;
+  };
+
+
+
+
+
+
+
+
+  const urlShortener64 = (() => {
+    const urlMap = new Map();
+    const base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  
+    const encodeToBase64 = (input) => {
+      let hashValue = 0;
+      for (let i = 0; i < input.length; i++) {
+        hashValue = (hashValue * 31 + input.charCodeAt(i)) >>> 0; // Simple hash function
+      }
+  
+      // Convert the hash value to a base-64 string
+      let base64String = "";
+      do {
+        base64String = base64Chars[hashValue % 64] + base64String;
+        hashValue = Math.floor(hashValue / 64);
+      } while (hashValue > 0);
+  
+      return base64String;
+    };
+  
+    const encode = (longUrl) => {
+      const shortUrlKey = encodeToBase64(longUrl);
+      urlMap.set(shortUrlKey, longUrl);
+      return shortUrlKey;
+    };
+  
+    const decode = (shortUrlKey) => {
+      return urlMap.get(shortUrlKey) || null;
+    };
+  
+    return { encode, decode };
+  })();
+  
+  // Example usage:
+  const longUrl = "https://example.com/some/very/long/url/with/query?params=true";
+  const shortUrl = urlShortener64.encode(longUrl);
+  console.log("Encoded Short URL Key:", shortUrl);
+  
+  const originalUrl = urlShortener64.decode(shortUrl);
+  console.log("Decoded Long URL:", originalUrl);
+
+
+
+
+
   const sendMessage = async (referralUrl: string, studyInstanceUid: string) => {
     console.log('Referral URL:', referralUrl, "StudyInstanceUId:", studyInstanceUid);
-    try {
-      const body = {
-        "url": referralUrl,
-        "alias": "ciaitr" + generateRandomString(6)
-      };
+    const finalUrl = await encrypt(referralUrl);
+    await sendReferralHelper(studyInstanceUid, await decrypt(finalUrl));
+    // write javascript URL encryption and decryption code here
+    // const encryptedUrl = encrypt(referralUrl);
 
-      const whatsAppSvcURL = 'https://api.tinyurl.com/create?api_token=5YCcwTA4TrhQhqh2M2mWq8UX9s4o3OpUDRWi58ItBI6JwsGKJ73srA8AoCoQ';
-      const response = await fetch(whatsAppSvcURL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'accept': 'application/json'
-        },
-        body: JSON.stringify(body),
-      });
-console.log('Whatsapp response', response);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
 
-      const tinyUrlResponse = await response.json();
-      await sendReferralHelper(studyInstanceUid, tinyUrlResponse.data.tiny_url);
-    } catch (error) {
-      console.error('Error generating tiny URL:', error);
-      await sendReferralHelper(studyInstanceUid, referralUrl);
-    }
+    // try {
+    //   const body = {
+    //     "url": referralUrl,
+    //     "alias": "ciaitr" + generateRandomString(6)
+    //   };
+
+    //   const whatsAppSvcURL = 'https://api.tinyurl.com/create?api_token=5YCcwTA4TrhQhqh2M2mWq8UX9s4o3OpUDRWi58ItBI6JwsGKJ73srA8AoCoQ';
+    //   const response = await fetch(whatsAppSvcURL, {
+    //     method: 'POST',
+    //     headers: {
+    //       'Content-Type': 'application/json',
+    //       'accept': 'application/json'
+    //     },
+    //     body: JSON.stringify(body),
+    //   });
+    //   console.log('Whatsapp response', response);
+    //   if (!response.ok) {
+    //     throw new Error(`HTTP error! status: ${response.status}`);
+    //   }
+
+    //   const tinyUrlResponse = await response.json();
+
+    //   await sendReferralHelper(studyInstanceUid, tinyUrlResponse.data.tiny_url);
+    // } catch (error) {
+    //   console.error('Error generating tiny URL:', error);
+    //   await sendReferralHelper(studyInstanceUid, referralUrl);
+    // }
+
+
   };
 
   const sendStudyReferral = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
-    
+
     const clientId = window.config.oidc[0].client_id;
     if (!value) {
       setError('Please select a doctor');
@@ -220,7 +330,7 @@ console.log('Whatsapp response', response);
       }
 
       const result = await response.json();
-      await sendMessage(result.url, StudyInstanceUId);
+      await sendReferralHelper(StudyInstanceUId, result.url);
     } catch (error) {
       console.error('Error:', error);
       setError(error instanceof Error ? error.message : 'Failed to get study URL');

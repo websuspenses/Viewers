@@ -172,7 +172,6 @@ function WorkList({
   useEffect(() => {
     const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`));
     let authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
-    console.log("local headers process.env.REACT_APP_HOST_NAME ", authHeaders,process.env.REACT_APP_HOST_NAME);
     setAuthHeaders(authHeaders);
   }, []);
 
@@ -248,7 +247,6 @@ function WorkList({
     //localStorage.setItem('mdFlag', mdFlag);
     localStorage.setItem('mdFlag', mArrayFlg);
     setModalityFlag(mArrayFlg);
-    console.log(' isReportGenerated ----> ', isReportGenerated);
     if (isReportGenerated !== 'true') {
       generateDynamicDropdowns(sid, mArrayFlg);
     } else {
@@ -262,16 +260,15 @@ function WorkList({
   };
 
   const storeStidStatus = (stuID, isReportGenerated) => {
-    console.log("isReportGenerated Value ", isReportGenerated);
-    sessionStorage.setItem('stuID',stuID);
-    sessionStorage.setItem('isReportGenerated',isReportGenerated);
+    sessionStorage.removeItem('isReportGenerated');
+    sessionStorage.setItem('stuID', stuID);
+    sessionStorage.setItem('isReportGenerated', isReportGenerated);
   }
   const handleDocModal = (isReportGenerated) => {
-    console.log("isReportGenerated Value 111", isReportGenerated);
     const bsurl = '/viewer?StudyInstanceUIDs=' + stuID;
     storeStidStatus(stuID, isReportGenerated);
     navigate(bsurl);
-    
+
   };
   const handleSegmentationModal = (isReportGenerated) => {
     const bsurl = '/segmentation?StudyInstanceUIDs=' + stuID;
@@ -363,7 +360,6 @@ function WorkList({
 
   useEffect(() => {
     const isMounted = true;
-    console.log('user Roles authHeaders----> ', authHeaders);
     const clientId = window.config.oidc[0].client_id;
     if (authHeaders) {
       try {
@@ -396,8 +392,7 @@ function WorkList({
           fetch(labSubscriptionsURL, options2).then(response => response.json())
         ])
           .then(([userInfoResult, labSubscriptions]) => {
-            console.log('userInfoResult ----> ', userInfoResult);
-            
+
             if (userInfoResult?.realm_access?.roles) {
               setRolesData(userInfoResult.realm_access.roles);
             }
@@ -406,18 +401,17 @@ function WorkList({
             }
             sessionStorage.setItem('user_sub', userInfoResult.sub);
 
-            console.log('labSubscriptions ---> ', labSubscriptions.data);
             if (!sessionStorage.getItem('labsubsinfo')) {
               sessionStorage.setItem('labsubsinfo', '');
             }
-            if(userInfoResult){
+            if (userInfoResult) {
               const userObj = {
-                user_name:userInfoResult.name,
-                user_email:userInfoResult.email,
-                user_roles:userInfoResult.realm_access.roles,
-                lab_name:labSubscriptions?.data?.labSubscriptions[0].lab_name || '',
-                lab_subscription:labSubscriptions?.data?.labSubscriptions[0].subscription_type_name || '',
-                lab_subscription_desc:labSubscriptions?.data?.labSubscriptions[0].subscription_description || '',
+                user_name: userInfoResult.name,
+                user_email: userInfoResult.email,
+                user_roles: userInfoResult.realm_access.roles,
+                lab_name: labSubscriptions?.data?.labSubscriptions[0].lab_name || '',
+                lab_subscription: labSubscriptions?.data?.labSubscriptions[0].subscription_type_name || '',
+                lab_subscription_desc: labSubscriptions?.data?.labSubscriptions[0].subscription_description || '',
               };
               setUserInfoResult(userObj);
             }
@@ -472,7 +466,6 @@ function WorkList({
         'Do you really want to Save this into Server...? It will take sometime to process your request';
       if (confirm(text) == true) {
         const result = await dataSource.query.studies.sendToCloud(studyId);
-        console.log('saveToServer result ', result);
       }
     } catch (ex) {
       // TODO: UI Notification Service
@@ -573,9 +566,7 @@ function WorkList({
   };
 
   const handleEmergency = (event, studyInstanceUid) => {
-    console.log('handleEmergency', dataSource.query.headers.getHeaders());
-    //const authHeaders = localStorage.getItem('auth-t');
-
+    
     fetch(`${hostNameurl}studies/${studyInstanceUid}/metadata/isEmergency`, {
       method: 'GET',
       headers: {
@@ -584,7 +575,6 @@ function WorkList({
     })
       .then(response => response.json())
       .then(data => {
-        console.log('IsEmergency Info ', data);
 
         let text = 'Do you want to make this study as Emergency!!!';
         let formData = { data: 'true' };
@@ -592,7 +582,6 @@ function WorkList({
           formData = { data: '' };
           text = 'Do you want to Remove Emergency status of this Study?';
         }
-        console.log('isEmergency formData ', formData, 'text ', text);
         if (confirm(text) == true) {
           event.preventDefault();
           fetch(`${hostNameurl}studies/${studyInstanceUid}/addmetadata/isEmergency`, {
@@ -605,11 +594,9 @@ function WorkList({
           })
             .then(response => response.json())
             .then(result => {
-              console.log('Emergency info ', result);
               window.location.reload();
             })
             .catch(err => {
-              console.log('Error  isEmergency API', err);
               console.log(err.message);
             });
         }
@@ -658,13 +645,6 @@ function WorkList({
     }, 3000);
     setDefaultLoad(false);
   };
-  console.log('Called this page', resultsPerPage);
-  // const rollingPageNumberMod = Math.floor(25 / resultsPerPage);
-  // const rollingPageNumber = (pageNumber - 1) % rollingPageNumberMod;
-  // const offset = resultsPerPage * rollingPageNumber;
-  // const offsetAndTake = offset + resultsPerPage;
-
-  //console.log(rollingPageNumberMod, rollingPageNumber, offset, offsetAndTake);
   const tableDataSource = sortedStudies.map((study, key) => {
     const rowKey = key + 1;
     const isExpanded = expandedRows.some(k => k === rowKey);
@@ -685,7 +665,6 @@ function WorkList({
       isReportGenerated,
     } = study;
 
-    // console.log('Study info ----> ', study);
     const studyDate =
       date &&
       moment(date, ['YYYYMMDD', 'YYYY.MM.DD'], true).isValid() &&
@@ -695,10 +674,10 @@ function WorkList({
       moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).isValid() &&
       moment(time, ['HH', 'HHmm', 'HHmmss', 'HHmmss.SSS']).format('hh:mm A');
 
-    
+
 
     return {
-      
+
       row: [
         {
           key: 'patientName',
@@ -854,7 +833,7 @@ function WorkList({
                   </svg>
                 </Link>
               )}
-              {isShowFeature('refer_study_to_doctor') && (<Link
+              {isShowFeature('refer_study_to_doctor') && (<Link 
                 title="Refer"
                 to=""
               >
@@ -919,17 +898,10 @@ function WorkList({
                   }}
                 >
                   <MenuItem
-                    // onClick={() => handleShowModal(studyInstanceUid)}
-                    //onClick={() => handleViewerImage(stuID)}
-                    //onClick={(event) => handleViewerImage(event, studyInstanceUid)}
-                    //onClick={(event) => handleClick(event, studyInstanceUid, modalities)}
                     onClick={() => handleDocModal(isReportGenerated)}
                   >
                     View Study - {isReportGenerated}
                   </MenuItem>
-                  {/* <MenuItem
-                    onClick={handleClose}
-                  ><a href={`${window.location.origin}/viewer?StudyInstanceUIDs=${stuID}`} target="_blank">Open In Another Tab</a></MenuItem> */}
                   <MenuItem onClick={() => handleSegmentationModal(isReportGenerated)}>Segmentation</MenuItem>
                   <MenuItem onClick={() => handleTMTVModal(isReportGenerated)}>
                     Total Metabolic Tumor Volume
@@ -1024,6 +996,7 @@ function WorkList({
           isActive={isActive}
         >
           <div className="flex flex-row gap-2">
+            XXXXXXX - {appConfig.loadedModes}
             {appConfig.loadedModes.map((mode, i) => {
               const modalitiesToCheck = modalities.replaceAll('/', '\\');
 
@@ -1082,13 +1055,13 @@ function WorkList({
             })}
           </div>
         </StudyListExpandedRow>
-        
+
       ),
       onClickRow: () =>
         setExpandedRows(s => (isExpanded ? s.filter(n => rowKey !== n) : [...s, rowKey])),
       isExpanded,
 
-      
+
     };
   });
 
@@ -1238,12 +1211,12 @@ function WorkList({
           StudyInstanceUId={showStudyInstanceId}
         />
       )}
-      { subscriptionFeatures && userInfoData && (<SubscriptionFeaturesModal
-            open={isSubscriptionModalOpen}
-            handleClose={handleCloseSubscriptionModal}
-            userRolesInfo={userInfoData}
-            subscriptionFeaturesInfo = {subscriptionFeatures}
-          />)}
+      {subscriptionFeatures && userInfoData && (<SubscriptionFeaturesModal
+        open={isSubscriptionModalOpen}
+        handleClose={handleCloseSubscriptionModal}
+        userRolesInfo={userInfoData}
+        subscriptionFeaturesInfo={subscriptionFeatures}
+      />)}
 
       <div style={{ display: 'flex', margin: '10px' }}>
         <div
@@ -1261,6 +1234,7 @@ function WorkList({
 
         //style={{ width: '50%' }}
         >
+          
           <StudyListFilter
             style={{ minWidth: '1280px' }}
             numOfStudies={pageNumber * resultsPerPage > 100 ? 101 : numOfStudies}
@@ -1310,29 +1284,6 @@ function WorkList({
             </div>
           )}
         </div>
-
-        {/* <div
-          className={`${iframeWindowflag}${' imageViewerId'}`}
-        >
-
-          <CloseIcon style={isActive ? { color: "#ffffff", cursor: 'pointer' } : { color: "green", cursor: 'pointer' }}
-            onClick={closeImageViewer} />
-
-          {defaultLoad && (
-            <Box sx={{ display: 'flex' }} width="100%" height="92%" >
-              <CircularProgress style={isActive ? { color: "#ffffff", margin: 'auto' } : { color: "green", margin: 'auto' }} />
-            </Box>
-          )
-          }
-
-
-          <iframe id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId" src={`${iframeBaseUrl}/viewer?StudyInstanceUIDs=${loadStudentID}`} width="100%"
-            style={defaultLoad ? { height: "0px" } : { height: "92%" }}
-          ></iframe>
-
-
-
-        </div> */}
       </div>
     </div>
   );

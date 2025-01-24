@@ -796,7 +796,7 @@ body.bg-black-dashboard {
     margin: 5px;
     height: auto;
     border-radius: 14px;
-    padding-bottom: 0;
+    /* padding-bottom: 0; */
     font-size: 12px;
 }
 span.user-name{

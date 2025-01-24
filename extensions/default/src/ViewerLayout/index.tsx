@@ -34,6 +34,8 @@ function ViewerLayout({
     isMobile = true;
   }
   console.log("isMobile ", isMobile);
+  const hostNameurl = process.env.REACT_APP_PACS_HOST;
+
   const { panelService, hangingProtocolService } = servicesManager.services;
   const [showLoadingIndicator, setShowLoadingIndicator] = useState(appConfig.showLoadingIndicator);
 
@@ -67,6 +69,7 @@ function ViewerLayout({
 
   const [iflf, setIflf] = useState(false);
   const [isGenerated, setIsGenerated] = useState(false);
+  const [authHeaders, setAuthHeaders] = useState('');
 
 
 
@@ -135,7 +138,7 @@ function ViewerLayout({
     };
   };
 
-  
+
 
   useEffect(() => {
     const { unsubscribe } = panelService.subscribe(
@@ -190,20 +193,54 @@ function ViewerLayout({
     setModality(md_Flag);
 
   }
+
+
+  const handleEmergency = (event, studyInstanceUid) => {
+    fetch(`${hostNameurl}studies/${studyInstanceUid}/metadata/isReportGenerated`, {
+      method: 'GET',
+      headers: {
+        Authorization: authHeaders,
+      },
+    })
+      .then(response => response.json())
+      .then(data => {
+        console.log('isReportGenerated Info ', data);
+
+      })
+      .catch(err => {
+        console.log(err.message);
+      });
+  };
+
+
+
+
   useEffect(() => {
-    const isReportGenerated = sessionStorage.getItem('isReportGenerated');
+
+    const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`));
+    let authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
+    setAuthHeaders(authHeaders);
 
     const storedStudy = sessionStorage.getItem('stuID');
-    console.log('storedStudy ', storedStudy, "stuID ", stuID);
 
-    if (isReportGenerated && isReportGenerated === 'true') {
-      
-      setIsGenerated(true);
-      console.log('isReportGenerated is true');
-    } else {
-      // The value does not exist or it is not 'true'
-      console.log('isReportGenerated is not true or does not exist');
-    }
+    fetch(`${hostNameurl}studies/${storedStudy}/metadata/isReportGenerated`, {
+      method: 'GET',
+      headers: {
+        Authorization: authHeaders,
+      },
+    })
+      .then(response => response.json())
+      .then(data => {
+
+        if (data.isReportGenerated === 'true') {
+          setIsGenerated(true);
+        } else {
+          setIsGenerated(false);
+        }
+      })
+      .catch(err => {
+        console.log(err.message);
+      });
   }, []);
 
   const handleClose = () => {
