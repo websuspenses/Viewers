@@ -27,7 +27,7 @@ function ReportTemplatesList() {
     //let authHeaders = localStorage.getItem('auth-t');
     const clientId = window.config.oidc[0].client_id;
 
-    console.log("local headers read_templates ", authHeaders);
+    // console.log("local headers read_templates ", authHeaders);
     if (authHeaders) {
       fetch(`${nodeAppHost}/read_templates`, {
         method: 'GET',
@@ -42,7 +42,7 @@ function ReportTemplatesList() {
       })
         .then(response => response.json())
         .then(actualData => {
-          console.log('actualData ', actualData);
+          // console.log('actualData ', actualData);
           setData(actualData.data);
         })
         .catch(err => {
@@ -56,7 +56,7 @@ function ReportTemplatesList() {
 
   const isShowFeature = (value) => {
     let finalResult = false;
-    console.log("subscriptionFeatures ", subscriptionFeatures, "rolesInfo ", rolesInfo);
+    // console.log("subscriptionFeatures ", subscriptionFeatures, "rolesInfo ", rolesInfo);
     if (subscriptionFeatures && rolesInfo) {
       finalResult = subscriptionFeatures.includes(value) && rolesInfo.includes(value);
     }
@@ -69,7 +69,7 @@ function ReportTemplatesList() {
       navigate('/workList');
     }
     let authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
-    console.log("local headers sessInfo", sessInfo);
+    // console.log("local headers sessInfo", sessInfo);
     setAuthHeaders(authHeaders);
     setuserRoles(sessInfo.profile?.realm_access?.roles);
 

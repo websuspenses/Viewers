@@ -13,7 +13,7 @@ import '../AdminPanel/style.css';
 
 export default function SubscriptionFeaturesModal(props) {
   const { open, handleClose, userRolesInfo, subscriptionFeaturesInfo } = props;
-  console.log("userRolesInfo ", userRolesInfo);
+  // console.log("userRolesInfo ", userRolesInfo);
 
   let labsubsInfoArray = [];
   if (subscriptionFeaturesInfo) {

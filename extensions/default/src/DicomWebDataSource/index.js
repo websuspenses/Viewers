@@ -158,7 +158,7 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
           await fetch(url, qidoDicomWebClient)
             .then(response => response.json())
             .then(result => {
-              console.log('result ', result);
+              // console.log('result ', result);
               if (result.StudyID) {
                 let url = `${dicomWebConfig.wadoRoot}/studies/${studyInstanceUid}/update_status`;
                 const statusBody = { status: 'Ready to Refer' };

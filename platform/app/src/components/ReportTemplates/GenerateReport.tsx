@@ -103,7 +103,7 @@ const GenerateReport = () => {
   const nodeAppHost = process.env.REACT_APP_HOST_NAME;
   // labName = labName.replace(/ /g, '_') + '.json';
   const params = useParams();
-  console.log('Default param ', params);
+  // console.log('Default param ', params);
   const editorRef = useRef();
   const contentRef = useRef();
   //const contentModalityRef = useRef(null);
@@ -126,9 +126,9 @@ const GenerateReport = () => {
   useEffect(() => {
     //fetch(`${hostName}studies/${modalityValue}/metadata/reportRaw`);
     //const authHeaders = localStorage.getItem('auth-t');
-    console.log('local headers --> read_study_template ', authHeaders);
+    // console.log('local headers --> read_study_template ', authHeaders);
     if (authHeaders) {
-      console.log('Inside local headers --> read_study_template ', authHeaders);
+      // console.log('Inside local headers --> read_study_template ', authHeaders);
       fetch(`${hostName}studies/${modalityValue}/metadata/reportRaw`, {
         method: 'GET',
         headers: {
@@ -137,7 +137,7 @@ const GenerateReport = () => {
       })
         .then(response => response.json())
         .then(actualData => {
-          console.log('Modality Info 1st API  ', actualData);
+          // console.log('Modality Info 1st API  ', actualData);
           getModalityData(actualData.reportRaw);
         })
         .catch(err => {
@@ -150,14 +150,14 @@ const GenerateReport = () => {
   useEffect(() => {
     const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`));
     let authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
-    console.log("local headers ", authHeaders);
+    // console.log("local headers ", authHeaders);
     setAuthHeaders(authHeaders);
   }, []);
 
   useEffect(() => {
     //fetch(`${nodeAppHost}/read_study_template_for_generate/${labId}/${modality}`)
     //const authHeaders = localStorage.getItem('auth-t');
-    console.log('local headers --> read_study_template ', authHeaders);
+    // console.log('local headers --> read_study_template ', authHeaders);
     if (authHeaders) {
       fetch(`${nodeAppHost}/read_study_template_for_generate/${labId}/${modality}/${reportType}`, {
         method: 'GET',
@@ -177,10 +177,10 @@ const GenerateReport = () => {
       })
         .then(response => response.json())
         .then(actualData => {
-          console.log('actualData', actualData);
+          // console.log('actualData', actualData);
           let updatedTemplateInfo;
           if (modalityInfo === '') {
-            console.log('Modality template Info 2nd API IF', modalitydata);
+            // console.log('Modality template Info 2nd API IF', modalitydata);
             const p_modality = modalitydata['00080061'] ? modalitydata['00080061'].Value[0] : '';
             const p_name = modalitydata['00100010']
               ? modalitydata['00100010'].Value[0].Alphabetic
@@ -201,10 +201,10 @@ const GenerateReport = () => {
               <b>Date:</b>&nbsp;
               ${formattedDate}
             </p>`;
-            console.log('Modality template Info 2nd API IF patientInfo', patientInfo);
+            // console.log('Modality template Info 2nd API IF patientInfo', patientInfo);
             updatedTemplateInfo = patientInfo + '<br/>' + actualData.data.template_content;
           } else {
-            console.log('Modality template Info 2nd API ELSE ', modalityInfo);
+            // console.log('Modality template Info 2nd API ELSE ', modalityInfo);
             updatedTemplateInfo = modalityInfo;
           }
 
@@ -217,7 +217,7 @@ const GenerateReport = () => {
   }, [modalitydata, modalityInfo, authHeaders]);
 
   function GetStudyData() {
-    console.log('local headers --> read_study_template ', authHeaders);
+    // console.log('local headers --> read_study_template ', authHeaders);
     fetch(
       `${hostName}studies?StudyInstanceUID=${modalityValue}&&includefield=00101010,00101040,00081030`,
       {
@@ -286,12 +286,12 @@ const GenerateReport = () => {
   }, [isActive]);
 
   useEffect(() => {
-    console.log(editorRef.current);
+    // console.log(editorRef.current);
   }, []);
 
   useEffect(() => {
     if (value !== '') {
-      console.log('contentRef.current.innerHTML', contentRef, value);
+      // console.log('contentRef.current.innerHTML', contentRef, value);
       if (!contentRef.current) {
         return;
       }
@@ -301,7 +301,7 @@ const GenerateReport = () => {
   }, [value]);
 
   const onChangeHandler = content => {
-    console.log(content);
+    // console.log(content);
     setValue(content);
   };
 
@@ -318,7 +318,7 @@ const GenerateReport = () => {
     let fiftyPerFlag = localStorage.getItem('fiftyPerFlag')
 
     const contentValue = '';
-    console.log('contentRef.current.innerHTML', value);
+    // console.log('contentRef.current.innerHTML', value);
     //const authHeaders = localStorage.getItem('auth-t');
     const url = `${hostName}studies/${modalityValue}/addmetadata/reportRaw`;
     const data = { data: value };
@@ -357,7 +357,7 @@ const GenerateReport = () => {
         res, res2
       ])
         .then(([response1, response2]) => {
-          console.log('Generate Report updated', response1, "response2 ", response2);
+          // console.log('Generate Report updated', response1, "response2 ", response2);
           let url2 = `${hostName}studies/${modalityValue}/update_status`;
           const statusBody = { "status": "Report Generated" };
           const options2 = {
@@ -384,10 +384,10 @@ const GenerateReport = () => {
               } else {
                 navigate('/workList');
                 alert("Report generated Successfully...");
-                console.log('Status updated Generate report', res1);
+                // console.log('Status updated Generate report', res1);
               }
             }
-            console.log('response ', res1);
+            // console.log('response ', res1);
           } catch (error) {
             console.error('Error:', error);
           }

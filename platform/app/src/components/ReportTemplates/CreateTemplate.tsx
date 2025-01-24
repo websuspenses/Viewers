@@ -118,7 +118,7 @@ const CreateTemplate = () => {
 
   labName = labName.replace(/ /g, '_') + '.json';
   const params = useParams();
-  console.log('Default param ', params);
+  // console.log('Default param ', params);
   const editorRef = useRef();
   const contentRef = useRef();
   const [value, setValue] = useState('<p>sample info</p>');
@@ -141,7 +141,7 @@ const CreateTemplate = () => {
 
   useEffect(() => {
 
-    console.log("local headers ", authHeaders);
+    // console.log("local headers ", authHeaders);
     if (authHeaders) {
       fetch(`${nodeAppHost}/read_modalities/${labId}`, {
         method: 'GET',
@@ -157,7 +157,7 @@ const CreateTemplate = () => {
       })
         .then(response => response.json())
         .then(actualData => {
-          console.log('Modalities list Info ', actualData);
+          // console.log('Modalities list Info ', actualData);
           setModalityOptionsList(actualData.data);
         })
         .catch(err => {
@@ -170,7 +170,7 @@ const CreateTemplate = () => {
   useEffect(() => {
     const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`));
     let authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
-    console.log("local headers ", authHeaders);
+    // console.log("local headers ", authHeaders);
     setAuthHeaders(authHeaders);
     setuserRoles(sessInfo.profile?.realm_access?.roles);
 
@@ -181,7 +181,7 @@ const CreateTemplate = () => {
 
   useEffect(() => {
     if (modalityValue && authHeaders) {
-      console.log("local headers --> read_study_template ", authHeaders);
+      // console.log("local headers --> read_study_template ", authHeaders);
       fetch(`${nodeAppHost}/read_study_template/${labId}/${templateValue}`, {
         method: 'GET',
         headers: {
@@ -196,7 +196,7 @@ const CreateTemplate = () => {
       })
         .then(response => response.json())
         .then(actualData => {
-          console.log('Modality Info ', actualData, actualData.data[0].template_content);
+          // console.log('Modality Info ', actualData, actualData.data[0].template_content);
           setUpdateModality(actualData.data);
           setUpdateSubModality(actualData && actualData.data[0].sub_modality);
           setUpdateTemplateInfo(actualData && actualData.data[0].template_content);
@@ -221,7 +221,7 @@ const CreateTemplate = () => {
     if (subscriptionFeatures && rolesInfo) {
       finalResult = subscriptionFeatures.includes(value) && rolesInfo.includes(value);
     }
-    console.log("subscriptionFeatures ", subscriptionFeatures, "rolesInfo ", rolesInfo, "finalResult ", finalResult);
+    // console.log("subscriptionFeatures ", subscriptionFeatures, "rolesInfo ", rolesInfo, "finalResult ", finalResult);
     return finalResult;
   };
 
@@ -250,12 +250,12 @@ const CreateTemplate = () => {
   }, [isActive]);
 
   useEffect(() => {
-    console.log(editorRef.current);
+    // console.log(editorRef.current);
   }, []);
 
   useEffect(() => {
     if (value !== '') {
-      console.log('contentRef.current.innerHTML', contentRef, value);
+      // console.log('contentRef.current.innerHTML', contentRef, value);
       if (!contentRef.current) {
         return;
       }
@@ -265,13 +265,13 @@ const CreateTemplate = () => {
   }, [value]);
 
   const onChangeHandler = content => {
-    console.log('content', content);
+    // console.log('content', content);
     setValue(content);
   };
 
   function handleImageUploadBefore(files, info, uploadHandler) {
     // uploadHandler is a function
-    console.log(files, info);
+    // console.log(files, info);
     let fileresult = getBase64(files[0]);
     return fileresult;
   }
@@ -279,7 +279,7 @@ const CreateTemplate = () => {
     let reader = new FileReader();
     reader.readAsDataURL(file);
     reader.onload = function () {
-      console.log('reader.result: ', reader.result);
+      // console.log('reader.result: ', reader.result);
       return reader.result;
     };
     reader.onerror = function (error) {
@@ -287,7 +287,7 @@ const CreateTemplate = () => {
     };
   }
   const imageUploadHandler = (xmlHttpRequest, info, core) => {
-    console.log("Image upload handler --->", xmlHttpRequest, info, core)
+    // console.log("Image upload handler --->", xmlHttpRequest, info, core)
   }
   function handleChangeSwitch() {
     setIsActive(!isActive);
@@ -296,20 +296,20 @@ const CreateTemplate = () => {
     setSelectedOption(event.target.value);
   };
   const handelChangeSubModality = event => {
-    console.log(" Before Sub Modality ", subModality);
+    // console.log(" Before Sub Modality ", subModality);
     setUpdateSubModality(event.target.value);
-    console.log(" After Sub Modality ", subModality);
+    // console.log(" After Sub Modality ", subModality);
   };
   const handleSubmit = event => {
-    console.log("form values  ", event.target.input);
+    // console.log("form values  ", event.target.input);
     event.preventDefault();
     // Handle form submission with selectedOption
     let contentValue = '';
-    console.log('contentRef.current.innerHTML', value);
+    // console.log('contentRef.current.innerHTML', value);
     if (contentRef.current) {
       contentValue = contentRef.current.innerHTML;
     }
-    console.log('labName', labName, 'Selected option:', selectedOption, 'contentRef ', value, "subModality ", subModality);
+    // console.log('labName', labName, 'Selected option:', selectedOption, 'contentRef ', value, "subModality ", subModality);
 
     if (!modalityValue && !templateValue) {
       const url = `${nodeAppHost}/create_template`;
@@ -332,11 +332,11 @@ const CreateTemplate = () => {
       try {
         const res = fetch(url, options);
         if (res) {
-          console.log('res', res);
+          // console.log('res', res);
           navigate('/report-templates');
         }
         //const json = res.json();
-        console.log('response ', res);
+        // console.log('response ', res);
       } catch (error) {
         console.error('Error:', error);
       }
@@ -361,11 +361,11 @@ const CreateTemplate = () => {
       try {
         const res = fetch(url, options);
         if (res) {
-          console.log('res', res);
+          // console.log('res', res);
           navigate('/report-templates');
         }
         //const json = res.json();
-        console.log('response ', res);
+        // console.log('response ', res);
       } catch (error) {
         console.error('Error:', error);
       }

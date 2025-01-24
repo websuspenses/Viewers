@@ -222,89 +222,89 @@ function GenerateReferral(props: Props) {
 
 
 
-  const urlShortener64 = (() => {
-    const urlMap = new Map();
-    const base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+  // const urlShortener64 = (() => {
+  //   const urlMap = new Map();
+  //   const base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
   
-    const encodeToBase64 = (input) => {
-      let hashValue = 0;
-      for (let i = 0; i < input.length; i++) {
-        hashValue = (hashValue * 31 + input.charCodeAt(i)) >>> 0; // Simple hash function
-      }
+  //   const encodeToBase64 = (input) => {
+  //     let hashValue = 0;
+  //     for (let i = 0; i < input.length; i++) {
+  //       hashValue = (hashValue * 31 + input.charCodeAt(i)) >>> 0; // Simple hash function
+  //     }
   
-      // Convert the hash value to a base-64 string
-      let base64String = "";
-      do {
-        base64String = base64Chars[hashValue % 64] + base64String;
-        hashValue = Math.floor(hashValue / 64);
-      } while (hashValue > 0);
+  //     // Convert the hash value to a base-64 string
+  //     let base64String = "";
+  //     do {
+  //       base64String = base64Chars[hashValue % 64] + base64String;
+  //       hashValue = Math.floor(hashValue / 64);
+  //     } while (hashValue > 0);
   
-      return base64String;
-    };
+  //     return base64String;
+  //   };
   
-    const encode = (longUrl) => {
-      const shortUrlKey = encodeToBase64(longUrl);
-      urlMap.set(shortUrlKey, longUrl);
-      return shortUrlKey;
-    };
+  //   const encode = (longUrl) => {
+  //     const shortUrlKey = encodeToBase64(longUrl);
+  //     urlMap.set(shortUrlKey, longUrl);
+  //     return shortUrlKey;
+  //   };
   
-    const decode = (shortUrlKey) => {
-      return urlMap.get(shortUrlKey) || null;
-    };
+  //   const decode = (shortUrlKey) => {
+  //     return urlMap.get(shortUrlKey) || null;
+  //   };
   
-    return { encode, decode };
-  })();
+  //   return { encode, decode };
+  // })();
   
-  // Example usage:
-  const longUrl = "https://example.com/some/very/long/url/with/query?params=true";
-  const shortUrl = urlShortener64.encode(longUrl);
-  console.log("Encoded Short URL Key:", shortUrl);
+  // // Example usage:
+  // const longUrl = "https://example.com/some/very/long/url/with/query?params=true";
+  // const shortUrl = urlShortener64.encode(longUrl);
+  // console.log("Encoded Short URL Key:", shortUrl);
   
-  const originalUrl = urlShortener64.decode(shortUrl);
-  console.log("Decoded Long URL:", originalUrl);
+  // const originalUrl = urlShortener64.decode(shortUrl);
+  // console.log("Decoded Long URL:", originalUrl);
 
 
 
 
 
-  const sendMessage = async (referralUrl: string, studyInstanceUid: string) => {
-    console.log('Referral URL:', referralUrl, "StudyInstanceUId:", studyInstanceUid);
-    const finalUrl = await encrypt(referralUrl);
-    await sendReferralHelper(studyInstanceUid, await decrypt(finalUrl));
-    // write javascript URL encryption and decryption code here
-    // const encryptedUrl = encrypt(referralUrl);
+  // const sendMessage = async (referralUrl: string, studyInstanceUid: string) => {
+  //   console.log('Referral URL:', referralUrl, "StudyInstanceUId:", studyInstanceUid);
+  //   const finalUrl = await encrypt(referralUrl);
+  //   await sendReferralHelper(studyInstanceUid, await decrypt(finalUrl));
+  //   // write javascript URL encryption and decryption code here
+  //   // const encryptedUrl = encrypt(referralUrl);
 
 
-    // try {
-    //   const body = {
-    //     "url": referralUrl,
-    //     "alias": "ciaitr" + generateRandomString(6)
-    //   };
+  //   // try {
+  //   //   const body = {
+  //   //     "url": referralUrl,
+  //   //     "alias": "ciaitr" + generateRandomString(6)
+  //   //   };
 
-    //   const whatsAppSvcURL = 'https://api.tinyurl.com/create?api_token=5YCcwTA4TrhQhqh2M2mWq8UX9s4o3OpUDRWi58ItBI6JwsGKJ73srA8AoCoQ';
-    //   const response = await fetch(whatsAppSvcURL, {
-    //     method: 'POST',
-    //     headers: {
-    //       'Content-Type': 'application/json',
-    //       'accept': 'application/json'
-    //     },
-    //     body: JSON.stringify(body),
-    //   });
-    //   console.log('Whatsapp response', response);
-    //   if (!response.ok) {
-    //     throw new Error(`HTTP error! status: ${response.status}`);
-    //   }
+  //   //   const whatsAppSvcURL = 'https://api.tinyurl.com/create?api_token=5YCcwTA4TrhQhqh2M2mWq8UX9s4o3OpUDRWi58ItBI6JwsGKJ73srA8AoCoQ';
+  //   //   const response = await fetch(whatsAppSvcURL, {
+  //   //     method: 'POST',
+  //   //     headers: {
+  //   //       'Content-Type': 'application/json',
+  //   //       'accept': 'application/json'
+  //   //     },
+  //   //     body: JSON.stringify(body),
+  //   //   });
+  //   //   console.log('Whatsapp response', response);
+  //   //   if (!response.ok) {
+  //   //     throw new Error(`HTTP error! status: ${response.status}`);
+  //   //   }
 
-    //   const tinyUrlResponse = await response.json();
+  //   //   const tinyUrlResponse = await response.json();
 
-    //   await sendReferralHelper(studyInstanceUid, tinyUrlResponse.data.tiny_url);
-    // } catch (error) {
-    //   console.error('Error generating tiny URL:', error);
-    //   await sendReferralHelper(studyInstanceUid, referralUrl);
-    // }
+  //   //   await sendReferralHelper(studyInstanceUid, tinyUrlResponse.data.tiny_url);
+  //   // } catch (error) {
+  //   //   console.error('Error generating tiny URL:', error);
+  //   //   await sendReferralHelper(studyInstanceUid, referralUrl);
+  //   // }
 
 
-  };
+  // };
 
   const sendStudyReferral = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();

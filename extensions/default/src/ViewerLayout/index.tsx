@@ -217,30 +217,38 @@ function ViewerLayout({
 
   useEffect(() => {
 
-    const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`));
-    let authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
-    setAuthHeaders(authHeaders);
+    try {
+      if (window?.config?.oidc[0]?.authority && window?.config?.oidc[0]?.client_id) {
 
-    const storedStudy = sessionStorage.getItem('stuID');
 
-    fetch(`${hostNameurl}studies/${storedStudy}/metadata/isReportGenerated`, {
-      method: 'GET',
-      headers: {
-        Authorization: authHeaders,
-      },
-    })
-      .then(response => response.json())
-      .then(data => {
+        const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`));
+        let authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
+        setAuthHeaders(authHeaders);
 
-        if (data.isReportGenerated === 'true') {
-          setIsGenerated(true);
-        } else {
-          setIsGenerated(false);
-        }
-      })
-      .catch(err => {
-        console.log(err.message);
-      });
+        const storedStudy = sessionStorage.getItem('stuID');
+
+        fetch(`${hostNameurl}studies/${storedStudy}/metadata/isReportGenerated`, {
+          method: 'GET',
+          headers: {
+            Authorization: authHeaders,
+          },
+        })
+          .then(response => response.json())
+          .then(data => {
+
+            if (data.isReportGenerated === 'true') {
+              setIsGenerated(true);
+            } else {
+              setIsGenerated(false);
+            }
+          })
+          .catch(err => {
+            console.log(err.message);
+          });
+      }
+    } catch (error) {
+      console.error('Error:', error);
+    }
   }, []);
 
   const handleClose = () => {

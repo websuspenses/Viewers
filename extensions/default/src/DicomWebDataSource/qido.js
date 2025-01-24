@@ -123,7 +123,7 @@ async function search(dicomWebClient, studyInstanceUid, seriesInstanceUid, query
   await fetch(url, dicomWebClient)
     .then(response => response.json())
     .then(result => {
-      console.log('Study Response ', result);
+      // console.log('Study Response ', result);
       searchResult = result;
     })
     .catch(err => {

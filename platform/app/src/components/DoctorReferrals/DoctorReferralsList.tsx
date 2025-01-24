@@ -85,7 +85,7 @@ function DoctorReferralsList() {
 
   const isShowFeature = (value) => {
     let finalResult = false;
-    console.log("subscriptionFeatures ", subscriptionFeatures, "rolesInfo ", rolesInfo);
+    // console.log("subscriptionFeatures ", subscriptionFeatures, "rolesInfo ", rolesInfo);
     if (subscriptionFeatures && rolesInfo) {
       finalResult = subscriptionFeatures.includes(value) && rolesInfo.includes(value);
     }
@@ -120,7 +120,7 @@ function DoctorReferralsList() {
     })
       .then(response => response.json())
       .then(actualData => {
-        console.log('actualData ', actualData);
+        // console.log('actualData ', actualData);
         setDoctorsList(actualData.data);
       })
       .catch(err => {
