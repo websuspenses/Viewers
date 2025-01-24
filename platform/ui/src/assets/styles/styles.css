@@ -1304,7 +1304,7 @@ button.leading-none {
   background-color: #dfdafd !important;
   border: 1px solid #dfdafd !important;
   border-radius: 10px !important;
-  padding: 7px 10px 7px !important;
+  padding: 5px 10px 5px !important;
   font-size: 0.8125rem;
 }
 
@@ -1312,7 +1312,7 @@ button.leading-none {
   background-color: #f4f4d5 !important;
   border: 1px solid #f4f4d5 !important;
   border-radius: 10px !important;
-  padding: 7px 10px 7px !important;
+  padding: 5px 10px 5px !important;
   font-size: 0.8125rem;
 }
 
@@ -1320,7 +1320,7 @@ button.leading-none {
   background-color: #e1f4d8 !important;
   border: 1px solid #e1f4d8 !important;
   border-radius: 10px !important;
-  padding: 7px 10px 7px !important;
+  padding: 5px 10px 5px !important;
   font-size: 0.8125rem;
 }
 
@@ -1328,7 +1328,7 @@ button.leading-none {
   background-color: #f1b4bf !important;
   border: 1px solid #f1b4bf !important;
   border-radius: 10px !important;
-  padding: 7px 10px 7px !important;
+  padding: 5px 10px 5px !important;
   font-size: 0.8125rem;
 }
 
@@ -1440,10 +1440,10 @@ svg.mr-2.inline-flex.w-4.instances-svg.text-secondary-light g {
 }
 
 .commonReady {
-  background-color: #1958cb !important;
+  background-color: #5177bd !important;
   border: 1px solid #f4f4d5 !important;
   border-radius: 10px !important;
-  padding: 12px 10px 5px !important;
+  padding: 5px 10px 5px !important;
   font-size: 0.8125rem;
   color: #ffffff;
 }
