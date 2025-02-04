@@ -6,6 +6,7 @@ import '../ReportTemplates/report.css';
 import { Header } from '@ohif/ui';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useAppConfig } from '@state';
 import {
   align,
   font,
@@ -21,8 +22,8 @@ import {
   template,
   textStyle,
   image,
-  link
-} from "suneditor/src/plugins";
+  link,
+} from 'suneditor/src/plugins';
 
 const defaultFonts = [
   'Arial',
@@ -47,18 +48,16 @@ const sortedFontOptions = [
 ].sort();
 
 let addOnPlugins1 = {
-
   align,
   image,
-  template
-
+  template,
 };
 const editorOptions = {
   showPathLabel: false,
   maxWidth: '1070px',
-  minHeight: "50vh",
-  maxHeight: "50vh",
-  placeholder: "Enter your text here!!!",
+  minHeight: '50vh',
+  maxHeight: '50vh',
+  placeholder: 'Enter your text here!!!',
   plugins: [addOnPlugins1],
   buttonList: [
     ['undo', 'redo'],
@@ -73,21 +72,21 @@ const editorOptions = {
     ['fullScreen', 'showBlocks', 'codeView'],
     ['preview', 'print', 'save'],
   ],
-  formats: ["p", "div", "h1", "h2", "h3", "h4", "h5", "h6"],
+  formats: ['p', 'div', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6'],
   font: [
-    "Arial",
-    "Calibri",
-    "Comic Sans",
-    "Courier",
-    "Garamond",
-    "Georgia",
-    "Impact",
-    "Lucida Console",
-    "Palatino Linotype",
-    "Segoe UI",
-    "Tahoma",
-    "Times New Roman",
-    "Trebuchet MS"
+    'Arial',
+    'Calibri',
+    'Comic Sans',
+    'Courier',
+    'Garamond',
+    'Georgia',
+    'Impact',
+    'Lucida Console',
+    'Palatino Linotype',
+    'Segoe UI',
+    'Tahoma',
+    'Times New Roman',
+    'Trebuchet MS',
   ],
   colorList: [
     [
@@ -105,16 +104,16 @@ const editorOptions = {
       '#74CC6D',
       '#FF9900',
       '#CCCCCC',
-    ]
+    ],
   ],
-}
+};
 const CreateTemplate = () => {
   const navigate = useNavigate();
 
   let labName = 'Test CT Scan Center';
-  const nodeAppHost = process.env.REACT_APP_HOST_NAME;
-  const clientId = window.config.oidc[0].client_id;
+  //const nodeAppHost = process.env.REACT_APP_HOST_NAME;
 
+  const clientId = window.config.oidc[0].client_id;
 
   labName = labName.replace(/ /g, '_') + '.json';
   const params = useParams();
@@ -138,21 +137,23 @@ const CreateTemplate = () => {
   const [rolesInfo, setuserRoles] = useState('');
   const [subscriptionFeatures, setLabsubsInfo] = useState('');
   const labId = sessionStorage.getItem('labId') || '';
+  const [appConfig] = useAppConfig();
+
+  const nodeAppHost = appConfig.nodeAppHostURL || 'https://ciaiteleradiology.com/teleapp';
 
   useEffect(() => {
-
     // console.log("local headers ", authHeaders);
     if (authHeaders) {
       fetch(`${nodeAppHost}/read_modalities/${labId}`, {
         method: 'GET',
         headers: {
-          'Authorization': authHeaders,
-          'clientId': clientId,
-          'realm': clientId,
+          Authorization: authHeaders,
+          clientId: clientId,
+          realm: clientId,
           'Content-Type': 'application/json',
-          'isAccess': 'read_modalities',
-          'labId': labId,
-          'userSub': sessionStorage.getItem('user_sub') || ''
+          isAccess: 'read_modalities',
+          labId: labId,
+          userSub: sessionStorage.getItem('user_sub') || '',
         },
       })
         .then(response => response.json())
@@ -164,11 +165,14 @@ const CreateTemplate = () => {
           console.log(err.message);
         });
     }
-
   }, [authHeaders]);
 
   useEffect(() => {
-    const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`));
+    const sessInfo = JSON.parse(
+      sessionStorage.getItem(
+        `oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`
+      )
+    );
     let authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
     // console.log("local headers ", authHeaders);
     setAuthHeaders(authHeaders);
@@ -185,13 +189,13 @@ const CreateTemplate = () => {
       fetch(`${nodeAppHost}/read_study_template/${labId}/${templateValue}`, {
         method: 'GET',
         headers: {
-          'Authorization': authHeaders,
-          'clientId': clientId,
-          'realm': clientId,
+          Authorization: authHeaders,
+          clientId: clientId,
+          realm: clientId,
           'Content-Type': 'application/json',
-          'isAccess': 'read_study_template',
-          'labId': labId,
-          'userSub': sessionStorage.getItem('user_sub') || ''
+          isAccess: 'read_study_template',
+          labId: labId,
+          userSub: sessionStorage.getItem('user_sub') || '',
         },
       })
         .then(response => response.json())
@@ -215,7 +219,7 @@ const CreateTemplate = () => {
     };
   }, []);
 
-  const isShowFeature = (value) => {
+  const isShowFeature = value => {
     let finalResult = false;
     //console.log("subscriptionFeatures ", subscriptionFeatures, "rolesInfo ", rolesInfo);
     if (subscriptionFeatures && rolesInfo) {
@@ -288,7 +292,7 @@ const CreateTemplate = () => {
   }
   const imageUploadHandler = (xmlHttpRequest, info, core) => {
     // console.log("Image upload handler --->", xmlHttpRequest, info, core)
-  }
+  };
   function handleChangeSwitch() {
     setIsActive(!isActive);
   }
@@ -314,17 +318,22 @@ const CreateTemplate = () => {
     if (!modalityValue && !templateValue) {
       const url = `${nodeAppHost}/create_template`;
 
-      const data = { modality: selectedOption, template_content: value, lab_id: labId, sub_modality: subModality };
+      const data = {
+        modality: selectedOption,
+        template_content: value,
+        lab_id: labId,
+        sub_modality: subModality,
+      };
       const options = {
         method: 'POST',
         headers: {
-          'Authorization': authHeaders,
-          'clientId': clientId,
-          'realm': clientId,
+          Authorization: authHeaders,
+          clientId: clientId,
+          realm: clientId,
           'Content-Type': 'application/json',
-          'isAccess': 'add_report_template',
-          'labId': labId,
-          'userSub': sessionStorage.getItem('user_sub') || ''
+          isAccess: 'add_report_template',
+          labId: labId,
+          userSub: sessionStorage.getItem('user_sub') || '',
         },
         body: JSON.stringify(data),
       };
@@ -348,12 +357,12 @@ const CreateTemplate = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': authHeaders,
-          'clientId': clientId,
-          'realm': clientId,
-          'isAccess': 'add_report_template',
-          'labId': labId,
-          'userSub': sessionStorage.getItem('user_sub') || ''
+          Authorization: authHeaders,
+          clientId: clientId,
+          realm: clientId,
+          isAccess: 'add_report_template',
+          labId: labId,
+          userSub: sessionStorage.getItem('user_sub') || '',
         },
         body: JSON.stringify(data),
       };
@@ -373,7 +382,7 @@ const CreateTemplate = () => {
   };
   const handleRedirectPage = () => {
     navigate('/report-templates');
-  }
+  };
 
   return (
     <div>
@@ -388,76 +397,81 @@ const CreateTemplate = () => {
         screen="ReportTemplateList"
       />
 
-      {isShowFeature('add_report_template') && <div className="templateForm">
-        <h1 className="doctors-list-title">
-          {modalityValue ? 'Update Template' : 'Create Template'}
-        </h1>
-        <form onSubmit={handleSubmit} >
-          <div style={{ display: 'grid', justifyContent: 'center' }}>
-            <div className="modalityDropdown">
-              <label htmlFor="dropdown">Modality</label>
-              <select
-                name="selectedOption"
-                disabled={modalityValue && modalityValue !== '' ? true : false}
-                id="dropdown"
-                value={selectedOption}
-                onChange={handleSelectChange}
-              >
-                <option value="">Select</option>
-                {modalityOptionsList.map((option, index) => (
-                  <option
-                    key={index}
-                    value={option.modality_name}
-                  >
-                    {option.modality_description}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="subModality">
-              <p>
-                <span>Sub Modality</span>
-                <input
-                  type="text"
-                  className="form-control"
-                  placeholder="Enter Sub Modality"
-                  name="sub_Modality"
-                  value={subModality}
-                  onChange={handelChangeSubModality}
-                />
-              </p>
-            </div>
-            <SunEditor
-              autoFocus={true}
-              lang="en"
-              setOptions={editorOptions}
-              onChange={onChangeHandler}
-              ref={editorRef}
-              setContents={modalityValue ? updateTemplateInfo : modalityInfo}
-            />
+      {isShowFeature('add_report_template') && (
+        <div className="templateForm">
+          <h1 className="doctors-list-title">
+            {modalityValue ? 'Update Template' : 'Create Template'}
+          </h1>
+          <form onSubmit={handleSubmit}>
+            <div style={{ display: 'grid', justifyContent: 'center' }}>
+              <div className="modalityDropdown">
+                <label htmlFor="dropdown">Modality</label>
+                <select
+                  name="selectedOption"
+                  disabled={modalityValue && modalityValue !== '' ? true : false}
+                  id="dropdown"
+                  value={selectedOption}
+                  onChange={handleSelectChange}
+                >
+                  <option value="">Select</option>
+                  {modalityOptionsList.map((option, index) => (
+                    <option
+                      key={index}
+                      value={option.modality_name}
+                    >
+                      {option.modality_description}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="subModality">
+                <p>
+                  <span>Sub Modality</span>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Enter Sub Modality"
+                    name="sub_Modality"
+                    value={subModality}
+                    onChange={handelChangeSubModality}
+                  />
+                </p>
+              </div>
+              <SunEditor
+                autoFocus={true}
+                lang="en"
+                setOptions={editorOptions}
+                onChange={onChangeHandler}
+                ref={editorRef}
+                setContents={modalityValue ? updateTemplateInfo : modalityInfo}
+              />
 
-            <button
-              className="submitButton"
-              type="submit"
-            >
-              Submit
-            </button>
-          </div>
-        </form>
-      </div>}
-      {!isShowFeature('add_report_template') && <div className="noAccessCls"><h1>Access Denied</h1>
-        <p>Sorry, you do not have the necessary permissions to view this page.</p>
-        <p>If you believe this is a mistake, please contact the administrator.</p>
-        <p><Link
-          to="/workList"
-        >
-          <li>
-            <span>Go Back to Home</span>
-          </li>
-        </Link></p></div>}
+              <button
+                className="submitButton"
+                type="submit"
+              >
+                Submit
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+      {!isShowFeature('add_report_template') && (
+        <div className="noAccessCls">
+          <h1>Access Denied</h1>
+          <p>Sorry, you do not have the necessary permissions to view this page.</p>
+          <p>If you believe this is a mistake, please contact the administrator.</p>
+          <p>
+            <Link to="/workList">
+              <li>
+                <span>Go Back to Home</span>
+              </li>
+            </Link>
+          </p>
+        </div>
+      )}
     </div>
   );
 };
-
 
 export default CreateTemplate;

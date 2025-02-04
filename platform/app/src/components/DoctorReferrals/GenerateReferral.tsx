@@ -9,7 +9,7 @@ import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Dialog, { DialogProps } from '@mui/material/Dialog';
 import { useNavigate } from 'react-router-dom';
-
+import { useAppConfig } from '@state';
 interface Doctor {
   doc_id: string;
   doc_name: string;
@@ -50,12 +50,16 @@ function generateRandomString(length: number): string {
 function GenerateReferral(props: Props) {
   const navigate = useNavigate();
   const { open, handleClose, StudyInstanceUId } = props;
-  const nodeAppHost = process.env.REACT_APP_HOST_NAME;
-  const hostName = process.env.REACT_APP_PACS_HOST;
+  //const nodeAppHost = process.env.REACT_APP_HOST_NAME;
+
   const [value, setValue] = useState('');
   const [doctorsData, setDoctorsData] = useState<Doctor[]>([]);
   const [authHeaders, setAuthHeaders] = useState('');
   const [error, setError] = useState('');
+  const [appConfig] = useAppConfig();
+
+  const nodeAppHost = appConfig.nodeAppHostURL || 'https://ciaiteleradiology.com/teleapp';
+  const hostName = appConfig.pacsHostURL;
 
   const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
     setValue(event.target.value);
@@ -64,7 +68,11 @@ function GenerateReferral(props: Props) {
 
   useEffect(() => {
     try {
-      const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`) || '{}');
+      const sessInfo = JSON.parse(
+        sessionStorage.getItem(
+          `oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`
+        ) || '{}'
+      );
       const headers = `${sessInfo.token_type} ${sessInfo.access_token}`;
       setAuthHeaders(headers);
     } catch (error) {
@@ -77,19 +85,18 @@ function GenerateReferral(props: Props) {
     if (!authHeaders) return;
 
     const fetchDoctors = async () => {
-
       const clientId = window.config.oidc[0].client_id;
       try {
         const response = await fetch(`${nodeAppHost}/get_referral_doctors`, {
           method: 'GET',
           headers: {
-            'Authorization': authHeaders,
-            'clientId': clientId,
-            'realm': clientId,
+            Authorization: authHeaders,
+            clientId: clientId,
+            realm: clientId,
             'Content-Type': 'application/json',
             'test-header': 'test',
-            'isAccess': 'view_referral_doctors_list',
-            'labId': sessionStorage.getItem('labId') || '',
+            isAccess: 'view_referral_doctors_list',
+            labId: sessionStorage.getItem('labId') || '',
           },
         });
 
@@ -134,9 +141,9 @@ function GenerateReferral(props: Props) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': authHeaders,
-          'clientId': clientId,
-          'realm': clientId,
+          Authorization: authHeaders,
+          clientId: clientId,
+          realm: clientId,
         },
         body: JSON.stringify(formData),
       };
@@ -146,26 +153,23 @@ function GenerateReferral(props: Props) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const statusBody = { "status": "Referral sent" };
-      const updateResponse = await fetch(
-        `${hostName}/studies/${studyInstanceUid}/update_status`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': authHeaders,
-            'clientId': clientId,
-            'realm': clientId,
-          },
-          body: JSON.stringify(statusBody),
-        }
-      );
+      const statusBody = { status: 'Referral sent' };
+      const updateResponse = await fetch(`${hostName}/studies/${studyInstanceUid}/update_status`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: authHeaders,
+          clientId: clientId,
+          realm: clientId,
+        },
+        body: JSON.stringify(statusBody),
+      });
 
       if (!updateResponse.ok) {
         throw new Error(`HTTP error! status: ${updateResponse.status}`);
       }
 
-      alert("Referred Successfully...");
+      alert('Referred Successfully...');
       navigate('/workList');
       handleClose();
     } catch (error) {
@@ -176,19 +180,19 @@ function GenerateReferral(props: Props) {
 
   const cryptoKey = window.crypto.subtle.generateKey(
     {
-      name: "AES-GCM",
+      name: 'AES-GCM',
       length: 256,
     },
     true,
-    ["encrypt", "decrypt"]
+    ['encrypt', 'decrypt']
   );
 
-  const encrypt = async (text) => {
+  const encrypt = async text => {
     const encodedText = new TextEncoder().encode(text);
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     const encryptedContent = await window.crypto.subtle.encrypt(
       {
-        name: "AES-GCM",
+        name: 'AES-GCM',
         iv: iv,
       },
       await cryptoKey,
@@ -199,13 +203,13 @@ function GenerateReferral(props: Props) {
     return encryptedString;
   };
 
-  const decrypt = async (encryptedText) => {
-    const encryptedArray = Uint8Array.from(atob(encryptedText), (c) => c.charCodeAt(0));
+  const decrypt = async encryptedText => {
+    const encryptedArray = Uint8Array.from(atob(encryptedText), c => c.charCodeAt(0));
     const iv = encryptedArray.slice(0, 12);
     const encryptedContent = encryptedArray.slice(12);
     const decryptedContent = await window.crypto.subtle.decrypt(
       {
-        name: "AES-GCM",
+        name: 'AES-GCM',
         iv: iv,
       },
       await cryptoKey,
@@ -214,97 +218,6 @@ function GenerateReferral(props: Props) {
     const decodedText = new TextDecoder().decode(decryptedContent);
     return decodedText;
   };
-
-
-
-
-
-
-
-
-  // const urlShortener64 = (() => {
-  //   const urlMap = new Map();
-  //   const base64Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
-  
-  //   const encodeToBase64 = (input) => {
-  //     let hashValue = 0;
-  //     for (let i = 0; i < input.length; i++) {
-  //       hashValue = (hashValue * 31 + input.charCodeAt(i)) >>> 0; // Simple hash function
-  //     }
-  
-  //     // Convert the hash value to a base-64 string
-  //     let base64String = "";
-  //     do {
-  //       base64String = base64Chars[hashValue % 64] + base64String;
-  //       hashValue = Math.floor(hashValue / 64);
-  //     } while (hashValue > 0);
-  
-  //     return base64String;
-  //   };
-  
-  //   const encode = (longUrl) => {
-  //     const shortUrlKey = encodeToBase64(longUrl);
-  //     urlMap.set(shortUrlKey, longUrl);
-  //     return shortUrlKey;
-  //   };
-  
-  //   const decode = (shortUrlKey) => {
-  //     return urlMap.get(shortUrlKey) || null;
-  //   };
-  
-  //   return { encode, decode };
-  // })();
-  
-  // // Example usage:
-  // const longUrl = "https://example.com/some/very/long/url/with/query?params=true";
-  // const shortUrl = urlShortener64.encode(longUrl);
-  // console.log("Encoded Short URL Key:", shortUrl);
-  
-  // const originalUrl = urlShortener64.decode(shortUrl);
-  // console.log("Decoded Long URL:", originalUrl);
-
-
-
-
-
-  // const sendMessage = async (referralUrl: string, studyInstanceUid: string) => {
-  //   console.log('Referral URL:', referralUrl, "StudyInstanceUId:", studyInstanceUid);
-  //   const finalUrl = await encrypt(referralUrl);
-  //   await sendReferralHelper(studyInstanceUid, await decrypt(finalUrl));
-  //   // write javascript URL encryption and decryption code here
-  //   // const encryptedUrl = encrypt(referralUrl);
-
-
-  //   // try {
-  //   //   const body = {
-  //   //     "url": referralUrl,
-  //   //     "alias": "ciaitr" + generateRandomString(6)
-  //   //   };
-
-  //   //   const whatsAppSvcURL = 'https://api.tinyurl.com/create?api_token=5YCcwTA4TrhQhqh2M2mWq8UX9s4o3OpUDRWi58ItBI6JwsGKJ73srA8AoCoQ';
-  //   //   const response = await fetch(whatsAppSvcURL, {
-  //   //     method: 'POST',
-  //   //     headers: {
-  //   //       'Content-Type': 'application/json',
-  //   //       'accept': 'application/json'
-  //   //     },
-  //   //     body: JSON.stringify(body),
-  //   //   });
-  //   //   console.log('Whatsapp response', response);
-  //   //   if (!response.ok) {
-  //   //     throw new Error(`HTTP error! status: ${response.status}`);
-  //   //   }
-
-  //   //   const tinyUrlResponse = await response.json();
-
-  //   //   await sendReferralHelper(studyInstanceUid, tinyUrlResponse.data.tiny_url);
-  //   // } catch (error) {
-  //   //   console.error('Error generating tiny URL:', error);
-  //   //   await sendReferralHelper(studyInstanceUid, referralUrl);
-  //   // }
-
-
-  // };
 
   const sendStudyReferral = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
@@ -320,8 +233,8 @@ function GenerateReferral(props: Props) {
         method: 'GET',
         headers: {
           Authorization: authHeaders,
-          'clientId': clientId,
-          'realm': clientId,
+          clientId: clientId,
+          realm: clientId,
         },
       });
 
@@ -383,7 +296,7 @@ function GenerateReferral(props: Props) {
                   onChange={handleChange}
                 >
                   <option value="">Select</option>
-                  {doctorsData.map((option) => (
+                  {doctorsData.map(option => (
                     <option
                       key={option.doc_id}
                       value={option.doc_id}

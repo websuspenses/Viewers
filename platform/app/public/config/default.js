@@ -1,6 +1,9 @@
 window.config = {
   routerBasename: '/',
   // whiteLabeling: {},
+  nodeAppHostURL: '/teleapp',
+  keyCloakHostURL: '/keycloak',
+  pacsHostURL: '/pacs/dicom-web/',
   extensions: [],
   modes: [],
   customizationService: {},
@@ -34,18 +37,18 @@ window.config = {
   // },
   dataSources: [
     {
-      namespace: "@ohif/extension-default.dataSourcesModule.dicomweb",
-      sourceName: "dicomweb",
+      namespace: '@ohif/extension-default.dataSourcesModule.dicomweb',
+      sourceName: 'dicomweb',
       configuration: {
-        friendlyName: "Orthanc Server",
-        name: "Orthanc",
-        wadoUriRoot: "http://localhost/pacs/dicom-web",
-        qidoRoot: "http://localhost/pacs/dicom-web",
-        wadoRoot: "http://localhost/pacs/dicom-web",
+        friendlyName: 'Orthanc Server',
+        name: 'Orthanc',
+        wadoUriRoot: 'http://localhost/pacs/dicom-web',
+        qidoRoot: 'http://localhost/pacs/dicom-web',
+        wadoRoot: 'http://localhost/pacs/dicom-web',
         qidoSupportsIncludeField: !0,
         supportsReject: !0,
-        imageRendering: "wadors",
-        thumbnailRendering: "wadors",
+        imageRendering: 'wadors',
+        thumbnailRendering: 'wadors',
         enableStudyLazyLoad: !0,
         supportsFuzzyMatching: !0,
         supportsWildcard: !0,
@@ -54,15 +57,15 @@ window.config = {
       },
     },
   ],
-  
+
   oidc: [
     {
-      authority: "http://localhost/keycloak/realms/orthanc",
-      client_id: "orthanc",
-      redirect_uri: "http://localhost/callback",
-      response_type: "code",
-      scope: "openid",
-      post_logout_redirect_uri: "/logout-redirect.html",
+      authority: 'http://localhost/keycloak/realms/orthanc',
+      client_id: 'orthanc',
+      redirect_uri: 'http://localhost/callback',
+      response_type: 'code',
+      scope: 'openid',
+      post_logout_redirect_uri: '/logout-redirect.html',
     },
   ],
   dataSources1: [

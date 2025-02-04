@@ -14,6 +14,7 @@ import MenuItem from '@mui/material/MenuItem';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
 
+import { useSearchParams } from '@hooks';
 
 function ViewerLayout({
   // From Extension Module Params
@@ -33,8 +34,17 @@ function ViewerLayout({
   if (windowWidth < 768) {
     isMobile = true;
   }
-  console.log("isMobile ", isMobile);
-  const hostNameurl = process.env.REACT_APP_PACS_HOST;
+  console.log('isMobile ', isMobile);
+  //const hostNameurl = process.env.REACT_APP_PACS_HOST;
+  const hostNameurl = appConfig.pacsHostURL;
+
+  const searchParams = useSearchParams();
+  console.log(
+    'searchParams ',
+    searchParams.get('StudyInstanceUIDs'),
+    'token',
+    searchParams.get('token')
+  );
 
   const { panelService, hangingProtocolService } = servicesManager.services;
   const [showLoadingIndicator, setShowLoadingIndicator] = useState(appConfig.showLoadingIndicator);
@@ -54,10 +64,10 @@ function ViewerLayout({
   const [iframeWindowflag, setIframeWindowflag] = useState<string>('iframeDisable');
   const [iframeBlockFlag, setIframeBlockFlag] = useState(true);
   //const [stuID, setStuID] = useState("");
-  const [stuID, setStuID] = useState("");
+  const [stuID, setStuID] = useState('');
   const [defaultLoad, setDefaultLoad] = useState(true);
-  const [loadStudentID, setloadStudentID] = useState("");
-  const [modality, setModality] = useState("");
+  const [loadStudentID, setloadStudentID] = useState('');
+  const [modality, setModality] = useState('');
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
 
@@ -66,12 +76,9 @@ function ViewerLayout({
   const [drEnableFlag, setDrEnableFlag] = useState(false);
   const [drCloseFlag, setDrCloseFlag] = useState(false);
 
-
   const [iflf, setIflf] = useState(false);
   const [isGenerated, setIsGenerated] = useState(false);
   const [authHeaders, setAuthHeaders] = useState('');
-
-
 
   /**
    * Set body classes (tailwindcss) that don't allow vertical
@@ -138,8 +145,6 @@ function ViewerLayout({
     };
   };
 
-
-
   useEffect(() => {
     const { unsubscribe } = panelService.subscribe(
       panelService.EVENTS.PANELS_CHANGED,
@@ -170,7 +175,6 @@ function ViewerLayout({
         setDefaultLoad(false);
       }
     }, 2000);
-
   };
 
   const handleViewerImage = () => {
@@ -179,21 +183,19 @@ function ViewerLayout({
     setDrEnableFlag(true);
     setDrCloseFlag(false);
 
-    let s_id = localStorage.getItem('sid')
-    let md_Flag = localStorage.getItem('mdFlag')
+    let s_id = localStorage.getItem('sid');
+    let md_Flag = localStorage.getItem('mdFlag');
 
-    setDefaultLoad(true)
-    setloadStudentID(stuID)
-    setIframeImageflag("enableIframeFlag");
+    setDefaultLoad(true);
+    setloadStudentID(stuID);
+    setIframeImageflag('enableIframeFlag');
     setIframeWindowflag('iframeEnable');
     setIframeBlockFlag(false);
     handleClose();
 
     setStuID(s_id);
     setModality(md_Flag);
-
-  }
-
+  };
 
   const handleEmergency = (event, studyInstanceUid) => {
     fetch(`${hostNameurl}studies/${studyInstanceUid}/metadata/isReportGenerated`, {
@@ -205,23 +207,20 @@ function ViewerLayout({
       .then(response => response.json())
       .then(data => {
         console.log('isReportGenerated Info ', data);
-
       })
       .catch(err => {
         console.log(err.message);
       });
   };
 
-
-
-
   useEffect(() => {
-
     try {
       if (window?.config?.oidc[0]?.authority && window?.config?.oidc[0]?.client_id) {
-
-
-        const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`));
+        const sessInfo = JSON.parse(
+          sessionStorage.getItem(
+            `oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`
+          )
+        );
         let authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
         setAuthHeaders(authHeaders);
 
@@ -235,7 +234,6 @@ function ViewerLayout({
         })
           .then(response => response.json())
           .then(data => {
-
             if (data.isReportGenerated === 'true') {
               setIsGenerated(true);
             } else {
@@ -255,36 +253,48 @@ function ViewerLayout({
     setAnchorEl(null);
   };
 
-  const closeImageViewer = (event) => {
+  const closeImageViewer = event => {
     event.preventDefault();
 
     setDrEnableFlag(false);
     setDrCloseFlag(true);
 
-    setIframeImageflag("disableIframeFlag");
+    setIframeImageflag('disableIframeFlag');
     setIframeWindowflag('iframeDisable');
     setIframeBlockFlag(true);
     setDefaultLoad(false);
-  }
+  };
 
   const handleIframeInfo = () => {
     setTimeout(() => {
-      if (document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo') && document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo').length > 0) {
-        document.querySelector("iframe").contentWindow.document.getElementsByClassName('mobile-logo')[0].style.display = "none";
-        let elementCls = document.getElementById("imageViewerId").contentWindow.document.getElementsByClassName('bg-black')[0];
+      if (
+        document
+          .querySelector('iframe')
+          .contentWindow.document.getElementsByClassName('mobile-logo') &&
+        document
+          .querySelector('iframe')
+          .contentWindow.document.getElementsByClassName('mobile-logo').length > 0
+      ) {
+        document
+          .querySelector('iframe')
+          .contentWindow.document.getElementsByClassName('mobile-logo')[0].style.display = 'none';
+        let elementCls = document
+          .getElementById('imageViewerId')
+          .contentWindow.document.getElementsByClassName('bg-black')[0];
 
-        document.querySelector("iframe").contentWindow.document.getElementsByClassName('image-viewer')[0].style.display = "none";
+        document
+          .querySelector('iframe')
+          .contentWindow.document.getElementsByClassName('image-viewer')[0].style.display = 'none';
 
         if (elementCls && isActive) {
           elementCls.classList.remove('bg-black');
           elementCls.classList.add('bg-black-on');
         }
-
       }
       setIflf(true);
     }, 3000);
     setDefaultLoad(false);
-  }
+  };
 
   return (
     <div>
@@ -295,31 +305,41 @@ function ViewerLayout({
           servicesManager={servicesManager}
           appConfig={appConfig}
         />
-        {isGenerated && (<div className='draftReport'>
-          <Button disabled={drEnableFlag} style={{ marginTop: '26px', marginLeft: '26px' }} onClick={openDraftReport}>Draft Report</Button>
-        </div>)}
+        {isGenerated && (
+          <div className="draftReport">
+            <Button
+              disabled={drEnableFlag}
+              style={{ marginTop: '26px', marginLeft: '26px' }}
+              onClick={openDraftReport}
+            >
+              Draft Report
+            </Button>
+          </div>
+        )}
       </div>
 
       <div style={{ display: 'flex' }}>
-
         <div
           className={
             isActive
               ? `relative flex w-full flex-row flex-nowrap items-stretch overflow-hidden bg-black ${iframeImageflag} `
               : `relative flex w-full flex-row flex-nowrap items-stretch overflow-hidden bg-black ${iframeImageflag} `
           }
-
           //className="relative flex w-full flex-row flex-nowrap items-stretch overflow-hidden bg-black"
           style={{ height: 'calc(100vh - 52px' }}
         >
           <React.Fragment>
-            {showLoadingIndicator && <LoadingIndicatorProgress className="h-full w-full bg-black" />}
+            {showLoadingIndicator && (
+              <LoadingIndicatorProgress className="h-full w-full bg-black" />
+            )}
             {/* LEFT SIDEPANELS */}
             {hasLeftPanels ? (
               <ErrorBoundary context="Left Panel">
                 <SidePanelWithServices
                   side="left"
-                  activeTabIndex={(isMobile ? rightPanelClosedState : leftPanelClosedState) ? null : 0}
+                  activeTabIndex={
+                    (isMobile ? rightPanelClosedState : leftPanelClosedState) ? null : 0
+                  }
                   servicesManager={servicesManager}
                 />
               </ErrorBoundary>
@@ -335,7 +355,6 @@ function ViewerLayout({
                   />
                 </ErrorBoundary>
               </div>
-
             </div>
             {hasRightPanels ? (
               <ErrorBoundary context="Right Panel">
@@ -346,40 +365,50 @@ function ViewerLayout({
                 />
               </ErrorBoundary>
             ) : null}
-
           </React.Fragment>
         </div>
-        <div
-          className={`${iframeWindowflag}${' imageViewerId'}`}
-        >
-
-          <CloseIcon disabled={drCloseFlag} style={isActive ? { color: "#ffffff", cursor: 'pointer' } : { color: "green", cursor: 'pointer' }}
-            onClick={closeImageViewer} />
+        <div className={`${iframeWindowflag}${' imageViewerId'}`}>
+          <CloseIcon
+            disabled={drCloseFlag}
+            style={
+              isActive
+                ? { color: '#ffffff', cursor: 'pointer' }
+                : { color: 'green', cursor: 'pointer' }
+            }
+            onClick={closeImageViewer}
+          />
 
           {defaultLoad && (
-            <Box sx={{ display: 'flex' }} width="100%" height="92%" >
-              <CircularProgress style={isActive ? { color: "#ffffff", margin: 'auto' } : { color: "green", margin: 'auto' }} />
+            <Box
+              sx={{ display: 'flex' }}
+              width="100%"
+              height="92%"
+            >
+              <CircularProgress
+                style={
+                  isActive
+                    ? { color: '#ffffff', margin: 'auto' }
+                    : { color: 'green', margin: 'auto' }
+                }
+              />
             </Box>
-          )
-          }
+          )}
 
-
-          <iframe id="imageViewerId" onLoad={handleIframeInfo} name="imageViewerId"
+          <iframe
+            id="imageViewerId"
+            onLoad={handleIframeInfo}
+            name="imageViewerId"
             //src={`${iframeBaseUrl}/generate-report/${loadStudentID}/${modality}`}
             src={`${iframeBaseUrl}/generate-report/${stuID}/${modality}/m`}
             //src={`${iframeBaseUrl}/viewer?StudyInstanceUIDs=${loadStudentID}`}
             width="100%"
-            style={defaultLoad ? { height: "0px" } : { height: "92%" }}
+            style={defaultLoad ? { height: '0px' } : { height: '92%' }}
           ></iframe>
-
-
-
         </div>
       </div>
 
       <InvestigationalUseDialog dialogConfiguration={appConfig?.investigationalUseDialog} />
-
-    </div >
+    </div>
   );
 }
 

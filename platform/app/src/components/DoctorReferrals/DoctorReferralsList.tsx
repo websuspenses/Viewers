@@ -12,6 +12,8 @@ import './ReferralStyle.css';
 import Tooltip from '@mui/material/Tooltip';
 import { useNavigate } from 'react-router-dom';
 
+import { useAppConfig } from '@state';
+
 // Declare window.config type
 declare global {
   interface Window {
@@ -67,9 +69,11 @@ function DoctorReferralsList() {
   const [rolesInfo, setuserRoles] = useState('');
   const [subscriptionFeatures, setLabsubsInfo] = useState('');
   const labId = sessionStorage.getItem('labId') || '';
+  const [appConfig] = useAppConfig();
 
-  const nodeAppHost = process.env.REACT_APP_HOST_NAME;
-  
+  //const nodeAppHost = process.env.REACT_APP_HOST_NAME;
+  const nodeAppHost = appConfig.nodeAppHostURL || 'https://ciaiteleradiology.com/teleapp';
+
   useEffect(() => {
     document.body.classList.add('bg-black');
     document.body.classList.add('reportsList_ContainerCls');
@@ -83,7 +87,7 @@ function DoctorReferralsList() {
     readDoctorsList();
   }, []);
 
-  const isShowFeature = (value) => {
+  const isShowFeature = value => {
     let finalResult = false;
     // console.log("subscriptionFeatures ", subscriptionFeatures, "rolesInfo ", rolesInfo);
     if (subscriptionFeatures && rolesInfo) {
@@ -93,8 +97,12 @@ function DoctorReferralsList() {
   };
 
   const readDoctorsList = () => {
-    const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`) || '{}');
-    
+    const sessInfo = JSON.parse(
+      sessionStorage.getItem(
+        `oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`
+      ) || '{}'
+    );
+
     if (!sessInfo) {
       navigate('/workList');
     }
@@ -109,13 +117,13 @@ function DoctorReferralsList() {
     fetch(`${nodeAppHost}/get_referral_doctors`, {
       method: 'GET',
       headers: {
-        'Authorization': authHeaders,
-        'clientId': clientId,
-        'realm': clientId,
+        Authorization: authHeaders,
+        clientId: clientId,
+        realm: clientId,
         'Content-Type': 'application/json',
         'test-header': 'test',
-        'isAccess': 'view_referral_doctors_list',
-        'labId': labId
+        isAccess: 'view_referral_doctors_list',
+        labId: labId,
       },
     })
       .then(response => response.json())
@@ -126,7 +134,7 @@ function DoctorReferralsList() {
       .catch(err => {
         console.log(err.message);
       });
-  }
+  };
 
   useEffect(() => {
     if (isActive) {
@@ -184,11 +192,11 @@ function DoctorReferralsList() {
       setUpdateError('');
       setErrorStatus('');
     }, 3000);
-  }
+  };
 
   const handleRedirectPage = () => {
     navigate('/workList');
-  }
+  };
 
   const onClickReturnButton = () => {
     // Handle return button click if needed
@@ -216,68 +224,95 @@ function DoctorReferralsList() {
         iframeBlockFlag={true}
       />
       <div className="reportcontainer">
-        <h1 className='doctors-list-title'>Study Review Specialists</h1>
-      {isShowFeature('create_referral_doctor') && <div className="createBtnCls">
-          <div className="response-container">
-            <span className={isSuccess === 'success' ? "success-message" : isSuccess === 'error' ? "error-message" : ''}>{updateError}</span>
+        <h1 className="doctors-list-title">Study Review Specialists</h1>
+        {isShowFeature('create_referral_doctor') && (
+          <div className="createBtnCls">
+            <div className="response-container">
+              <span
+                className={
+                  isSuccess === 'success'
+                    ? 'success-message'
+                    : isSuccess === 'error'
+                      ? 'error-message'
+                      : ''
+                }
+              >
+                {updateError}
+              </span>
+            </div>
+            <div style={{ width: '20%', textAlign: 'right' }}>
+              <Button
+                variant="contained"
+                color="success"
+                className="createUserCls"
+                onClick={handleCreateReferral}
+              >
+                Create Referral
+              </Button>
+            </div>
           </div>
-          <div style={{ width: '20%', textAlign: 'right' }}>
-            <Button
-              variant="contained"
-              color="success"
-              className="createUserCls"
-              onClick={handleCreateReferral}
-            >
-              Create Referral
-            </Button>
-          </div>
-        </div>}
+        )}
 
-        {isShowFeature('view_referral_doctors_list') && <ul className="templatesList">
-          {doctorsList.map(item => (
-            <li
-              key={item.doc_id}
-              className={isActive ? 'templatesList_dark' : 'templates-item'}
-            >
-              <div className='modality-area'>
-                <strong className={isActive ? 'templateTitleCls' : 'templateTitleCls_dark'}>
-                  {item.doc_name}
-                </strong>
-                <p className='sub-modality' style={{ fontWeight: 'italic' }}>{item.doc_specialization}, {item.doc_clinic}</p>
-              </div>
-              
-              <div className="buttonAdjustCls items-center sm:flex">
-                <Stack
-                  direction="row"
-                  spacing={2}
-                >
-                  {isShowFeature('create_referral_doctor') && <Tooltip title="Edit">
-                    <EditIcon
-                      style={{ cursor: 'pointer' }}
-                      onClick={() => handleEditItem(item.doc_id)}
-                    />
-                  </Tooltip>}
-                  {isShowFeature('delete_referral_doctor') && <Tooltip title="Delete">
-                    <DeleteIcon
-                      style={{ cursor: 'pointer' }}
-                      onClick={handleDeleteTemplate}
-                    />
-                  </Tooltip>}
-                </Stack>
-              </div>
-            </li>
-          ))}
-        </ul>}
-        {!isShowFeature('view_referral_doctors_list') && <div className="noDataCls"><h1>Access Denied</h1>
-          <p>Sorry, you do not have the necessary permissions to view this page.</p>
-          <p>If you believe this is a mistake, please contact the administrator.</p>
-          <p><Link
-            to="/workList"
-          >
-            <li>
-              <span>Go Back to Home</span>
-            </li>
-          </Link></p></div>}
+        {isShowFeature('view_referral_doctors_list') && (
+          <ul className="templatesList">
+            {doctorsList.map(item => (
+              <li
+                key={item.doc_id}
+                className={isActive ? 'templatesList_dark' : 'templates-item'}
+              >
+                <div className="modality-area">
+                  <strong className={isActive ? 'templateTitleCls' : 'templateTitleCls_dark'}>
+                    {item.doc_name}
+                  </strong>
+                  <p
+                    className="sub-modality"
+                    style={{ fontWeight: 'italic' }}
+                  >
+                    {item.doc_specialization}, {item.doc_clinic}
+                  </p>
+                </div>
+
+                <div className="buttonAdjustCls items-center sm:flex">
+                  <Stack
+                    direction="row"
+                    spacing={2}
+                  >
+                    {isShowFeature('create_referral_doctor') && (
+                      <Tooltip title="Edit">
+                        <EditIcon
+                          style={{ cursor: 'pointer' }}
+                          onClick={() => handleEditItem(item.doc_id)}
+                        />
+                      </Tooltip>
+                    )}
+                    {isShowFeature('delete_referral_doctor') && (
+                      <Tooltip title="Delete">
+                        <DeleteIcon
+                          style={{ cursor: 'pointer' }}
+                          onClick={handleDeleteTemplate}
+                        />
+                      </Tooltip>
+                    )}
+                  </Stack>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+        {!isShowFeature('view_referral_doctors_list') && (
+          <div className="noDataCls">
+            <h1>Access Denied</h1>
+            <p>Sorry, you do not have the necessary permissions to view this page.</p>
+            <p>If you believe this is a mistake, please contact the administrator.</p>
+            <p>
+              <Link to="/workList">
+                <li>
+                  <span>Go Back to Home</span>
+                </li>
+              </Link>
+            </p>
+          </div>
+        )}
       </div>
       {showEditConfirm && editItem && (
         <CreateDoctorReferral

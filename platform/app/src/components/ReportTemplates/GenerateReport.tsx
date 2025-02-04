@@ -6,6 +6,7 @@ import '../ReportTemplates/report.css';
 import { Header } from '@ohif/ui';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useAppConfig } from '@state';
 import {
   align,
   font,
@@ -21,8 +22,8 @@ import {
   template,
   textStyle,
   image,
-  link
-} from "suneditor/src/plugins";
+  link,
+} from 'suneditor/src/plugins';
 const defaultFonts = [
   'Arial',
   'Comic Sans MS',
@@ -50,17 +51,15 @@ const customPlugin = {
   innerHTML: '<img src="/ohif-logo.svg" alt="OHIF Logo fadfdfsfdsfsd">',
 };
 let addOnPlugins1 = {
-
   align,
   image,
-  template
-
+  template,
 };
 const editorOptions = {
   plugins: [addOnPlugins1],
   maxWidth: '1070px',
-  minHeight: "50vh",
-  maxHeight: "50vh",
+  minHeight: '50vh',
+  maxHeight: '50vh',
   buttonList: [
     ['undo', 'redo'],
     ['font', 'fontSize', 'formatBlock'],
@@ -92,15 +91,14 @@ const editorOptions = {
     '#74CC6D',
     '#FF9900',
     '#CCCCCC',
-  ]
+  ],
 };
 
 const GenerateReport = () => {
   const iframeBaseUrl = window.location.origin;
   const navigate = useNavigate();
   const labId = sessionStorage.getItem('labId') || '';
-  const hostName = process.env.REACT_APP_PACS_HOST;
-  const nodeAppHost = process.env.REACT_APP_HOST_NAME;
+  //const nodeAppHost = process.env.REACT_APP_HOST_NAME;
   // labName = labName.replace(/ /g, '_') + '.json';
   const params = useParams();
   // console.log('Default param ', params);
@@ -122,6 +120,9 @@ const GenerateReport = () => {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [authHeaders, setAuthHeaders] = useState('');
   const clientId = window.config.oidc[0].client_id;
+  const [appConfig] = useAppConfig();
+  const nodeAppHost = appConfig.nodeAppHostURL || 'https://ciaiteleradiology.com/teleapp';
+  const hostName = appConfig.pacsHostURL;
 
   useEffect(() => {
     //fetch(`${hostName}studies/${modalityValue}/metadata/reportRaw`);
@@ -148,7 +149,11 @@ const GenerateReport = () => {
   }, [authHeaders]);
 
   useEffect(() => {
-    const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`));
+    const sessInfo = JSON.parse(
+      sessionStorage.getItem(
+        `oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`
+      )
+    );
     let authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
     // console.log("local headers ", authHeaders);
     setAuthHeaders(authHeaders);
@@ -166,13 +171,13 @@ const GenerateReport = () => {
         // },
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': authHeaders,
-          'clientId': clientId,
-          'realm': clientId,
-          'isAccess': 'read_study_template_for_generate',
-          'labId': labId,
-          'abcdefg': 'AAAAA',
-          'x1234': 'BBBBB_' + labId,
+          Authorization: authHeaders,
+          clientId: clientId,
+          realm: clientId,
+          isAccess: 'read_study_template_for_generate',
+          labId: labId,
+          abcdefg: 'AAAAA',
+          x1234: 'BBBBB_' + labId,
         },
       })
         .then(response => response.json())
@@ -315,7 +320,7 @@ const GenerateReport = () => {
   const handleSubmit = event => {
     event.preventDefault();
     // Handle form submission with selectedOption
-    let fiftyPerFlag = localStorage.getItem('fiftyPerFlag')
+    let fiftyPerFlag = localStorage.getItem('fiftyPerFlag');
 
     const contentValue = '';
     // console.log('contentRef.current.innerHTML', value);
@@ -331,10 +336,9 @@ const GenerateReport = () => {
       body: JSON.stringify(data),
     };
 
-
     const isReportGeneratedURL = `${hostName}/studies/${modalityValue}/addmetadata/isReportGenerated`;
 
-    let formData = { "data": 'true' };
+    let formData = { data: 'true' };
 
     const isReportGeneratedOptions = {
       method: 'POST',
@@ -349,17 +353,13 @@ const GenerateReport = () => {
       const res = fetch(url, options);
       // Update is isReportGenerated flag here
 
-
       const res2 = fetch(isReportGeneratedURL, isReportGeneratedOptions);
 
-
-      Promise.all([
-        res, res2
-      ])
+      Promise.all([res, res2])
         .then(([response1, response2]) => {
           // console.log('Generate Report updated', response1, "response2 ", response2);
           let url2 = `${hostName}studies/${modalityValue}/update_status`;
-          const statusBody = { "status": "Report Generated" };
+          const statusBody = { status: 'Report Generated' };
           const options2 = {
             method: 'POST',
             headers: {
@@ -374,8 +374,8 @@ const GenerateReport = () => {
             if (res1) {
               sessionStorage.setItem('stuID', modalityValue);
               sessionStorage.setItem('isReportGenerated', true);
-              if (fiftyPerFlag == "true") {
-                alert("Report generated Successfully...");
+              if (fiftyPerFlag == 'true') {
+                alert('Report generated Successfully...');
                 //localStorage.setItem('fiftyPerFlag', 'false');
                 //localStorage.setItem('sid', "");
                 //localStorage.setItem('mdFlag', "");
@@ -383,7 +383,7 @@ const GenerateReport = () => {
                 //navigate('/workList');
               } else {
                 navigate('/workList');
-                alert("Report generated Successfully...");
+                alert('Report generated Successfully...');
                 // console.log('Status updated Generate report', res1);
               }
             }
@@ -395,10 +395,6 @@ const GenerateReport = () => {
         .catch(error => {
           console.error('Error:', error);
         });
-
-
-
-
 
       // if (res) {
       //   console.log('Generate Report', res);
@@ -441,10 +437,9 @@ const GenerateReport = () => {
     }
   };
 
-
   const handleRedirectPage = () => {
     navigate('/workList');
-  }
+  };
 
   return (
     <div>
@@ -463,8 +458,6 @@ const GenerateReport = () => {
         <h1 className="templateHeaderCls">Study Report</h1>
         <form onSubmit={handleSubmit}>
           <div style={{ display: 'grid', justifyContent: 'center' }}>
-
-
             <SunEditor
               ref={editorRef}
               setOptions={editorOptions}

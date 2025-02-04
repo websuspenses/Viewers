@@ -10,6 +10,7 @@ import Stack from '@mui/material/Stack';
 import Dialog, { DialogProps } from '@mui/material/Dialog';
 import { useNavigate } from 'react-router-dom';
 import { Dispatch, SetStateAction } from 'react';
+import { useAppConfig } from '@state';
 
 interface FormValues {
   doctorId: string;
@@ -61,6 +62,7 @@ const BootstrapDialog = styled(Dialog)<DialogProps>(() => ({
 function CreateDoctorReferral(props: Props) {
   const { open, handleClose, screen, editData, sendUpdateMessage } = props;
   const navigate = useNavigate();
+  const [appConfig] = useAppConfig();
 
   const [initialValues, setInitialValues] = useState<FormValues>({
     doctorId: '',
@@ -72,29 +74,30 @@ function CreateDoctorReferral(props: Props) {
   });
   const [errors, setErrors] = useState<FormErrors>({});
 
-  const nodeAppHost = process.env.REACT_APP_HOST_NAME;
+  //const nodeAppHost = process.env.REACT_APP_HOST_NAME;
+  const nodeAppHost = appConfig.nodeAppHostURL || 'https://ciaiteleradiology.com/teleapp';
 
   const validateForm = () => {
     const newErrors: FormErrors = {};
-    
+
     if (!initialValues.doctorName.trim()) {
       newErrors.doctorName = 'Doctor name is required';
     }
-    
+
     if (!initialValues.specialization.trim()) {
       newErrors.specialization = 'Specialization is required';
     }
-    
+
     if (!initialValues.clinic.trim()) {
       newErrors.clinic = 'Clinic is required';
     }
-    
+
     if (!initialValues.phoneNumber.trim()) {
       newErrors.phoneNumber = 'Phone number is required';
     } else if (!/^\d{10}$/.test(initialValues.phoneNumber)) {
       newErrors.phoneNumber = 'Invalid phone number format';
     }
-    
+
     if (!initialValues.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(initialValues.email)) {
@@ -130,16 +133,20 @@ function CreateDoctorReferral(props: Props) {
 
   const handleSubmit = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
-    
+
     if (!validateForm()) {
       return;
     }
 
     try {
-      const sessInfo = JSON.parse(sessionStorage.getItem(`oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`) || '{}');
+      const sessInfo = JSON.parse(
+        sessionStorage.getItem(
+          `oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`
+        ) || '{}'
+      );
       const authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
       const clientId = window.config.oidc[0].client_id;
-      
+
       let url = `${nodeAppHost}/add_referral_doctor`;
       let apitype = 'create';
 
@@ -161,24 +168,24 @@ function CreateDoctorReferral(props: Props) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': authHeaders,
-          'clientId': clientId,
-          'realm': clientId,
-          'isAccess': 'create_referral_doctor',
-          'labId': sessionStorage.getItem('labId') || '',
-          'userSub': sessionStorage.getItem('user_sub') || '',
+          Authorization: authHeaders,
+          clientId: clientId,
+          realm: clientId,
+          isAccess: 'create_referral_doctor',
+          labId: sessionStorage.getItem('labId') || '',
+          userSub: sessionStorage.getItem('user_sub') || '',
         },
         body: JSON.stringify(formData),
       };
 
       const response = await fetch(url, options);
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const result = await response.json();
-      
+
       if (result) {
         setInitialValues({
           doctorId: '',
@@ -188,12 +195,12 @@ function CreateDoctorReferral(props: Props) {
           phoneNumber: '',
           email: '',
         });
-        
+
         sendUpdateMessage({
           message: apitype === 'update' ? 'Updated Successfully...' : 'Created Successfully...',
-          status: "success"
+          status: 'success',
         });
-        
+
         handleClose();
         navigate('/doctor-referrals');
       }
@@ -201,7 +208,7 @@ function CreateDoctorReferral(props: Props) {
       console.error('Error:', error);
       sendUpdateMessage({
         message: error instanceof Error ? error.message : 'Something went wrong...',
-        status: "error"
+        status: 'error',
       });
     }
   };
@@ -246,7 +253,7 @@ function CreateDoctorReferral(props: Props) {
           <div className="box">
             <div className="row doctor-name">
               <div className="col-sm-12 col-md-6">
-                <p className='doctor-name-p'>
+                <p className="doctor-name-p">
                   <span>Doctor Name</span>
                   <input
                     type="text"
@@ -270,7 +277,9 @@ function CreateDoctorReferral(props: Props) {
                     value={initialValues.specialization}
                     onChange={handelChangeInput}
                   />
-                  {errors.specialization && <div className="invalid-feedback">{errors.specialization}</div>}
+                  {errors.specialization && (
+                    <div className="invalid-feedback">{errors.specialization}</div>
+                  )}
                 </p>
               </div>
               <div className="col-sm-12 col-md-6">
@@ -298,7 +307,9 @@ function CreateDoctorReferral(props: Props) {
                     value={initialValues.phoneNumber}
                     onChange={handelChangeInput}
                   />
-                  {errors.phoneNumber && <div className="invalid-feedback">{errors.phoneNumber}</div>}
+                  {errors.phoneNumber && (
+                    <div className="invalid-feedback">{errors.phoneNumber}</div>
+                  )}
                 </p>
               </div>
               <div className="col-sm-12 col-md-6">
