@@ -399,7 +399,7 @@ function ViewerLayout({
             onLoad={handleIframeInfo}
             name="imageViewerId"
             //src={`${iframeBaseUrl}/generate-report/${loadStudentID}/${modality}`}
-            src={`${iframeBaseUrl}/generate-report/${stuID}/${modality}/m`}
+            src={`${iframeBaseUrl}/generate-report/${stuID}/${modality.replace(/\\/g, '-')}/m`}
             //src={`${iframeBaseUrl}/viewer?StudyInstanceUIDs=${loadStudentID}`}
             width="100%"
             style={defaultLoad ? { height: '0px' } : { height: '92%' }}

@@ -459,16 +459,64 @@ function WorkList({
     navigate('/workList');
     //navigate(-1);
   };
+  // const saveToServer = async studyId => {
+  //   try {
+  //     const text =
+  //       'Do you really want to Save this into Server...? It will take sometime to process your request';
+  //     if (confirm(text) == true) {
+  //       appConfig.showLoadingIndicator = true;
+  //       const result = await dataSource.query.studies.sendToCloud(studyId);
+
+  //       console.log('sendToCloud result', result);
+  //       if (result.StudyID) {
+  //         appConfig.showLoadingIndicator = false;
+  //       }
+  //     }
+  //   } catch (ex) {
+  //     // TODO: UI Notification Service
+  //     console.warn(ex);
+  //   }
+  // };
   const saveToServer = async studyId => {
     try {
-      const text =
-        'Do you really want to Save this into Server...? It will take sometime to process your request';
-      if (confirm(text) == true) {
+      const confirmationText =
+        'Do you really want to save this study to the server? It may take some time to process your request.';
+      if (confirm(confirmationText)) {
+        // Show a loading indicator (if applicable)
+        appConfig.showLoadingIndicator = true;
+
+        // Call the sendToCloud function
         const result = await dataSource.query.studies.sendToCloud(studyId);
+
+        isLoadingData = true;
+        // Process the result
+        if (result && result.StudyID) {
+          console.log('Study successfully saved to the server:', result);
+
+          // Hide the loading indicator
+          appConfig.showLoadingIndicator = false;
+
+          // Optionally, show a success notification
+          alert('Study successfully saved to the server.');
+        } else {
+          console.error('Failed to save the study:', result);
+
+          // Hide the loading indicator
+          appConfig.showLoadingIndicator = false;
+
+          // Optionally, show an error notification
+          alert('Failed to save the study. Please try again.');
+        }
       }
-    } catch (ex) {
-      // TODO: UI Notification Service
-      console.warn(ex);
+    } catch (error) {
+      // Handle any errors that occur during the process
+      console.error('Error saving the study to the server:', error);
+
+      // Hide the loading indicator
+      appConfig.showLoadingIndicator = false;
+      isLoadingData = true;
+      // Optionally, show an error notification
+      alert('An error occurred while saving the study. Please try again.');
     }
   };
   const handleShowModal = studyId => {
@@ -957,6 +1005,16 @@ function WorkList({
                     'aria-labelledby': 'basic-button',
                   }}
                 >
+                  <MenuItem className="ai-class-li">
+                    <span className="text-common-light">Analyze with AI</span>
+                    <span className="ai-img-class">
+                      <img
+                        // src="/assets/images/ai-icon-new.svg"
+                        src="/ai-icon-new.png"
+                        alt="AI"
+                      />
+                    </span>
+                  </MenuItem>
                   <MenuItem onClick={() => handleDocModal(isReportGenerated)}>View Study</MenuItem>
                   <MenuItem onClick={() => handleSegmentationModal(isReportGenerated)}>
                     Segmentation

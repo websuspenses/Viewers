@@ -2,6 +2,7 @@ import { api } from 'dicomweb-client';
 import { DicomMetadataStore, IWebApiDataSource, utils, errorHandler, classes } from '@ohif/core';
 
 import { useNavigate } from 'react-router-dom';
+// import { useAppConfig } from '@state';
 
 import {
   mapParams,
@@ -61,6 +62,7 @@ const metadataProvider = classes.MetadataProvider;
  * @returns {object} - DICOM Web API object
  */
 function createDicomWebApi(dicomWebConfig, servicesManager) {
+  // const [appConfig] = useAppConfig();
   const { userAuthenticationService, customizationService } = servicesManager.services;
   let dicomWebConfigCopy,
     qidoConfig,
@@ -141,7 +143,7 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
         mapParams: mapParams.bind(),
         search: async function (origParams) {
           qidoDicomWebClient.headers = getAuthrorizationHeader();
-         // localStorage.setItem('auth-t', qidoDicomWebClient.headers.Authorization);
+          // localStorage.setItem('auth-t', qidoDicomWebClient.headers.Authorization);
           const { studyInstanceUid, seriesInstanceUid, ...mappedParams } =
             mapParams(origParams, {
               supportsFuzzyMatching: dicomWebConfig.supportsFuzzyMatching,
@@ -153,6 +155,7 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
 
         sendToCloud: async function (studyInstanceUid) {
           //const navigate = useNavigate();
+          // appConfig.showLoadingIndicator=true;
           qidoDicomWebClient.headers = getAuthrorizationHeader();
           const url = dicomWebConfig.wadoRoot + '/studies/' + studyInstanceUid + '/send_to_cloud';
           await fetch(url, qidoDicomWebClient)
@@ -173,11 +176,15 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
                   if (res) {
                     //navigate('/workList');
                     console.log('Status updated Save to server', res);
+                    // appConfig.showLoadingIndicator=true;
+                    console.log('Status updated Save to server 123456', result);
+                    return result;
                   }
                   console.log('response ', res);
                 } catch (error) {
                   console.error('Error:', error);
                 }
+                console.log('Status updated Save to server xyz', result);
               }
             })
             .catch(err => {

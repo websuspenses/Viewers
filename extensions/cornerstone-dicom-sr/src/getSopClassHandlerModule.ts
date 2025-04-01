@@ -115,8 +115,7 @@ function _getDisplaySetsFromSeries(instances, servicesManager, extensionManager)
   ) {
     servicesManager.services.uiNotificationService.show({
       title: 'DICOM SR',
-      message:
-        'OHIF only supports TID1500 Imaging Measurement Report Structured Reports. The SR you’re trying to view is not supported.',
+      message: 'The SR you’re trying to view is not supported.',
       type: 'warning',
       duration: 6000,
     });

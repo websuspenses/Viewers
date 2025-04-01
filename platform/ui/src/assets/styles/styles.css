@@ -1704,3 +1704,41 @@ a.disabled-link svg,
 a.disabled-link:hover svg {
   background-color: rgb(156, 156, 156);
 }
+
+ul.MuiList-root .ai-img-class img {
+  width: 29px;
+  padding-left: 10px;
+}
+.MuiPaper-root ul li.ai-class-li {
+  background: linear-gradient(135deg, #8b5cf6, #3b82f6);
+}
+li.ai-class-li .text-common-light {
+  color: #ffffff !important;
+}
+
+body.bg-black-on tr.bg-secondary-main-darkMode:hover {
+  background-color: #5a5a5a !important;
+}
+body.bg-black-on .commonReport,
+body.bg-black-on .commonIn-Progress {
+  color: #000000;
+}
+
+body.bg-black-on tr.bg-secondary-main-darkMode:hover svg {
+  fill: #ffffff;
+}
+body.bg-black-on .bg-black-on .DateInput_input,
+.bg-black-on .customSelect__wrapper,
+.bg-black-on .customSelect__control {
+  background-color: rgb(59 53 53) !important;
+}
+body.bg-black-on .px-8 {
+  padding-left: 0;
+  padding-right: 0;
+}
+body.bg-black-on tbody[data-cy='study-list-results'] .extra-padding .truncate {
+  color: #0a7c69;
+}
+body.bg-black-on td[data-id='In-Progress'].border-secondary-light-darkMode {
+  width: 12%;
+}
