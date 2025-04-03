@@ -103,6 +103,7 @@ function WorkList({
   const [authHeaders, setAuthHeaders] = useState('');
 
   const [userInfoData, setUserInfoResult] = useState({});
+  const [isSaveToServerInprogress, setIsSaveToServerInprogress] = useState(false);
 
   /*
    * The default sort value keep the filters synchronized with runtime conditional sorting
@@ -482,41 +483,29 @@ function WorkList({
       const confirmationText =
         'Do you really want to save this study to the server? It may take some time to process your request.';
       if (confirm(confirmationText)) {
-        // Show a loading indicator (if applicable)
-        appConfig.showLoadingIndicator = true;
-
+        setIsSaveToServerInprogress(true);
         // Call the sendToCloud function
         const result = await dataSource.query.studies.sendToCloud(studyId);
 
         isLoadingData = true;
-        // Process the result
         if (result && result.StudyID) {
           console.log('Study successfully saved to the server:', result);
-
-          // Hide the loading indicator
-          appConfig.showLoadingIndicator = false;
-
+          setIsSaveToServerInprogress(false);
           // Optionally, show a success notification
           alert('Study successfully saved to the server.');
+          navigate(0);
         } else {
           console.error('Failed to save the study:', result);
-
-          // Hide the loading indicator
-          appConfig.showLoadingIndicator = false;
-
-          // Optionally, show an error notification
-          alert('Failed to save the study. Please try again.');
+          setIsSaveToServerInprogress(false);
+          navigate(0);
         }
       }
     } catch (error) {
       // Handle any errors that occur during the process
       console.error('Error saving the study to the server:', error);
-
-      // Hide the loading indicator
-      appConfig.showLoadingIndicator = false;
-      isLoadingData = true;
-      // Optionally, show an error notification
+      setIsSaveToServerInprogress(false);
       alert('An error occurred while saving the study. Please try again.');
+      navigate(0);
     }
   };
   const handleShowModal = studyId => {
@@ -1030,7 +1019,6 @@ function WorkList({
                   </MenuItem>
                 </Menu>
               </>
-
               {isShowFeature('make_study_as_emergency') && (
                 <Link
                   title="Add"
@@ -1087,7 +1075,6 @@ function WorkList({
                   </svg>
                 </Link>
               )}
-
               {!isShowFeature('make_study_as_emergency') && (
                 <Link
                   className="disabled-link"
@@ -1429,6 +1416,15 @@ function WorkList({
             }
             isActive={isActive}
           />
+
+          {isSaveToServerInprogress && (
+            <div className="flex flex-row items-center justify-between px-4">
+              <p className="saveServer-text">
+                Processing your request, Your file is being processed...
+              </p>
+              <LoadingIndicatorProgress className={'h-full w-full bg-black'} />
+            </div>
+          )}
           {hasStudies ? (
             <div
               className="flex grow flex-col"

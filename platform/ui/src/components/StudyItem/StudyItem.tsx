@@ -33,6 +33,7 @@ const StudyItem = ({
       <div className="flex flex-1 flex-col px-4 pb-2">
         <div className="flex flex-row items-center justify-between pt-2 pb-2">
           <div className="text-base text-white">{date}</div>
+          <div className="text-l flex items-center pr-5 text-blue-300">{modalities}</div>
           <div className="flex flex-row items-center text-base text-blue-300">
             <Icon
               name="group-layers"
@@ -41,11 +42,11 @@ const StudyItem = ({
             {numInstances}
           </div>
         </div>
-        <div className="flex flex-row items-center py-1">
-          <div className="text-l flex items-center pr-5 text-blue-300">{modalities}</div>
+        <div className="patient-name-container flex flex-row items-center py-1">
           {/* <div className="flex items-center break-words text-base text-blue-300">{description}</div> */}
-          <div className="flex items-center break-words text-base text-blue-300">{patientName}</div>
-
+          <div className="patient-name flex items-center break-words text-base text-blue-300">
+            {patientName}
+          </div>
         </div>
       </div>
       {!!trackedSeries && (

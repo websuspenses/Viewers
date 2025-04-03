@@ -29,6 +29,7 @@ function WrappedPanelStudyBrowser({ commandsManager, extensionManager, servicesM
 
   return (
     <PanelStudyBrowser
+      className
       servicesManager={servicesManager}
       dataSource={dataSource}
       getImageSrc={_getImageSrcFromImageId}

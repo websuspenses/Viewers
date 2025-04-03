@@ -202,6 +202,7 @@ export class SelectTree extends Component<PropType> {
               onChange={this.searchLocations}
               value={this.state.searchTerm ? this.state.searchTerm : ''}
               onKeyDown={this.handleKeyDown}
+              rows="4"
             ></textarea>
           </div>
         )}

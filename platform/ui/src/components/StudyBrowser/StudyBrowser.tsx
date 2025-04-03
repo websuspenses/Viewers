@@ -36,9 +36,17 @@ const StudyBrowser = ({
 
   const getTabContent = () => {
     const tabData = tabs.find(tab => tab.name === activeTabName);
-    console.log('mytbas', tabs)
+    console.log('mytbas', tabs);
     return tabData.studies.map(
-      ({ studyInstanceUid, date, description, numInstances, modalities, displaySets, patientName }) => {
+      ({
+        studyInstanceUid,
+        date,
+        description,
+        numInstances,
+        modalities,
+        displaySets,
+        patientName,
+      }) => {
         const isExpanded = expandedStudyInstanceUIDs.includes(studyInstanceUid);
         return (
           <React.Fragment key={studyInstanceUid}>
@@ -74,7 +82,7 @@ const StudyBrowser = ({
   return (
     <React.Fragment>
       <div
-        className="w-100 border-secondary-light bg-primary-dark flex h-16 flex-row items-center justify-center border-b p-4"
+        className="primary-recent-all-tabs w-100 border-secondary-light bg-primary-dark flex h-16 flex-row items-center justify-center border-b p-4"
         data-cy={'studyBrowser-panel'}
       >
         {/* TODO Revisit design of LegacyButtonGroup later - for now use LegacyButton for its children.*/}
@@ -171,7 +179,7 @@ StudyBrowser.propTypes = {
   ),
 };
 
-const noop = () => { };
+const noop = () => {};
 
 StudyBrowser.defaultProps = {
   onClickTab: noop,

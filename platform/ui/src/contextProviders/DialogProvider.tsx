@@ -272,7 +272,7 @@ const DialogProvider = ({ children, service }) => {
     <DialogContext.Provider value={{ create, dismiss, dismissAll, isEmpty }}>
       {!isEmpty() && (
         <div
-          className="absolute h-full w-full"
+          className="annotation-dialog absolute h-full w-full"
           onKeyDown={onKeyDownHandler}
         >
           {renderDialogs()}
