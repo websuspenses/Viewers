@@ -178,46 +178,46 @@ function GenerateReferral(props: Props) {
     }
   };
 
-  const cryptoKey = window.crypto.subtle.generateKey(
-    {
-      name: 'AES-GCM',
-      length: 256,
-    },
-    true,
-    ['encrypt', 'decrypt']
-  );
+  // const cryptoKey = window.crypto.subtle.generateKey(
+  //   {
+  //     name: 'AES-GCM',
+  //     length: 256,
+  //   },
+  //   true,
+  //   ['encrypt', 'decrypt']
+  // );
 
-  const encrypt = async text => {
-    const encodedText = new TextEncoder().encode(text);
-    const iv = window.crypto.getRandomValues(new Uint8Array(12));
-    const encryptedContent = await window.crypto.subtle.encrypt(
-      {
-        name: 'AES-GCM',
-        iv: iv,
-      },
-      await cryptoKey,
-      encodedText
-    );
-    const encryptedArray = new Uint8Array(encryptedContent);
-    const encryptedString = btoa(String.fromCharCode(...iv, ...encryptedArray));
-    return encryptedString;
-  };
+  // const encrypt = async text => {
+  //   const encodedText = new TextEncoder().encode(text);
+  //   const iv = window.crypto.getRandomValues(new Uint8Array(12));
+  //   const encryptedContent = await window.crypto.subtle.encrypt(
+  //     {
+  //       name: 'AES-GCM',
+  //       iv: iv,
+  //     },
+  //     await cryptoKey,
+  //     encodedText
+  //   );
+  //   const encryptedArray = new Uint8Array(encryptedContent);
+  //   const encryptedString = btoa(String.fromCharCode(...iv, ...encryptedArray));
+  //   return encryptedString;
+  // };
 
-  const decrypt = async encryptedText => {
-    const encryptedArray = Uint8Array.from(atob(encryptedText), c => c.charCodeAt(0));
-    const iv = encryptedArray.slice(0, 12);
-    const encryptedContent = encryptedArray.slice(12);
-    const decryptedContent = await window.crypto.subtle.decrypt(
-      {
-        name: 'AES-GCM',
-        iv: iv,
-      },
-      await cryptoKey,
-      encryptedContent
-    );
-    const decodedText = new TextDecoder().decode(decryptedContent);
-    return decodedText;
-  };
+  // const decrypt = async encryptedText => {
+  //   const encryptedArray = Uint8Array.from(atob(encryptedText), c => c.charCodeAt(0));
+  //   const iv = encryptedArray.slice(0, 12);
+  //   const encryptedContent = encryptedArray.slice(12);
+  //   const decryptedContent = await window.crypto.subtle.decrypt(
+  //     {
+  //       name: 'AES-GCM',
+  //       iv: iv,
+  //     },
+  //     await cryptoKey,
+  //     encryptedContent
+  //   );
+  //   const decodedText = new TextDecoder().decode(decryptedContent);
+  //   return decodedText;
+  // };
 
   const sendStudyReferral = async (event: React.MouseEvent<HTMLButtonElement>) => {
     event.preventDefault();
