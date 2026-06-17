@@ -31,7 +31,7 @@
     "test:unit:ci": "echo 'platform/i18n: missing unit tests'"
   },
   "peerDependencies": {
-    "i18next": "^17.0.3",
+    "i18next": "^19.0.0",
     "i18next-browser-languagedetector": "^3.0.1",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
@@ -44,7 +44,7 @@
     "locize-lastused": "^1.1.0"
   },
   "devDependencies": {
-    "i18next": "^17.0.3",
+    "i18next": "^19.0.0",
     "i18next-browser-languagedetector": "^3.0.1",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",

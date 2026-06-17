@@ -40,7 +40,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.20.13",
-    "i18next": "^17.0.3"
+    "i18next": "^19.0.0"
   },
   "devDependencies": {
     "webpack": "^5.50.0",

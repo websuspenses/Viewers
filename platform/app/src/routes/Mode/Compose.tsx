@@ -13,6 +13,13 @@ export default function Compose(props) {
     <React.Fragment>
       {components.reduceRight((acc, curr) => {
         const [Comp, props] = Array.isArray(curr) ? [curr[0], curr[1]] : [curr, {}];
+        if (!Comp) {
+          console.warn('Skipping invalid provider while composing React context providers.', {
+            component: curr,
+          });
+          return acc;
+        }
+
         return <Comp {...props}>{acc}</Comp>;
       }, children)}
     </React.Fragment>
