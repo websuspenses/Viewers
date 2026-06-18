@@ -14,12 +14,17 @@ import { utils, hotkeys, ServicesManager } from '@ohif/core';
 import DoDisturbIcon from '@mui/icons-material/DoDisturb';
 import CloseIcon from '@mui/icons-material/Close';
 import Button from '@mui/material/Button';
+import Dialog from '@mui/material/Dialog';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
 const dotenv = require('dotenv');
 import SubscriptionFeaturesModal from '../../components/AdminPanel/SubscriptionFeaturesModal';
+import AiAnalysisDialog from './AiAnalysisDialog/AiAnalysisDialog';
 
 import {
   Icon,
@@ -98,6 +103,8 @@ function WorkList({
   const [modalityFlag, setModalityFlag] = useState('');
   const [mDropDowns, setMDropDowns] = useState('');
   const [subscriptionFeatures, setSubscriptionFeatures] = useState();
+  const [aiAnalysisStudy, setAiAnalysisStudy] = useState<any>(null);
+  const [pendingAiAnalysisStudy, setPendingAiAnalysisStudy] = useState<any>(null);
 
   const [rolesInfo, setRolesData] = useState(); // State to store fetched data
   const [authHeaders, setAuthHeaders] = useState('');
@@ -154,10 +161,12 @@ function WorkList({
   }
 
   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [activeViewerMenuStudyId, setActiveViewerMenuStudyId] = useState('');
   const open = Boolean(anchorEl);
   const handleClick = (event: React.MouseEvent<HTMLButtonElement>, sid: any, mdFlag: any) => {
     event.preventDefault();
     setStuID(sid);
+    setActiveViewerMenuStudyId(sid);
     setAnchorEl(event.currentTarget);
     setModalityFlag(mdFlag);
     localStorage.setItem('sid', sid);
@@ -166,6 +175,7 @@ function WorkList({
   };
   const handleClose = () => {
     setAnchorEl(null);
+    setActiveViewerMenuStudyId('');
   };
 
   useEffect(() => {
@@ -227,6 +237,7 @@ function WorkList({
   };
 
   const [anchorElNew, setAnchorElNew] = React.useState<null | HTMLElement>(null);
+  const [activeReportMenuStudyId, setActiveReportMenuStudyId] = useState('');
   const openNew = Boolean(anchorElNew);
   const handleClickNew = (
     event: React.MouseEvent<HTMLButtonElement>,
@@ -236,6 +247,7 @@ function WorkList({
   ) => {
     event.preventDefault();
     setStuID(sid);
+    setActiveReportMenuStudyId(sid);
     setAnchorElNew(event.currentTarget);
     //setModalityFlag(mdFlag);
 
@@ -261,6 +273,25 @@ function WorkList({
   };
   const handleCloseNew = () => {
     setAnchorElNew(null);
+    setActiveReportMenuStudyId('');
+  };
+
+  const handleAnalyzeWithAi = study => {
+    handleClose();
+    setPendingAiAnalysisStudy(study);
+  };
+
+  const handleCloseAiAnalysis = () => {
+    setAiAnalysisStudy(null);
+  };
+
+  const handleCancelAiAnalysisConfirm = () => {
+    setPendingAiAnalysisStudy(null);
+  };
+
+  const handleContinueAiAnalysisConfirm = () => {
+    setAiAnalysisStudy(pendingAiAnalysisStudy);
+    setPendingAiAnalysisStudy(null);
   };
 
   const storeStidStatus = (stuID, isReportGenerated) => {
@@ -806,9 +837,15 @@ function WorkList({
                 <>
                   <span
                     id="basic-buttonNew"
-                    aria-controls={openNew ? 'basic-menuNew' : undefined}
+                    aria-controls={
+                      openNew && activeReportMenuStudyId === studyInstanceUid
+                        ? 'basic-menuNew'
+                        : undefined
+                    }
                     aria-haspopup="true"
-                    aria-expanded={openNew ? 'true' : undefined}
+                    aria-expanded={
+                      openNew && activeReportMenuStudyId === studyInstanceUid ? 'true' : undefined
+                    }
                     onClick={event =>
                       handleClickNew(event, studyInstanceUid, modalities, isReportGenerated)
                     }
@@ -833,7 +870,7 @@ function WorkList({
                     <Menu
                       id="basic-menuNew"
                       anchorEl={anchorElNew}
-                      open={openNew}
+                      open={openNew && activeReportMenuStudyId === studyInstanceUid}
                       onClose={handleCloseNew}
                       MenuListProps={{
                         'aria-labelledby': 'basic-buttonNew',
@@ -953,9 +990,13 @@ function WorkList({
               <>
                 <span
                   id="basic-button"
-                  aria-controls={open ? 'basic-menu' : undefined}
+                  aria-controls={
+                    open && activeViewerMenuStudyId === studyInstanceUid ? 'basic-menu' : undefined
+                  }
                   aria-haspopup="true"
-                  aria-expanded={open ? 'true' : undefined}
+                  aria-expanded={
+                    open && activeViewerMenuStudyId === studyInstanceUid ? 'true' : undefined
+                  }
                   //onClick={handleClick}
                   //onClick={(event) => handleViewerImage(event, studyInstanceUid)}
                   onClick={event => handleClick(event, studyInstanceUid, modalities)}
@@ -969,9 +1010,15 @@ function WorkList({
                     width="35px"
                     height="30px"
                     id="basic-button"
-                    aria-controls={open ? 'basic-menu' : undefined}
+                    aria-controls={
+                      open && activeViewerMenuStudyId === studyInstanceUid
+                        ? 'basic-menu'
+                        : undefined
+                    }
                     aria-haspopup="true"
-                    aria-expanded={open ? 'true' : undefined}
+                    aria-expanded={
+                      open && activeViewerMenuStudyId === studyInstanceUid ? 'true' : undefined
+                    }
                     // onClick={handleClick}
                     //onClick={(event) => handleClick(event, studyInstanceUid, modalities)}
                   >
@@ -988,13 +1035,25 @@ function WorkList({
                   id="basic-menu"
                   className="viewer-sub-menu"
                   anchorEl={anchorEl}
-                  open={open}
+                  open={open && activeViewerMenuStudyId === studyInstanceUid}
                   onClose={handleClose}
                   MenuListProps={{
                     'aria-labelledby': 'basic-button',
                   }}
                 >
-                  <MenuItem className="ai-class-li">
+                  <MenuItem
+                    className="ai-class-li"
+                    onClick={() =>
+                      handleAnalyzeWithAi({
+                        studyInstanceUid,
+                        patientName,
+                        description,
+                        date,
+                        time,
+                        modalities,
+                      })
+                    }
+                  >
                     <span className="text-common-light">Analyze with AI</span>
                     <span className="ai-img-class">
                       <img
@@ -1381,6 +1440,101 @@ function WorkList({
           handleClose={handleCloseSubscriptionModal}
           userRolesInfo={userInfoData}
           subscriptionFeaturesInfo={subscriptionFeatures}
+        />
+      )}
+      <Dialog
+        open={!!pendingAiAnalysisStudy}
+        onClose={handleCancelAiAnalysisConfirm}
+        aria-labelledby="ai-analysis-confirm-title"
+        PaperProps={{
+          sx: {
+            width: '460px',
+            maxWidth: 'calc(100vw - 32px)',
+            borderRadius: '8px',
+            backgroundColor: isActive ? '#071118' : '#ffffff',
+            color: isActive ? '#eef7fb' : '#1d2b33',
+            border: isActive ? '1px solid rgba(127, 202, 222, 0.16)' : '1px solid #dde8ec',
+            boxShadow: '0 24px 70px rgba(0, 0, 0, 0.34)',
+          },
+        }}
+      >
+        <DialogTitle
+          id="ai-analysis-confirm-title"
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '12px',
+            fontSize: 20,
+            fontWeight: 800,
+            padding: '20px 24px 10px',
+          }}
+        >
+          <Box
+            sx={{
+              width: 38,
+              height: 38,
+              borderRadius: '8px',
+              display: 'grid',
+              placeItems: 'center',
+              color: '#ffffff',
+              fontWeight: 900,
+              letterSpacing: 0,
+              background: 'linear-gradient(135deg, #0a7c6c 0%, #2db4d3 100%)',
+            }}
+          >
+            AI
+          </Box>
+          <Box>Analyze with AI?</Box>
+        </DialogTitle>
+        <DialogContent sx={{ paddingTop: 0 }}>
+          <Box
+            sx={{
+              lineHeight: 1.55,
+              color: isActive ? '#c6e2ea' : '#425863',
+              paddingLeft: '50px',
+            }}
+          >
+            <Box sx={{ marginBottom: '12px', fontSize: 14 }}>
+              This process may take a few minutes depending on the scan size and network speed.
+            </Box>
+            <Box sx={{ fontWeight: 700, color: isActive ? '#eef7fb' : '#1d2b33' }}>
+              Do you want to continue?
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ padding: '14px 24px 22px' }}>
+          <Button
+            variant="outlined"
+            onClick={handleCancelAiAnalysisConfirm}
+            sx={{
+              borderColor: isActive ? '#375968' : '#b8c9d0',
+              color: isActive ? '#d7edf4' : '#344955',
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            variant="contained"
+            onClick={handleContinueAiAnalysisConfirm}
+            sx={{
+              backgroundColor: '#0a7c6c',
+              fontWeight: 800,
+              '&:hover': { backgroundColor: '#08695c' },
+            }}
+          >
+            Continue
+          </Button>
+        </DialogActions>
+      </Dialog>
+      {aiAnalysisStudy && (
+        <AiAnalysisDialog
+          open={!!aiAnalysisStudy}
+          onClose={handleCloseAiAnalysis}
+          study={aiAnalysisStudy}
+          authHeaders={authHeaders}
+          aiAnalysisHostURL={
+            appConfig.aiAnalysisHostURL || 'https://ciaiteleradiology.com/ai-analysis'
+          }
         />
       )}
 
