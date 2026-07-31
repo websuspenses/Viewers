@@ -6,6 +6,16 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import DescriptionIcon from '@mui/icons-material/Description';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
@@ -20,6 +30,7 @@ type AiProgressEvent = {
   total_steps?: number;
   status?: string;
   message?: string;
+  _receivedAt?: number;
   [key: string]: any;
 };
 
@@ -41,6 +52,17 @@ type AiCompletePayload = {
   report_path?: string;
   docx_path?: string;
   user_docx_path?: string;
+  [key: string]: any;
+};
+
+type AiHeatmap = {
+  frame_key?: string;
+  anomaly_regions?: any[];
+  heatmap_image_b64?: string;
+  gemini_annotated_image_b64?: string;
+  summary?: string;
+  output_path?: string;
+  gemini_annotated_output_path?: string;
   [key: string]: any;
 };
 
@@ -270,15 +292,24 @@ function classifyAiAnalysisResult(
   const hasBackendOutage = /MedGemma|503|Service Temporarily Unavailable|GPU|backend|model/i.test(
     errorText
   );
-  const stepFiveZero = progressEvents.some(
-    event => event.step === 5 && Number(event.analyzed) === 0 && Number(event.total) > 0
+  const stepFiveEvents = progressEvents.filter(event => event.step === 5);
+  const maxStepFiveAnalyzed = Math.max(
+    0,
+    ...stepFiveEvents.map(event => Number(event.analyzed) || 0)
+  );
+  const stepFiveCompletedZero = stepFiveEvents.some(
+    event =>
+      event.status === 'done' &&
+      Number(event.analyzed) === 0 &&
+      Number(event.total || event.total_frames) > 0
   );
   const fetchedFrames = progressEvents.some(
     event => Number(event.fetched) > 0 || Number(event.total_frames) > 0
   );
-  const finalProcessedZero = Number(payload.total_frames_processed) === 0 && fetchedFrames;
+  const finalProcessedZero =
+    Number(payload.total_frames_processed) === 0 && fetchedFrames && maxStepFiveAnalyzed === 0;
 
-  if (hasBackendOutage || stepFiveZero || finalProcessedZero) {
+  if (hasBackendOutage || stepFiveCompletedZero || finalProcessedZero) {
     return 'unable';
   }
 
@@ -398,6 +429,22 @@ function formatDate(date?: string) {
   return `${date.slice(6, 8)}-${date.slice(4, 6)}-${date.slice(0, 4)}`;
 }
 
+function formatDuration(milliseconds?: number) {
+  if (!milliseconds || milliseconds < 0) {
+    return '0s';
+  }
+
+  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+
+  if (!minutes) {
+    return `${seconds}s`;
+  }
+
+  return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
+}
+
 function latestProgressByStep(events: AiProgressEvent[]) {
   return events.reduce<Record<number, AiProgressEvent>>((acc, event) => {
     if (event.step) {
@@ -405,6 +452,120 @@ function latestProgressByStep(events: AiProgressEvent[]) {
     }
     return acc;
   }, {});
+}
+
+function getFirstProgressByStep(events: AiProgressEvent[]) {
+  return events.reduce<Record<number, AiProgressEvent>>((acc, event) => {
+    if (event.step && !acc[event.step]) {
+      acc[event.step] = event;
+    }
+    return acc;
+  }, {});
+}
+
+function getStageDuration({
+  step,
+  steps,
+  firstProgressByStep,
+  progressByStep,
+  now,
+  isRunning,
+}: {
+  step: number;
+  steps: number[];
+  firstProgressByStep: Record<number, AiProgressEvent>;
+  progressByStep: Record<number, AiProgressEvent>;
+  now: number;
+  isRunning: boolean;
+}) {
+  const firstEvent = firstProgressByStep[step];
+  const latestEvent = progressByStep[step];
+  const startedAt = firstEvent?._receivedAt;
+
+  if (!startedAt) {
+    return 0;
+  }
+
+  const nextStep = steps.find(candidate => candidate > step);
+  const nextStartedAt = nextStep ? firstProgressByStep[nextStep]?._receivedAt : undefined;
+  const isActiveStep = isRunning && steps[steps.length - 1] === step;
+  const endedAt = nextStartedAt || (isActiveStep ? now : latestEvent?._receivedAt || now);
+
+  return Math.max(0, endedAt - startedAt);
+}
+
+function collectHeatmaps(payload: AiCompletePayload | null): AiHeatmap[] {
+  if (!payload) {
+    return [];
+  }
+
+  const directHeatmaps = Array.isArray(payload.heatmaps) ? payload.heatmaps : [];
+  const reportHeatmaps = Array.isArray(payload.report?.heatmaps) ? payload.report.heatmaps : [];
+  const seriesHeatmaps = (payload.series_with_findings || []).flatMap(series =>
+    Array.isArray(series?.heatmaps) ? series.heatmaps : []
+  );
+
+  return [...directHeatmaps, ...reportHeatmaps, ...seriesHeatmaps].filter(
+    heatmap => heatmap?.heatmap_image_b64 || heatmap?.gemini_annotated_image_b64
+  );
+}
+
+function getHeatmapImageSrc(base64?: string) {
+  if (!base64) {
+    return '';
+  }
+
+  return base64.startsWith('data:') ? base64 : `data:image/png;base64,${base64}`;
+}
+
+function StatusGlyph({ status, size = 18 }: { status: AiDialogStatus; size?: number }) {
+  const iconSx = { fontSize: size };
+
+  if (status === 'running') {
+    return (
+      <CircularProgress
+        size={size}
+        thickness={5}
+        sx={{ color: 'inherit' }}
+      />
+    );
+  }
+
+  if (status === 'completed') {
+    return <CheckCircleIcon sx={iconSx} />;
+  }
+
+  if (status === 'warning') {
+    return <WarningAmberIcon sx={iconSx} />;
+  }
+
+  if (status === 'unable' || status === 'failed') {
+    return <ErrorOutlineIcon sx={iconSx} />;
+  }
+
+  return <HourglassEmptyIcon sx={iconSx} />;
+}
+
+function StepStatusIcon({ event }: { event: AiProgressEvent }) {
+  if (event.status === 'done') {
+    return <CheckCircleIcon sx={{ color: '#36d7b7', fontSize: 20 }} />;
+  }
+
+  if (/error|fail/i.test(event.status || event.message || '')) {
+    return <WarningAmberIcon sx={{ color: '#f7b955', fontSize: 20 }} />;
+  }
+
+  if (/running|start|analyz|process/i.test(event.status || event.message || '')) {
+    return (
+      <CircularProgress
+        size={18}
+        thickness={5}
+        sx={{ color: '#8be0f8' }}
+      />
+    );
+  }
+
+  return <RadioButtonUncheckedIcon sx={{ color: '#7da8b6', fontSize: 18 }} />;
 }
 
 function MetricChip({ label, value }: { label: string; value?: string | number }) {
@@ -457,6 +618,10 @@ export default function AiAnalysisDialog({
   const [streamError, setStreamError] = useState('');
   const [lastHeartbeatAt, setLastHeartbeatAt] = useState<number | null>(null);
   const [showErrors, setShowErrors] = useState(false);
+  const [heatmapIndex, setHeatmapIndex] = useState(0);
+  const [analysisStartedAt, setAnalysisStartedAt] = useState<number | null>(null);
+  const [analysisFinishedAt, setAnalysisFinishedAt] = useState<number | null>(null);
+  const [timerNow, setTimerNow] = useState(Date.now());
 
   const latestProgress = progressEvents[progressEvents.length - 1];
   const resultStatus = useMemo(
@@ -465,6 +630,7 @@ export default function AiAnalysisDialog({
   );
   const displayStatus = status === 'running' ? status : resultStatus;
   const progressByStep = useMemo(() => latestProgressByStep(progressEvents), [progressEvents]);
+  const firstProgressByStep = useMemo(() => getFirstProgressByStep(progressEvents), [progressEvents]);
   const steps = Object.keys(progressByStep)
     .map(Number)
     .sort((a, b) => a - b);
@@ -477,7 +643,13 @@ export default function AiAnalysisDialog({
       ? 100
       : 0;
   const reportText = completePayload?.report?.report_text || '';
+  const reportHtml = useMemo(() => renderSafeReportMarkdown(reportText), [reportText]);
+  const heatmaps = useMemo(() => collectHeatmaps(completePayload), [completePayload]);
+  const activeHeatmap = heatmaps[heatmapIndex];
   const processingErrors = completePayload?.processing_errors || [];
+  const elapsedTime = analysisStartedAt
+    ? formatDuration((analysisFinishedAt || timerNow) - analysisStartedAt)
+    : '0s';
   const warningMessage =
     displayStatus === 'unable'
       ? GPU_DOWN_MESSAGE
@@ -494,6 +666,9 @@ export default function AiAnalysisDialog({
     setStreamError('');
     setLastHeartbeatAt(null);
     setShowErrors(false);
+    setHeatmapIndex(0);
+    setAnalysisStartedAt(null);
+    setAnalysisFinishedAt(null);
   };
 
   const runAnalysis = () => {
@@ -505,6 +680,11 @@ export default function AiAnalysisDialog({
     setStreamError('');
     setLastHeartbeatAt(null);
     setShowErrors(false);
+    setHeatmapIndex(0);
+    const startedAt = Date.now();
+    setAnalysisStartedAt(startedAt);
+    setAnalysisFinishedAt(null);
+    setTimerNow(startedAt);
     setStatus('running');
 
     startAiAnalysisStream({
@@ -512,9 +692,11 @@ export default function AiAnalysisDialog({
       aiAnalysisHostURL,
       authHeaders,
       signal: controller.signal,
-      onProgress: event => setProgressEvents(current => [...current, event]),
+      onProgress: event =>
+        setProgressEvents(current => [...current, { ...event, _receivedAt: Date.now() }]),
       onComplete: payload => {
         setCompletePayload(payload);
+        setAnalysisFinishedAt(Date.now());
         setStatus(classifyAiAnalysisResult(payload, progressEvents));
       },
       onError: error => {
@@ -526,6 +708,7 @@ export default function AiAnalysisDialog({
         return;
       }
       setStreamError(error instanceof Error ? error.message : 'AI analysis failed.');
+      setAnalysisFinishedAt(Date.now());
       setStatus('failed');
     });
   };
@@ -547,13 +730,35 @@ export default function AiAnalysisDialog({
     }
   }, [completePayload, progressEvents, streamError]);
 
+  useEffect(() => {
+    setHeatmapIndex(0);
+  }, [completePayload?.study_id]);
+
+  useEffect(() => {
+    if (!open || status !== 'running') {
+      return undefined;
+    }
+
+    const intervalId = window.setInterval(() => setTimerNow(Date.now()), 1000);
+    return () => window.clearInterval(intervalId);
+  }, [open, status]);
+
   const handleClose = () => {
     reset();
     onClose();
   };
 
+  const handleDialogClose: DialogProps['onClose'] = (_event, reason) => {
+    if (status === 'running' && reason === 'backdropClick') {
+      return;
+    }
+
+    handleClose();
+  };
+
   const handleCancel = () => {
     abortControllerRef.current?.abort();
+    setAnalysisFinishedAt(Date.now());
     setStatus('failed');
     setStreamError('AI analysis was cancelled.');
   };
@@ -565,23 +770,144 @@ export default function AiAnalysisDialog({
     await navigator.clipboard.writeText(reportText);
   };
 
-  const handleDownloadMarkdown = () => {
+  const buildReportDocumentHtml = () => {
     if (!reportText) {
-      return;
+      return '';
     }
-    const blob = new Blob([reportText], { type: 'text/markdown;charset=utf-8' });
+
+    const heatmapHtml = heatmaps
+      .map((heatmap, index) => {
+        const heatmapImages = [
+          {
+            label: 'Heatmap',
+            src: heatmap.heatmap_image_b64,
+            alt: `AI heatmap ${index + 1}`,
+          },
+          {
+            label: 'Gemini annotation',
+            src: heatmap.gemini_annotated_image_b64,
+            alt: `Gemini annotated heatmap ${index + 1}`,
+          },
+        ]
+          .filter(image => image.src)
+          .map(
+            image => `
+              <figure class="heatmap-panel">
+                <figcaption>${image.label}</figcaption>
+                <img src="${getHeatmapImageSrc(image.src)}" alt="${image.alt}" />
+              </figure>
+            `
+          )
+          .join('');
+
+        return `
+          <section class="heatmap">
+            <h2>Heatmap ${index + 1}${heatmap.summary ? `: ${escapeHtml(heatmap.summary)}` : ''}</h2>
+            <div class="heatmap-grid ${heatmap.gemini_annotated_image_b64 ? 'has-pair' : ''}">
+              ${heatmapImages}
+            </div>
+            ${heatmap.frame_key ? `<p class="muted">Frame: ${escapeHtml(heatmap.frame_key)}</p>` : ''}
+          </section>
+        `;
+      })
+      .join('');
+
+    return `<!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <title>AI Analysis Report</title>
+          <style>
+            body { font-family: Arial, Helvetica, sans-serif; color: #1d2b33; margin: 32px; line-height: 1.55; }
+            header { display: flex; align-items: center; gap: 14px; border-bottom: 2px solid #d9e7ec; padding-bottom: 16px; margin-bottom: 24px; }
+            header img { width: 44px; height: 44px; object-fit: contain; }
+            header h1 { font-size: 22px; margin: 0; }
+            header p { margin: 2px 0 0; color: #647b85; font-size: 12px; }
+            h2 { font-size: 21px; margin: 18px 0 10px; }
+            h3 { font-size: 16px; margin: 18px 0 8px; }
+            p { margin: 8px 0; }
+            table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+            th, td { border: 1px solid #d5e1e6; padding: 8px; text-align: left; vertical-align: top; }
+            th { background: #edf5f7; }
+            hr { border: 0; border-top: 1px solid #d5e1e6; margin: 18px 0; }
+            .meta { background: #f2f7f9; border: 1px solid #dbe9ee; padding: 12px; margin-bottom: 20px; }
+            .heatmap { page-break-inside: avoid; margin-top: 28px; padding-top: 16px; border-top: 1px solid #d5e1e6; }
+            .heatmap-grid { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; }
+            .heatmap-grid.has-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+            .heatmap-panel { margin: 0; page-break-inside: avoid; }
+            .heatmap-panel figcaption { background: #edf5f7; border: 1px solid #d5e1e6; border-bottom: 0; color: #34515d; font-size: 12px; font-weight: 700; padding: 7px 9px; }
+            .heatmap-panel img { display: block; max-width: 100%; height: auto; border: 1px solid #d5e1e6; box-sizing: border-box; }
+            @media print { .heatmap-grid.has-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+            @media screen and (max-width: 720px) { .heatmap-grid.has-pair { grid-template-columns: 1fr; } }
+            .muted { color: #647b85; font-size: 12px; }
+          </style>
+        </head>
+        <body>
+          <header>
+            <img src="${window.location.origin}/ai-icon-new.png" alt="AI Analysis logo" />
+            <div>
+              <h1>AI Analysis Report</h1>
+              <p>Generated from imaging analysis stream</p>
+            </div>
+          </header>
+          <section class="meta">
+            <strong>Patient:</strong> ${escapeHtml(study.patientName || 'Not available')}<br />
+            <strong>Study:</strong> ${escapeHtml(study.description || 'Medical imaging study')}<br />
+            <strong>Study Date:</strong> ${escapeHtml(formatDate(study.date))}
+          </section>
+          <main>${reportHtml}</main>
+          ${heatmapHtml}
+        </body>
+      </html>`;
+  };
+
+  const downloadBlob = (blob: Blob, filename: string) => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `ai-analysis-${study.studyInstanceUid}.md`;
+    link.download = filename;
     link.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleDownloadDoc = () => {
+    const html = buildReportDocumentHtml();
+    if (!html) {
+      return;
+    }
+    const blob = new Blob([html], { type: 'application/msword;charset=utf-8' });
+    downloadBlob(blob, `ai-analysis-${study.studyInstanceUid}.doc`);
+  };
+
+  const handleDownloadPdf = () => {
+    const html = buildReportDocumentHtml();
+    if (!html) {
+      return;
+    }
+    const printWindow = window.open('', '_blank', 'width=960,height=1100');
+    if (!printWindow) {
+      return;
+    }
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    window.setTimeout(() => printWindow.print(), 350);
+  };
+
+  const goToPreviousHeatmap = () => {
+    setHeatmapIndex(index => (index <= 0 ? heatmaps.length - 1 : index - 1));
+  };
+
+  const goToNextHeatmap = () => {
+    setHeatmapIndex(index => (index >= heatmaps.length - 1 ? 0 : index + 1));
   };
 
   return (
     <BootstrapDialog
       open={open}
-      onClose={handleClose}
+      onClose={handleDialogClose}
+      disableEscapeKeyDown={status === 'running'}
       aria-labelledby="ai-analysis-dialog-title"
     >
       <DialogTitle
@@ -624,8 +950,25 @@ export default function AiAnalysisDialog({
           <Chip
             size="small"
             color={STATUS_COLORS[displayStatus]}
+            icon={<StatusGlyph status={displayStatus} />}
             label={STATUS_LABELS[displayStatus]}
-            sx={{ fontWeight: 800 }}
+            sx={{
+              fontWeight: 800,
+              '& .MuiChip-icon': {
+                color: 'inherit',
+              },
+            }}
+          />
+          <Chip
+            size="small"
+            label={`Elapsed ${elapsedTime}`}
+            sx={{
+              color: '#dff6ff',
+              borderColor: 'rgba(105, 210, 232, 0.28)',
+              backgroundColor: 'rgba(105, 210, 232, 0.08)',
+              fontWeight: 800,
+            }}
+            variant="outlined"
           />
         </Stack>
         <IconButton
@@ -712,6 +1055,9 @@ export default function AiAnalysisDialog({
                   {latestProgress?.message ||
                     (lastHeartbeatAt ? 'Still processing...' : 'Starting AI analysis...')}
                 </Box>
+                <Box sx={{ marginLeft: 'auto', color: '#9fc4ce', fontSize: 12, fontWeight: 800 }}>
+                  {elapsedTime}
+                </Box>
               </Stack>
               <LinearProgress
                 variant="determinate"
@@ -740,21 +1086,23 @@ export default function AiAnalysisDialog({
               value={completePayload?.total_series_analyzed || latestProgress?.total_series}
             />
             <MetricChip
-              label="Frames fetched"
+              label="Frames"
               value={latestProgress?.fetched || latestProgress?.total_frames}
             />
             <MetricChip
-              label="Frames analyzed"
+              label="Analyzed"
               value={completePayload?.total_frames_processed || latestProgress?.analyzed}
             />
             <MetricChip
-              label="Anomalies"
+              label="Findings"
               value={completePayload?.total_anomalies_found || latestProgress?.total_anomalies}
             />
-            <MetricChip
-              label="Errors"
-              value={processingErrors.length}
-            />
+            {!!processingErrors.length && (
+              <MetricChip
+                label="Warnings"
+                value={processingErrors.length}
+              />
+            )}
           </Stack>
 
           {streamError && displayStatus === 'failed' && (
@@ -775,7 +1123,7 @@ export default function AiAnalysisDialog({
             </Alert>
           )}
 
-          {!!steps.length && (
+          {status === 'running' && !!steps.length && (
             <Box
               sx={{
                 border: '1px solid rgba(255,255,255,0.1)',
@@ -787,6 +1135,14 @@ export default function AiAnalysisDialog({
             >
               {steps.map(step => {
                 const event = progressByStep[step];
+                const stageDuration = getStageDuration({
+                  step,
+                  steps,
+                  firstProgressByStep,
+                  progressByStep,
+                  now: timerNow,
+                  isRunning: status === 'running',
+                });
                 return (
                   <Stack
                     key={step}
@@ -813,12 +1169,23 @@ export default function AiAnalysisDialog({
                         fontWeight: 800,
                       }}
                     />
+                    <StepStatusIcon event={event} />
                     <Box sx={{ flex: 1 }}>
                       <Box sx={{ fontSize: 13, fontWeight: 700 }}>
                         {event.message || `Step ${step}`}
                       </Box>
                       <Box sx={{ color: '#91b7c2', fontSize: 12 }}>{event.status || 'started'}</Box>
                     </Box>
+                    <Chip
+                      size="small"
+                      label={formatDuration(stageDuration)}
+                      sx={{
+                        color: '#dff6ff',
+                        backgroundColor: 'rgba(255,255,255,0.06)',
+                        fontWeight: 800,
+                        minWidth: 58,
+                      }}
+                    />
                   </Stack>
                 );
               })}
@@ -836,10 +1203,11 @@ export default function AiAnalysisDialog({
                 }}
               >
                 {[
-                  ['Series analyzed', completePayload.total_series_analyzed],
+                  ['Series', completePayload.total_series_analyzed],
                   ['Frames processed', completePayload.total_frames_processed],
-                  ['Anomalies found', completePayload.total_anomalies_found],
-                  ['Findings series', completePayload.series_with_findings?.length || 0],
+                  ['Findings', completePayload.total_anomalies_found],
+                  ['Heatmaps', heatmaps.length],
+                  ['Elapsed', elapsedTime],
                 ].map(([label, value]) => (
                   <Box
                     key={label}
@@ -848,6 +1216,7 @@ export default function AiAnalysisDialog({
                       borderRadius: '8px',
                       padding: '12px',
                       background: '#0d1b24',
+                      boxShadow: '0 12px 30px rgba(0, 0, 0, 0.18)',
                     }}
                   >
                     <Box
@@ -875,9 +1244,8 @@ export default function AiAnalysisDialog({
                     background: '#fbfdfe',
                     color: '#1c2b33',
                     borderRadius: '8px',
-                    padding: '22px',
-                    maxHeight: '42vh',
-                    overflow: 'auto',
+                    boxShadow: '0 22px 55px rgba(0, 0, 0, 0.32)',
+                    overflow: 'hidden',
                     '& h2': { margin: '0 0 14px', fontSize: 22 },
                     '& h3': { margin: '18px 0 8px', fontSize: 16 },
                     '& p': { lineHeight: 1.55, margin: '8px 0' },
@@ -890,10 +1258,209 @@ export default function AiAnalysisDialog({
                     '& th': { background: '#eaf3f6' },
                     '& hr': { border: 0, borderTop: '1px solid #d9e5ea', margin: '16px 0' },
                   }}
-                  dangerouslySetInnerHTML={{ __html: renderSafeReportMarkdown(reportText) }}
-                />
+                >
+                  <Stack
+                    direction="row"
+                    spacing={1.5}
+                    alignItems="center"
+                    sx={{
+                      padding: '16px 20px',
+                      borderBottom: '1px solid #d9e5ea',
+                      background: '#eef7fa',
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src="/ai-icon-new.png"
+                      alt="AI Analysis"
+                      sx={{
+                        width: 42,
+                        height: 42,
+                        objectFit: 'contain',
+                      }}
+                    />
+                    <Box>
+                      <Box sx={{ fontSize: 18, fontWeight: 900 }}>AI Analysis Report</Box>
+                      <Box sx={{ color: '#5f7884', fontSize: 12 }}>
+                        Review generated findings with the original study images.
+                      </Box>
+                    </Box>
+                  </Stack>
+                  <Box
+                    sx={{
+                      padding: '22px',
+                      maxHeight: '40vh',
+                      overflow: 'auto',
+                    }}
+                    dangerouslySetInnerHTML={{ __html: reportHtml }}
+                  />
+                </Box>
               ) : (
                 <Alert severity="warning">Report text unavailable.</Alert>
+              )}
+
+              {!!activeHeatmap && (
+                <Box
+                  sx={{
+                    marginTop: '18px',
+                    border: '1px solid rgba(105, 210, 232, 0.18)',
+                    background: '#0d1b24',
+                    borderRadius: '8px',
+                    padding: '16px',
+                    boxShadow: '0 18px 45px rgba(0, 0, 0, 0.28)',
+                  }}
+                >
+                  <Stack
+                    direction={{ xs: 'column', sm: 'row' }}
+                    spacing={1}
+                    alignItems={{ xs: 'flex-start', sm: 'center' }}
+                    justifyContent="space-between"
+                    sx={{ marginBottom: '12px' }}
+                  >
+                    <Box>
+                      <Box sx={{ color: '#eef7fb', fontSize: 16, fontWeight: 900 }}>
+                        Heatmap Review
+                      </Box>
+                      <Box sx={{ color: '#9fc4ce', fontSize: 12 }}>
+                        {activeHeatmap.summary || 'AI-generated visual attention map'}
+                      </Box>
+                    </Box>
+                    <Chip
+                      size="small"
+                      label={`${heatmapIndex + 1} of ${heatmaps.length}`}
+                      sx={{
+                        color: '#e8fbff',
+                        backgroundColor: 'rgba(105, 210, 232, 0.12)',
+                        border: '1px solid rgba(105, 210, 232, 0.25)',
+                        fontWeight: 800,
+                      }}
+                    />
+                  </Stack>
+
+                  <Box
+                    sx={{
+                      position: 'relative',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      background: '#050b10',
+                      border: '1px solid rgba(255,255,255,0.1)',
+                      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.03)',
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: {
+                          xs: '1fr',
+                          md: activeHeatmap.gemini_annotated_image_b64 ? '1fr 1fr' : '1fr',
+                        },
+                        gap: '1px',
+                        backgroundColor: 'rgba(255,255,255,0.1)',
+                      }}
+                    >
+                      {[
+                        {
+                          label: 'Heatmap',
+                          src: activeHeatmap.heatmap_image_b64,
+                          alt: activeHeatmap.summary || `AI heatmap ${heatmapIndex + 1}`,
+                        },
+                        {
+                          label: 'Gemini annotation',
+                          src: activeHeatmap.gemini_annotated_image_b64,
+                          alt: `Gemini annotated heatmap ${heatmapIndex + 1}`,
+                        },
+                      ]
+                        .filter(image => image.src)
+                        .map(image => (
+                          <Box
+                            key={image.label}
+                            sx={{
+                              minHeight: { xs: 260, sm: 420 },
+                              display: 'grid',
+                              gridTemplateRows: 'auto 1fr',
+                              background: '#050b10',
+                            }}
+                          >
+                            <Box
+                              sx={{
+                                padding: '8px 10px',
+                                color: '#cceef7',
+                                fontSize: 12,
+                                fontWeight: 800,
+                                background: 'rgba(13, 27, 36, 0.92)',
+                                borderBottom: '1px solid rgba(255,255,255,0.08)',
+                              }}
+                            >
+                              {image.label}
+                            </Box>
+                            <Box
+                              sx={{
+                                display: 'grid',
+                                placeItems: 'center',
+                                padding: '10px',
+                              }}
+                            >
+                              <Box
+                                component="img"
+                                src={getHeatmapImageSrc(image.src)}
+                                alt={image.alt}
+                                sx={{
+                                  maxWidth: '100%',
+                                  maxHeight: { xs: 320, sm: 520 },
+                                  width: 'auto',
+                                  height: 'auto',
+                                  display: 'block',
+                                }}
+                              />
+                            </Box>
+                          </Box>
+                        ))}
+                    </Box>
+
+                    {heatmaps.length > 1 && (
+                      <>
+                        <IconButton
+                          aria-label="previous heatmap"
+                          onClick={goToPreviousHeatmap}
+                          sx={{
+                            position: 'absolute',
+                            left: 12,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            color: '#ffffff',
+                            backgroundColor: 'rgba(0,0,0,0.52)',
+                            boxShadow: '0 8px 20px rgba(0,0,0,0.35)',
+                            '&:hover': { backgroundColor: 'rgba(0,0,0,0.72)' },
+                          }}
+                        >
+                          <NavigateBeforeIcon />
+                        </IconButton>
+                        <IconButton
+                          aria-label="next heatmap"
+                          onClick={goToNextHeatmap}
+                          sx={{
+                            position: 'absolute',
+                            right: 12,
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            color: '#ffffff',
+                            backgroundColor: 'rgba(0,0,0,0.52)',
+                            boxShadow: '0 8px 20px rgba(0,0,0,0.35)',
+                            '&:hover': { backgroundColor: 'rgba(0,0,0,0.72)' },
+                          }}
+                        >
+                          <NavigateNextIcon />
+                        </IconButton>
+                      </>
+                    )}
+                  </Box>
+
+                  {activeHeatmap.frame_key && (
+                    <Box sx={{ color: '#9fc4ce', fontSize: 12, marginTop: '10px' }}>
+                      Frame: {activeHeatmap.frame_key}
+                    </Box>
+                  )}
+                </Box>
               )}
 
               {!!processingErrors.length && (
@@ -925,20 +1492,6 @@ export default function AiAnalysisDialog({
                   </Collapse>
                 </Box>
               )}
-
-              <Box sx={{ marginTop: '14px', color: '#9fc4ce', fontSize: 12 }}>
-                <div>Report: {completePayload.report?.output_path || completePayload.report_path || 'N/A'}</div>
-                <div>
-                  Doctor DOCX:{' '}
-                  {completePayload.report?.docx_output_path || completePayload.docx_path || 'N/A'}
-                </div>
-                <div>
-                  Patient DOCX:{' '}
-                  {completePayload.report?.user_docx_output_path ||
-                    completePayload.user_docx_path ||
-                    'N/A'}
-                </div>
-              </Box>
             </Box>
           )}
         </Box>
@@ -968,17 +1521,28 @@ export default function AiAnalysisDialog({
           variant="outlined"
           onClick={handleCopyReport}
           disabled={!reportText}
+          startIcon={<ContentCopyIcon />}
           sx={{ color: '#dff6ff', borderColor: '#477889' }}
         >
           Copy Report
         </Button>
         <Button
           variant="outlined"
-          onClick={handleDownloadMarkdown}
+          onClick={handleDownloadDoc}
           disabled={!reportText}
+          startIcon={<DescriptionIcon />}
           sx={{ color: '#dff6ff', borderColor: '#477889' }}
         >
-          Download Markdown
+          Download DOC
+        </Button>
+        <Button
+          variant="outlined"
+          onClick={handleDownloadPdf}
+          disabled={!reportText}
+          startIcon={<PictureAsPdfIcon />}
+          sx={{ color: '#dff6ff', borderColor: '#477889' }}
+        >
+          Download PDF
         </Button>
         <Button
           variant="contained"

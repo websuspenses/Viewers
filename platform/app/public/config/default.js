@@ -2,6 +2,7 @@ window.config = {
   routerBasename: '/',
   // whiteLabeling: {},
   nodeAppHostURL: '/teleapp',
+  aiAnalysisHostURL: 'https://ciaiteleradiology.com/ai-analysis',
   keyCloakHostURL: '/keycloak',
   pacsHostURL: '/pacs/dicom-web/',
   extensions: [],

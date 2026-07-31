@@ -26,6 +26,18 @@ describe('getModalities', () => {
     expect(getModalities(Modality, ModalitiesInStudy)).toEqual(ModalitiesInStudy);
   });
 
+  test('should handle ModalitiesInStudy with a zero-length value', () => {
+    const Modality = null;
+    const ModalitiesInStudy = {
+      vr: 'CS',
+    };
+
+    expect(getModalities(Modality, ModalitiesInStudy)).toEqual({
+      vr: 'CS',
+      Value: [],
+    });
+  });
+
   test('should return only the modalitues that exists in ModalitiesInStudy', () => {
     const Modality = {
       Value: ['DESIRED_VALUE'],

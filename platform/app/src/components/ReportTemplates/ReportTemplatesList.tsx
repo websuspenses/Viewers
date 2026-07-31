@@ -157,7 +157,7 @@ function ReportTemplatesList() {
             </Link>
           )}
         </div>
-        <h1 className="doctors-list-title">Template Library</h1>
+        <h1 className="doctors-list-title">Template Library 1234</h1>
         {isShowFeature('view_template_list') && (
           <ul className="templatesList">
             {templateData.map(item => (

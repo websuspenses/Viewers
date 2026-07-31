@@ -14,8 +14,10 @@ export default function getModalities(Modality, ModalitiesInStudy) {
 
   if (ModalitiesInStudy) {
     if (modalities.vr && modalities.vr === ModalitiesInStudy.vr) {
-      for (let i = 0; i < ModalitiesInStudy.Value.length; i++) {
-        const value = ModalitiesInStudy.Value[i];
+      const modalitiesInStudyValues = ModalitiesInStudy.Value || [];
+
+      for (let i = 0; i < modalitiesInStudyValues.length; i++) {
+        const value = modalitiesInStudyValues[i];
         if (modalities.Value.indexOf(value) === -1) {
           modalities.Value.push(value);
         }
