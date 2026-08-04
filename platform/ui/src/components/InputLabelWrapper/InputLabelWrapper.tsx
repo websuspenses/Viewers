@@ -22,6 +22,7 @@ const InputLabelWrapper = ({
   sortDirection,
   onLabelClick,
   className,
+  labelTextClassName,
   children,
   isActive,
   ...props
@@ -41,7 +42,7 @@ const InputLabelWrapper = ({
     <label className={isActive && label ? classnames(baseLabelClassNameForSwitch, className) : classnames(baseLabelClassName, className)}>
       <span
         role="button"
-        className={spanClassName}
+        className={classnames(spanClassName, labelTextClassName)}
         onClick={onClickHandler}
         onKeyDown={onClickHandler}
         tabIndex="0"
@@ -67,6 +68,7 @@ const InputLabelWrapper = ({
 
 InputLabelWrapper.defaultProps = {
   className: '',
+  labelTextClassName: '',
 };
 
 InputLabelWrapper.propTypes = {
@@ -75,6 +77,7 @@ InputLabelWrapper.propTypes = {
   sortDirection: PropTypes.oneOf(['ascending', 'descending', 'none']).isRequired,
   onLabelClick: PropTypes.func.isRequired,
   className: PropTypes.string,
+  labelTextClassName: PropTypes.string,
   children: PropTypes.node,
   isActive: PropTypes.bool,
 };

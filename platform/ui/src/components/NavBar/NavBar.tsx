@@ -7,15 +7,15 @@ const notStickyClasses = 'relative';
 
 const NavBar = ({ className, children, isSticky, isActive, screen }) => {
   const loginHeaderCls = {
-    paddingTop: '4px',
+    paddingTop: '0px',
     paddingBottom: '0px',
-    minHeight: '80px',
+    minHeight: '64px',
   };
 
   const workListCls = {
-    paddingTop: '4px',
+    paddingTop: '0px',
     paddingBottom: '0px',
-    minHeight: '80px',
+    minHeight: '64px',
   };
 
   return (
@@ -23,13 +23,13 @@ const NavBar = ({ className, children, isSticky, isActive, screen }) => {
       className={
         isActive
           ? classnames(
-            'bg-secondary-dark image-viewer border-black_login-darkMode px-AlignCls z-20 flex flex-row items-center border-b-4',
+            'bg-surface-overlayDark image-viewer border-black_login-darkMode px-AlignCls z-20 flex flex-row items-center border-b shadow-sm',
             isSticky && stickyClasses,
             !isSticky && notStickyClasses,
             className
           )
           : classnames(
-            'bg-secondary-dark image-viewer z-20 flex flex-row items-center border-b-4 border-black px-1',
+            'bg-surface-overlayDark image-viewer z-20 flex flex-row items-center border-b border-black/40 px-3 shadow-sm',
             isSticky && stickyClasses,
             !isSticky && notStickyClasses,
             className

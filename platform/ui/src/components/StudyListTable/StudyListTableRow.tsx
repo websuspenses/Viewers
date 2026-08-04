@@ -49,14 +49,14 @@ const StudyListTableRow = props => {
                   className={
                     isActive
                       ? classnames(
-                        'truncate-dark bg-secondary-main-darkMode cursor-pointer transition duration-300',
+                        'truncate-dark bg-secondary-main-darkMode hover:bg-white/5 cursor-pointer transition duration-200',
                         {
                           'bg-primary-dark-on': !isExpanded,
                         },
                         { 'bg-secondary-dark-on': isExpanded }
                       )
                       : classnames(
-                        'hover:bg-secondary-main cursor-pointer transition duration-300',
+                        'hover:bg-secondary-main cursor-pointer transition duration-200',
                         {
                           'bg-primary-dark': !isExpanded,
                         },
@@ -66,7 +66,8 @@ const StudyListTableRow = props => {
                 //onClick={onClickRow}
                 >
                   {row.map((cell, index) => {
-                    const { content, title, gridCol } = cell;
+                    const { content, title, gridCol, key } = cell;
+                    const isNumericColumn = key === 'instances';
 
                     return (
                       <td data-id={title}
@@ -74,7 +75,7 @@ const StudyListTableRow = props => {
                         className={
                           isActive
                             ? classnames(
-                              'px-2 py-2 text-base ',
+                              'px-3 py-3 text-base leading-5',
                               { 'border-secondary-light-darkMode border-b': !isExpanded },
                               getGridWidthClass(gridCol) + (
                                 title === ('In-Progress' || 'Referrel-Sent' || 'Report-Generated ' || 'Emergency') ? ' ' + title : '') || ''
@@ -83,7 +84,7 @@ const StudyListTableRow = props => {
                               ' ' + title,
                             )
                               : classnames(
-                                'truncate px-2 py-2 text-base',
+                                'truncate px-3 py-3 text-base leading-5',
                                 { 'border-secondary-light border-b': !isExpanded },
                                 getGridWidthClass(gridCol) || ''
                               )
@@ -104,7 +105,11 @@ const StudyListTableRow = props => {
                         }
                         title={title}
                       >
-                        <div className="flex">
+                        <div
+                          className={classnames('flex items-center', {
+                            'justify-end tabular-nums': isNumericColumn,
+                          })}
+                        >
                           {index === 0 && (
                             <div>
                               {/* <Icon

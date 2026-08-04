@@ -1,6 +1,7 @@
 import React from 'react';
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
+import { ServicesManager } from '@ohif/core';
 
 import StudyItem from '../StudyItem';
 import LegacyButtonGroup from '../LegacyButtonGroup';
@@ -137,6 +138,7 @@ StudyBrowser.propTypes = {
   activeTabName: PropTypes.string.isRequired,
   expandedStudyInstanceUIDs: PropTypes.arrayOf(PropTypes.string).isRequired,
   activeDisplaySetInstanceUIDs: PropTypes.arrayOf(PropTypes.string),
+  servicesManager: PropTypes.instanceOf(ServicesManager),
   tabs: PropTypes.arrayOf(
     PropTypes.shape({
       name: PropTypes.string.isRequired,

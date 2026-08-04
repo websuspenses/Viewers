@@ -6,7 +6,7 @@ import StudyListTableRow from './StudyListTableRow';
 const StudyListTable = ({ tableDataSource, querying, isActive }) => {
   return (
     <div className={isActive ? "bg-black-on bg-primary-dark-on" : "bg-black"}>
-      <div className="container relative m-auto">
+      <div className="container relative m-auto overflow-x-auto pb-6">
         <table className={isActive ? "w-full text-white-On" : "w-full text-white"}>
           <tbody
             data-cy="study-list-results"

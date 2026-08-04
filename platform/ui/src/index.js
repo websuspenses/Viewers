@@ -33,6 +33,9 @@ export {
 export {
   ActionButtons,
   AboutModal,
+  StatusBadge,
+  InlineAlert,
+  AccessDenied,
   AdvancedToolbox,
   AllInOneMenu,
   HotkeyField,

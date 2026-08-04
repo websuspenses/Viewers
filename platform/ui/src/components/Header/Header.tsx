@@ -7,8 +7,7 @@ import classNames from 'classnames';
 import NavBar from '../NavBar';
 import Svg from '../Svg';
 import Icon from '../Icon';
-import IconButton from '../IconButton';
-import Dropdown from '../Dropdown';
+import SettingsMenu from './SettingsMenu';
 
 import { ToggleSwitch } from '@ohif/ui';
 const windowWidth = window.innerWidth;
@@ -53,7 +52,7 @@ function Header({
   // console.log('handleRedirectPage', handleRedirectPage)
   return (
     <NavBar
-      className="justify-between border-b-4 border-black"
+      className="justify-between"
       isSticky={isSticky}
       isActive={isActive}
       screen={screen}
@@ -62,8 +61,8 @@ function Header({
         //className="flex flex-1 justify-between"
         className={
           isActive
-            ? 'navbarAlignCls header-flex flex flex-1 justify-between'
-            : 'header-flex flex flex-1 justify-between'
+            ? 'navbarAlignCls header-flex flex flex-1 items-center justify-between gap-3'
+            : 'header-flex flex flex-1 items-center justify-between gap-3'
         }
       >
         <div className="mobile-logo flex items-center">
@@ -88,16 +87,17 @@ function Header({
               <a
                 data-id={handleRedirectPage}
                 href="javascript:void(0)"
+                aria-label={t('Return to Worklist')}
                 // onClick={(e) => {
                 //   e.preventDefault();
                 //   navigate(-1);
                 // }}
-
+                className="hover:bg-white/10 focus-visible:ring-accent -ml-1 flex h-9 w-9 items-center justify-center rounded-full transition duration-150 focus:outline-none focus-visible:ring-2"
                 onClick={handleRedirectPage}
               >
                 <Icon
                   name="chevron-left"
-                  className="text-primary-active w-8"
+                  className="text-primary-active w-6"
                 />
               </a>
             ) : (
@@ -105,43 +105,44 @@ function Header({
 
               ''
             )}
-            <div className="ml-4">
+            <div className="ml-3">
               {/* {WhiteLabeling?.createLogoComponentFn?.(React, props) || } */}
               {isActive ? (
                 <img
-                  width="250"
-                  height="140"
+                  width="180"
+                  height="101"
                   // src="./ohif-logo.svg"
                   src="/ohif-logo.svg"
                   id="imgsource"
+                  className="max-h-10 w-auto object-contain"
                 />
               ) : (
                 <img
-                  width="250"
-                  height="140"
+                  width="180"
+                  height="101"
                   id="imgsource_dark"
                   // src="./ohif-whitebg-logo.svg"
                   src="/ohif-whitebg-logo.svg"
+                  className="max-h-10 w-auto object-contain"
                 />
               )}
             </div>
           </div>
         </div>
         <div className="mobile-tools flex items-center">{children}</div>
-        {/* <div ><ToggleSwitch handleChange={handleChange} IsActive={isActive}  /></div> */}
-        <div className="flex items-center">
+        <div className="flex items-center gap-2">
           {/* <span className="text-common-light mr-3 text-lg">{t('INVESTIGATIONAL USE ONLY 111')}</span> */}
-          <span className="text-common-light mr-3 text-lg">
+          <span className="text-common-light flex items-center">
             {t('')}
             {screen === 'WorkList' ||
             screen === 'ReportTemplateList' ||
             screen === 'GenerateReport' ? (
-              <div>
-                {/* <ToggleSwitch
+              <div className="flex items-center gap-3">
+                <ToggleSwitch
                   handleChange={handleChange}
                   IsActive={isActive}
                   screen={screen}
-                /> */}
+                />
                 <div className="secondary-logo">
                   <img src="/bhashyam-infotech-logo.png" />
                 </div>
@@ -151,34 +152,12 @@ function Header({
             )}
           </span>
 
-          {screen === 'WorkList' ? (
-            <Dropdown
-              id="options"
-              showDropdownIcon={false}
-              list={menuOptions}
-              alignment="right"
-            >
-              <IconButton
-                id={'options-settings-icon'}
-                variant="text"
-                color="inherit"
-                size="initial"
-                className={isActive ? 'text-primary-active-dark' : 'text-primary-active'}
-              >
-                <Icon name="settings" />
-              </IconButton>
-              <IconButton
-                id={'options-chevron-down-icon'}
-                variant="text"
-                color="inherit"
-                size="initial"
-                className={isActive ? 'text-primary-active-dark' : 'text-primary-active'}
-              >
-                <Icon name="chevron-down" />
-              </IconButton>
-            </Dropdown>
-          ) : (
-            ''
+          {menuOptions?.length > 0 && (
+            <SettingsMenu
+              id="options-settings-icon"
+              menuOptions={menuOptions}
+              isActive={isActive}
+            />
           )}
         </div>
       </div>

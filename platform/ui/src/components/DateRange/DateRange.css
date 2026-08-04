@@ -28,7 +28,9 @@
   }
 
   .DateInput_input {
-	@apply border-primary-main mt-2 w-full cursor-pointer appearance-none rounded border-t border-l border-r border-b border-solid bg-black py-2 px-3 pl-8 text-sm font-light leading-tight text-white shadow transition duration-300;
+	@apply border-primary-main mt-2 w-full cursor-pointer appearance-none rounded border-t border-l border-r border-b border-solid bg-black py-2 px-2 pl-7 font-light leading-tight text-white shadow transition duration-300;
+	font-size: 13px !important;
+	min-width: 0;
   }
 
   .DateInput_input:hover {

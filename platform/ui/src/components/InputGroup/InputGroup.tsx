@@ -124,7 +124,7 @@ const InputGroup = ({
   };
 
   return (
-    <div className={isActive ? "container relative m-auto flex flex-col worklist_tableHeader" : "container relative m-auto flex flex-col"}>
+    <div className={isActive ? "worklist-filter-grid container relative m-auto flex flex-col worklist_tableHeader" : "worklist-filter-grid container relative m-auto flex flex-col"}>
       <div className="flex w-full flex-row">
         {inputMeta.map(inputMeta => {
           return (

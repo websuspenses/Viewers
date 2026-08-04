@@ -15,26 +15,42 @@ const Viewer = () => {
         >
           <LegacySidePanel
             side="left"
-            iconName="group-layers"
-            iconLabel="Studies1"
-            componentLabel="Studies1"
-            defaultIsOpen={true}
-          >
-            <StudyBrowser />
-          </LegacySidePanel>
+            activeTabIndex={0}
+            tabs={[
+              {
+                iconName: 'group-layers',
+                iconLabel: 'Studies1',
+                name: 'studies',
+                label: 'Studies1',
+                content: () => (
+                  <StudyBrowser
+                    tabs={[{ name: 'primary', label: 'Studies1', studies: [] }]}
+                    activeTabName="primary"
+                    expandedStudyInstanceUIDs={[]}
+                    activeDisplaySetInstanceUIDs={[]}
+                  />
+                ),
+              },
+            ]}
+          />
           <div className="h-100 bg-primary-main flex flex-1 items-center justify-center overflow-hidden text-white">
             {/* <ViewportToolbar /> */}
             <div>CONTENT</div>
           </div>
           <LegacySidePanel
             side="right"
-            iconName="list-bullets"
-            iconLabel="Measure"
-            componentLabel="Measurements"
-            defaultIsOpen={false}
-          >
-            <div className="flex justify-center p-2 text-white">panel placeholder</div>
-          </LegacySidePanel>
+            tabs={[
+              {
+                iconName: 'list-bullets',
+                iconLabel: 'Measure',
+                name: 'measurements',
+                label: 'Measurements',
+                content: () => (
+                  <div className="flex justify-center p-2 text-white">panel placeholder</div>
+                ),
+              },
+            ]}
+          />
         </div>
       </div>
     </DragAndDropProvider>

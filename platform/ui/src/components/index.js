@@ -96,10 +96,16 @@ import MeasurementItem from './MeasurementTable/MeasurementItem';
 import LayoutPreset from './LayoutPreset';
 import ActionButtons from './ActionButtons';
 import ToggleSwitch from './ToggleSwitch';
+import StatusBadge from './StatusBadge';
+import InlineAlert from './InlineAlert';
+import AccessDenied from './AccessDenied';
 
 export {
   ActionButtons,
   AboutModal,
+  StatusBadge,
+  InlineAlert,
+  AccessDenied,
   AdvancedToolbox,
   AllInOneMenu,
   HotkeyField,

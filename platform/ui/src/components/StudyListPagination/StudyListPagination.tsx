@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import PropTypes from 'prop-types';
+import classnames from 'classnames';
 import { useTranslation } from 'react-i18next';
 
-import LegacyButton from '../LegacyButton';
-import LegacyButtonGroup from '../LegacyButtonGroup';
 import Typography from '../Typography';
 import Select from '../Select';
+import Icon from '../Icon';
+import StatusBadge from '../StatusBadge';
 
 const StudyListPagination = ({
   onChangePage,
@@ -34,10 +35,30 @@ const StudyListPagination = ({
     onChangePerPage(selectedRange.value);
   };
 
+  const NavButton = ({ onClick, disabled, ariaLabel, children }) => (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={ariaLabel}
+      className={classnames(
+        'flex h-9 items-center gap-1 rounded-md px-3 text-sm font-medium transition duration-150',
+        'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+        disabled
+          ? 'cursor-not-allowed opacity-35'
+          : isActive
+            ? 'text-content-primaryDark hover:bg-white/10'
+            : 'text-content-primary hover:bg-black/5'
+      )}
+    >
+      {children}
+    </button>
+  );
+
   return (
-    <div className={isActive ? 'bg-black-on py-10' : 'bg-black py-10'}>
+    <div className={isActive ? 'bg-black-on border-border-subtleDark rounded-b-xl border-t py-4' : 'bg-black border-border-subtle rounded-b-xl border-t py-4'}>
       <div className="container relative m-auto px-8">
-        <div className="flex justify-between">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex items-center">
             <Select
               id="rows-per-page"
@@ -56,54 +77,50 @@ const StudyListPagination = ({
             </Typography>
           </div>
           <div className="">
-            <div className="flex items-center">
-              <Typography
-                className={isActive ? 'resultsPerPage_dark' : 'mr-4 text-base opacity-60'}
-              >
-                {t('Page')} {currentPage}
-              </Typography>
-              {/* TODO Revisit design of LegacyButtonGroup later - for now use LegacyButton for its children.*/}
-              <LegacyButtonGroup>
-                <LegacyButton
-                  size="initial"
-                  className="px-2 py-2 text-base"
-                  //color="translucent"
-                  //border="primary"
-                  color={isActive ? 'primaryActive_dark_color' : 'translucent'}
-                  border={isActive ? 'primaryActive_dark_border' : 'primary'}
-                  disabled={currentPage === 1}
-                  variant="outlined"
+            <div className="flex items-center gap-3">
+              <StatusBadge
+                label={`${t('Page')} ${currentPage}`}
+                variant="neutral"
+                isActive={isActive}
+              />
+              <div className="flex items-center gap-1">
+                <NavButton
                   onClick={() => navigateToPage(1)}
+                  disabled={currentPage === 1}
+                  ariaLabel={t('First page')}
                 >
-                  {`<<`}
-                </LegacyButton>
-                <LegacyButton
-                  size="initial"
-                  className="py-2 px-2 text-base"
-                  // color="translucent"
-                  // border="primary"
-                  color={isActive ? 'primaryActive_dark_color' : 'translucent'}
-                  border={isActive ? 'primaryActive_dark_border' : 'primary'}
-                  variant="outlined"
+                  <Icon
+                    name="arrow-left-small"
+                    className="h-3.5 w-3.5"
+                  />
+                  <Icon
+                    name="arrow-left-small"
+                    className="-ml-2.5 h-3.5 w-3.5"
+                  />
+                </NavButton>
+                <NavButton
                   onClick={() => navigateToPage(currentPage - 1)}
                   disabled={currentPage === 1}
+                  ariaLabel={t('Previous')}
                 >
+                  <Icon
+                    name="arrow-left-small"
+                    className="h-3.5 w-3.5"
+                  />
                   {t('Previous')}
-                </LegacyButton>
-                <LegacyButton
-                  size="initial"
-                  className="py-2 px-4 text-base"
-                  // color="translucent"
-                  // border="primary"
-                  color={isActive ? 'primaryActive_dark_color' : 'translucent'}
-                  border={isActive ? 'primaryActive_dark_border' : 'primary'}
-                  variant="outlined"
+                </NavButton>
+                <NavButton
                   onClick={() => navigateToPage(currentPage + 1)}
                   disabled={numOfStudies === 0 || numOfStudies < perPage}
+                  ariaLabel={t('Next')}
                 >
                   {t('Next')}
-                </LegacyButton>
-              </LegacyButtonGroup>
+                  <Icon
+                    name="arrow-right-small"
+                    className="h-3.5 w-3.5"
+                  />
+                </NavButton>
+              </div>
             </div>
           </div>
         </div>

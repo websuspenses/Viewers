@@ -2,10 +2,12 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
 
+import classnames from 'classnames';
 import LegacyButton from '../LegacyButton';
 import Icon from '../Icon';
 import Typography from '../Typography';
 import InputGroup from '../InputGroup';
+import StatusBadge from '../StatusBadge';
 
 const StudyListFilter = ({
   filtersMeta,
@@ -35,22 +37,32 @@ const StudyListFilter = ({
     <React.Fragment>
       <div>
         <div
-          className={isActive ? "bg-black-on" : "bg-black"} id='containerId'
+          className={classnames(isActive ? 'bg-black-on' : 'bg-black', 'py-1')}
+          id="containerId"
         >
-          <div className="container relative mx-auto flex flex-col pt-5">
-            <div className="mb-5 flex flex-row justify-between">
-              <div className="flex min-w-[1px] shrink flex-row items-center gap-6">
-                {/* <Typography
+          <div className="container relative mx-auto flex flex-col pt-2 pb-5">
+            <div className="flex flex-row flex-wrap items-center justify-between gap-3">
+              <div className="flex min-w-[1px] shrink flex-row items-center gap-3">
+                <Typography
                   variant="h6"
-                  className={isActive ? "text-white-On" : "text-white"}
-                    id="StudyList"
+                  className={classnames(
+                    'text-[22px] font-semibold tracking-tight',
+                    isActive ? 'text-white-On' : 'text-white'
+                  )}
+                  id="StudyList"
                 >
                   {t('StudyList')}
-                </Typography> */}
+                </Typography>
+                <StatusBadge
+                  label={`${numOfStudies > 100 ? '100+' : numOfStudies} ${t('Studies')}`}
+                  variant="info"
+                  isActive={isActive}
+                  data-cy="num-studies"
+                />
                 {getDataSourceConfigurationComponent && getDataSourceConfigurationComponent()}
                 {onUploadClick && (
                   <div
-                    className="text-primary-active flex cursor-pointer items-center gap-2 self-center text-lg font-semibold"
+                    className="text-primary-active hover:text-accent flex cursor-pointer items-center gap-2 self-center text-base font-semibold transition-colors duration-150"
                     onClick={onUploadClick}
                   >
                     <Icon name="icon-upload"></Icon>
@@ -58,7 +70,7 @@ const StudyListFilter = ({
                   </div>
                 )}
               </div>
-              <div className="flex flex-row">
+              <div className="flex flex-row items-center">
                 {/* TODO revisit the completely rounded style of button used for clearing the study list filter - for now use LegacyButton*/}
                 {isFiltering && (
                   <LegacyButton
@@ -66,36 +78,25 @@ const StudyListFilter = ({
                     variant="outlined"
                     color={isActive ? "primaryActive_dark_color" : "primaryActive"}
                     border={isActive ? "primaryActive_dark_border" : "primaryActive"}
-                    className="mx-8"
                     startIcon={<Icon name="cancel" />}
                     onClick={clearFilters}
                   >
                     {t('ClearFilters')}
                   </LegacyButton>
                 )}
-                {/* <Typography
-                  variant="h6"
-                  className={isActive ? "mr-2 numberOfStudiesCls" :"mr-2"}
-                  data-cy={'num-studies'}
-                >
-                  {numOfStudies > 100 ? '>100' : numOfStudies}
-                </Typography>
-                <Typography
-                  variant="h6"
-                  className={isActive ? "text-white-On" :"text-primary-light self-end pb-1"}
-                >
-                  {t('Studies')}
-                </Typography> */}
               </div>
             </div>
           </div>
         </div>
       </div>
-      <div className={`sticky -top-1 z-10 mx-auto border-b-4 border-black
-      `}
-        style={{ minWidth: '1280px' }}
-      >
-        <div className={isActive ? "bg-primary-dark-on pt-3 headContentCls" : "bg-primary-dark pt-3 pb-3"}>
+      <div className="sticky -top-1 z-10 mx-auto">
+        <div
+          className={classnames(
+            'rounded-t-xl',
+            isActive ? 'bg-primary-dark-on headContentCls' : 'bg-primary-dark border-border-subtle border-b pb-4',
+            'pt-4'
+          )}
+        >
           <InputGroup
             inputMeta={filtersMeta}
             values={filterValues}

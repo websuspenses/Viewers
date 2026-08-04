@@ -1,15 +1,18 @@
 import React, { useState, useEffect, ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
 import '../ReportTemplates/report.css';
 import Stack from '@mui/material/Stack';
 import Button from '@mui/material/Button';
+import CircularProgress from '@mui/material/CircularProgress';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import { Link } from 'react-router-dom';
-import { Header } from '@ohif/ui';
+import { Header, AccessDenied, InlineAlert, AboutModal, useModal } from '@ohif/ui';
 import ConfirmationDialog from '../AdminPanel/Users/ConfirmationDialog';
 import CreateDoctorReferral from './CreateDoctorReferral';
+import SubscriptionFeaturesModal from '../AdminPanel/SubscriptionFeaturesModal';
+import getHeaderMenuOptions from '../../utils/getHeaderMenuOptions';
 import './ReferralStyle.css';
-import Tooltip from '@mui/material/Tooltip';
 import { useNavigate } from 'react-router-dom';
 
 import { useAppConfig } from '@state';
@@ -58,16 +61,27 @@ const HeaderWrapper = (props: HeaderProps): ReactElement => {
 
 function DoctorReferralsList() {
   const navigate = useNavigate();
+  const { t } = useTranslation();
+  const { show } = useModal();
   const [isActive, setIsActive] = useState(false);
   const [showconfirm, setShowConfirm] = useState(false);
   const [referralPopup, setReferralPopup] = useState(false);
   const [showEditConfirm, setShowEditConfirm] = useState(false);
   const [doctorsList, setDoctorsList] = useState<Doctor[]>([]);
+  const [isLoadingDoctors, setIsLoadingDoctors] = useState(true);
   const [editItem, setEachItem] = useState<Doctor | null>(null);
   const [updateError, setUpdateError] = useState('');
   const [isSuccess, setErrorStatus] = useState('');
   const [rolesInfo, setuserRoles] = useState('');
   const [subscriptionFeatures, setLabsubsInfo] = useState('');
+  const [isSubscriptionModalOpen, setIsSubscriptionModalOpen] = useState(false);
+  const [userInfoData, setUserInfoData] = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('userInfoData') || 'null');
+    } catch (e) {
+      return null;
+    }
+  });
   const labId = sessionStorage.getItem('labId') || '';
   const [appConfig] = useAppConfig();
 
@@ -130,9 +144,11 @@ function DoctorReferralsList() {
       .then(actualData => {
         // console.log('actualData ', actualData);
         setDoctorsList(actualData.data);
+        setIsLoadingDoctors(false);
       })
       .catch(err => {
         console.log(err.message);
+        setIsLoadingDoctors(false);
       });
   };
 
@@ -207,11 +223,36 @@ function DoctorReferralsList() {
     setReferralPopup(true);
   };
 
+  const versionNumber = process.env.VERSION_NUMBER;
+  const commitHash = process.env.COMMIT_HASH;
+
+  const menuOptions = [
+    {
+      title: t('Header:About'),
+      icon: 'info',
+      onClick: () =>
+        show({
+          content: AboutModal,
+          title: 'About Tele Radiology',
+          contentProps: { versionNumber, commitHash, isActive },
+        }),
+    },
+    ...getHeaderMenuOptions({
+      t,
+      isActive,
+      handleChangeSwitch,
+      navigate,
+      appConfig,
+      currentPath: '/doctor-referrals',
+      onProfileClick: userInfoData ? () => setIsSubscriptionModalOpen(true) : undefined,
+    }),
+  ];
+
   return (
     <div>
       <HeaderWrapper
         isSticky={true}
-        menuOptions={[]}
+        menuOptions={menuOptions}
         isReturnEnabled={false}
         WhiteLabeling={{}}
         isActive={isActive}
@@ -223,24 +264,29 @@ function DoctorReferralsList() {
         modalityValue=""
         iframeBlockFlag={true}
       />
+      {userInfoData && subscriptionFeatures && (
+        <SubscriptionFeaturesModal
+          open={isSubscriptionModalOpen}
+          handleClose={() => setIsSubscriptionModalOpen(false)}
+          userRolesInfo={userInfoData}
+          subscriptionFeaturesInfo={subscriptionFeatures}
+          isActive={isActive}
+        />
+      )}
       <div className="reportcontainer">
         <h1 className="doctors-list-title">Study Review Specialists</h1>
         {isShowFeature('create_referral_doctor') && (
-          <div className="createBtnCls">
-            <div className="response-container">
-              <span
-                className={
-                  isSuccess === 'success'
-                    ? 'success-message'
-                    : isSuccess === 'error'
-                      ? 'error-message'
-                      : ''
-                }
-              >
-                {updateError}
-              </span>
+          <div className="createBtnCls flex flex-wrap items-center justify-between gap-3">
+            <div className="response-container grow">
+              {updateError && (
+                <InlineAlert
+                  type={isSuccess === 'success' ? 'success' : 'error'}
+                  message={updateError}
+                  isActive={isActive}
+                />
+              )}
             </div>
-            <div style={{ width: '20%', textAlign: 'right' }}>
+            <div>
               <Button
                 variant="contained"
                 color="success"
@@ -254,64 +300,96 @@ function DoctorReferralsList() {
         )}
 
         {isShowFeature('view_referral_doctors_list') && (
-          <ul className="templatesList">
-            {doctorsList.map(item => (
-              <li
-                key={item.doc_id}
-                className={isActive ? 'templatesList_dark' : 'templates-item'}
-              >
-                <div className="modality-area">
-                  <strong className={isActive ? 'templateTitleCls' : 'templateTitleCls_dark'}>
-                    {item.doc_name}
-                  </strong>
-                  <p
-                    className="sub-modality"
-                    style={{ fontWeight: 'italic' }}
+          <>
+            {isLoadingDoctors ? (
+              <div className="flex flex-col items-center justify-center gap-3 py-16">
+                <CircularProgress size={28} sx={{ color: '#0a7c6c' }} />
+                <p style={{ color: isActive ? '#8890a0' : '#6b7280', fontSize: 13 }}>
+                  Loading specialists…
+                </p>
+              </div>
+            ) : doctorsList.length === 0 ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
+                <p style={{ fontWeight: 600, color: isActive ? '#f3f4f6' : '#111827' }}>
+                  No study review specialists yet
+                </p>
+                <p style={{ fontSize: 13, color: isActive ? '#8890a0' : '#6b7280' }}>
+                  Add a specialist to start referring studies for review.
+                </p>
+              </div>
+            ) : (
+              <ul className="templatesList grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {doctorsList.map(item => (
+                  <li
+                    key={item.doc_id}
+                    className={isActive ? 'templatesList_dark' : 'templates-item'}
                   >
-                    {item.doc_specialization}, {item.doc_clinic}
-                  </p>
-                </div>
+                    <div className="modality-area">
+                      <strong className={isActive ? 'templateTitleCls' : 'templateTitleCls_dark'}>
+                        {item.doc_name}
+                      </strong>
+                      <p className="sub-modality">
+                        {item.doc_specialization}, {item.doc_clinic}
+                      </p>
+                      {(item.doc_phone_number || item.doc_email) && (
+                        <p
+                          className="sub-modality"
+                          style={{ fontSize: 12, opacity: 0.8 }}
+                        >
+                          {item.doc_phone_number}
+                          {item.doc_phone_number && item.doc_email ? ' · ' : ''}
+                          {item.doc_email}
+                        </p>
+                      )}
+                    </div>
 
-                <div className="buttonAdjustCls items-center sm:flex">
-                  <Stack
-                    direction="row"
-                    spacing={2}
-                  >
-                    {isShowFeature('create_referral_doctor') && (
-                      <Tooltip title="Edit">
-                        <EditIcon
-                          style={{ cursor: 'pointer' }}
-                          onClick={() => handleEditItem(item.doc_id)}
-                        />
-                      </Tooltip>
-                    )}
-                    {isShowFeature('delete_referral_doctor') && (
-                      <Tooltip title="Delete">
-                        <DeleteIcon
-                          style={{ cursor: 'pointer' }}
-                          onClick={handleDeleteTemplate}
-                        />
-                      </Tooltip>
-                    )}
-                  </Stack>
-                </div>
-              </li>
-            ))}
-          </ul>
+                    <div className="buttonAdjustCls mt-3 flex items-center">
+                      <Stack
+                        direction="row"
+                        spacing={1.5}
+                      >
+                        {isShowFeature('create_referral_doctor') && (
+                          <Button
+                            variant="outlined"
+                            color="success"
+                            size="small"
+                            startIcon={<EditIcon fontSize="small" />}
+                            onClick={() => handleEditItem(item.doc_id)}
+                          >
+                            Edit
+                          </Button>
+                        )}
+                        {isShowFeature('delete_referral_doctor') && (
+                          <Button
+                            variant="outlined"
+                            color="error"
+                            size="small"
+                            startIcon={<DeleteIcon fontSize="small" />}
+                            onClick={handleDeleteTemplate}
+                          >
+                            Delete
+                          </Button>
+                        )}
+                      </Stack>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
         )}
         {!isShowFeature('view_referral_doctors_list') && (
-          <div className="noDataCls">
-            <h1>Access Denied</h1>
-            <p>Sorry, you do not have the necessary permissions to view this page.</p>
-            <p>If you believe this is a mistake, please contact the administrator.</p>
-            <p>
+          <>
+            <AccessDenied
+              isActive={isActive}
+              message="Sorry, you do not have the necessary permissions to view this page. If you believe this is a mistake, please contact the administrator."
+            />
+            <p style={{ textAlign: 'center' }}>
               <Link to="/workList">
-                <li>
-                  <span>Go Back to Home</span>
-                </li>
+                <span>Go Back to Home</span>
               </Link>
             </p>
-          </div>
+          </>
         )}
       </div>
       {showEditConfirm && editItem && (

@@ -717,9 +717,11 @@ svg.text-primary-active {
 
 .headContentCls {
   padding-bottom: 0.75rem;
-  background-color: #0b7c69 !important;
+  padding-top: 0.5rem;
+  background-color: #171a21 !important;
   border-top-left-radius: 10px;
   border-top-right-radius: 10px;
+  border-bottom: 2px solid #0a7c6c;
 }
 
 .rounded {
@@ -935,18 +937,19 @@ div#ohif-thumbnail-list > div > div:nth-child(2) {
 
 .actions-container svg {
   display: inline;
-  margin: 0px 8px;
-  padding: 4px;
-  box-shadow:
-    rgba(50, 50, 93, 0.25) 0px 50px 100px -20px,
-    rgba(0, 0, 0, 0.3) 0px 30px 60px -30px,
-    rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
-  border-radius: 6px;
+  margin: 0;
+  padding: 7px;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background-color: transparent;
+  box-shadow: none;
+  transition: background-color 150ms ease, transform 150ms ease;
 }
 
 div.actions-container svg:hover {
-  background-color: #0a7c6c;
-  fill: #ffffff !important;
+  background-color: rgba(10, 124, 108, 0.14);
+  transform: translateY(-1px);
 }
 
 .DateInput_input,
@@ -1699,10 +1702,26 @@ a.disabled-link:hover::before {
   font-size: 15px;
 }
 span.disabled-link svg,
+a.disabled-link svg {
+  background-color: transparent;
+  opacity: 0.3;
+}
+
 span.disabled-link:hover svg,
-a.disabled-link svg,
 a.disabled-link:hover svg {
-  background-color: rgb(156, 156, 156);
+  background-color: rgba(120, 120, 120, 0.12);
+  opacity: 0.55;
+}
+
+/* Zebra striping for the worklist table. Scoped with enough selector specificity
+   to win over the pre-existing .bg-primary-dark(-on) !important rules without
+   touching those shared classes or plumbing a row index through React props. */
+tbody[data-cy='study-list-results'] > tr:nth-child(even) tbody tr:first-child {
+  background-color: rgba(10, 124, 108, 0.05) !important;
+}
+
+body.bg-black-on tbody[data-cy='study-list-results'] > tr:nth-child(even) tbody tr:first-child {
+  background-color: rgba(255, 255, 255, 0.025) !important;
 }
 
 ul.MuiList-root .ai-img-class img {
@@ -1741,4 +1760,57 @@ body.bg-black-on tbody[data-cy='study-list-results'] .extra-padding .truncate {
 }
 body.bg-black-on td[data-id='In-Progress'].border-secondary-light-darkMode {
   width: 12%;
+}
+
+/* ----------------------------------------------------------------------
+   Worklist filter/header row modernization: muted uppercase column labels,
+   consistent input height, inline search icon, explicit focus rings.
+   Scoped to .worklist-filter-grid (InputGroup's own root, only ever
+   rendered by the Worklist filter bar) so nothing outside that context
+   is affected.
+   ---------------------------------------------------------------------- */
+.worklist-filter-grid .label-instances span[role='button'] {
+  justify-content: flex-end;
+}
+
+.worklist-filter-grid label span[role='button'] {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.worklist-filter-grid input[type='text']:not(.DateInput_input) {
+  height: 40px;
+  padding-left: 34px;
+  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%236b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>');
+  background-repeat: no-repeat;
+  background-position: 10px center;
+  background-size: 14px 14px;
+}
+
+.worklist-filter-grid input[type='text']:not(.DateInput_input):focus,
+.worklist-filter-grid .DateInput_input:focus,
+.worklist-filter-grid .customSelect__control--is-focused {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(10, 124, 108, 0.25) !important;
+}
+
+.worklist-filter-grid .DateInput_input {
+  height: 40px;
+}
+
+/* react-select (Select.tsx) — app-wide, purely additive polish */
+.customSelect__control {
+  border-radius: 8px !important;
+  transition: box-shadow 150ms ease, border-color 150ms ease;
+}
+
+.customSelect__menu {
+  border-radius: 8px !important;
+  overflow: hidden;
+  box-shadow:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1) !important;
 }

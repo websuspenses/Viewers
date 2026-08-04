@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
 
+import classnames from 'classnames';
 import Select from '../Select';
 import Typography from '../Typography';
 import Button from '../Button';
@@ -66,33 +67,32 @@ const UserPreferences = ({
   };
 
   const Section = ({ title, children }) => (
-    <>
-      <div className="mb-2 border-b-2 border-black">
+    <div className="mb-8 last:mb-0">
+      <div
+        className={classnames(
+          'mb-4 flex items-baseline justify-between border-b pb-2',
+          isActive ? 'border-border-subtleDark' : 'border-border-subtle'
+        )}
+      >
         <Typography
           variant="inherit"
-          // color="primaryLight"
           color={isActive ? 'primaryLight_darkMode' : 'primaryLight'}
-          className="flex pb-2 text-[16px] font-semibold !leading-[1.2]"
+          className="flex text-[15px] font-semibold uppercase tracking-wide !leading-[1.2]"
         >
           {title}
         </Typography>
       </div>
-      <div
-        className="mt-4 mb-8"
-        className={isActive ? "mt-4 mb-8 text-white-aboutCls" : "mt-4 mb-8"}
-
-      >{children}</div>
-    </>
+      <div className={isActive ? 'text-white-aboutCls' : ''}>{children}</div>
+    </div>
   );
 
   return (
     <>
       <Section title={t('General')}>
-        <div className="flex w-72 flex-row items-center justify-center">
+        <div className="flex flex-row items-center gap-4">
           <Typography
             variant="subtitle"
-            //className="mr-5 h-full text-right"
-            className={isActive ? "mr-5 h-full text-white-aboutCls" : "mr-5 h-full text-right"}
+            className={classnames('w-24 shrink-0', isActive ? 'text-white-aboutCls' : '')}
           >
             {t('Language')}
           </Typography>
@@ -101,7 +101,7 @@ const UserPreferences = ({
             onChange={onLanguageChangeHandler}
             options={availableLanguages}
             value={state.language}
-            className="SelectCls"
+            className="SelectCls w-56"
           />
         </div>
       </Section>
@@ -114,7 +114,12 @@ const UserPreferences = ({
           hotkeysModule={hotkeysModule}
         />
       </Section>
-      <div className="flex flex-row justify-between">
+      <div
+        className={classnames(
+          'mt-6 flex flex-row items-center justify-between border-t pt-4',
+          isActive ? 'border-border-subtleDark' : 'border-border-subtle'
+        )}
+      >
         <Button
           type={ButtonEnums.type.secondary}
           onClick={onResetHandler}
@@ -123,7 +128,7 @@ const UserPreferences = ({
         >
           {t('Reset to Defaults')}
         </Button>
-        <div className="flex flex-row">
+        <div className="flex flex-row gap-2">
           <Button
             type={ButtonEnums.type.secondary}
             onClick={onCancelHandler}
@@ -133,7 +138,6 @@ const UserPreferences = ({
           </Button>
           <Button
             disabled={state.isDisabled}
-            className="ml-2"
             onClick={onSubmitHandler}
           >
             {t('Save')}
