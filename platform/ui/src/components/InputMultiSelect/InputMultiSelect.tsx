@@ -33,9 +33,10 @@ const InputMultiSelect = ({
         value={value}
         isMulti={true}
         isClearable={false}
-        isSearchable={false}
+        isSearchable={true}
         closeMenuOnSelect={false}
         hideSelectedOptions={false}
+        isActive={isActive}
         onChange={(selectedOptions, action) => {
           switch (action) {
             case 'select-option':

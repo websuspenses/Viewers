@@ -13,9 +13,9 @@ const StudyListExpandedRow = ({ seriesTableColumns, seriesTableDataSource, child
 
 
   return (
-    <div className={isActive ? "w-full bg-expanded-dark py-5 pl-12 pr-4" : "w-full bg-black py-5 pl-12 pr-4"} >
+    <div className={isActive ? "w-full bg-expanded-dark py-6 pl-12 pr-4" : "w-full bg-black py-6 pl-12 pr-4"} >
       <div className="block">{children}</div>
-      <div className="border-border-subtleDark/40 mt-4 overflow-hidden rounded-lg border">
+      <div className="border-border-subtleDark/40 mt-5 overflow-hidden rounded-lg border shadow-sm">
         <Table>
           <TableHead isActive={isActive}>
             <TableRow>

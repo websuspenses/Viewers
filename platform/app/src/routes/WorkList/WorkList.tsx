@@ -35,6 +35,7 @@ import {
   StudyListTable,
   StudyListPagination,
   StudyListFilter,
+  StudyListSkeleton,
   TooltipClipboard,
   Header,
   useModal,
@@ -152,6 +153,40 @@ const EmergencyActionIcon = ({ isEmergency }: { isEmergency: string }) => (
       </g>
     </g>
   </svg>
+);
+
+// Consistent hover/focus/disabled affordance for the per-row action icons
+// (Generate Report, Save to Server, Refer, Viewer menu, Emergency). Wraps the
+// existing bespoke SVG icons without altering their own fill/className, since
+// those are semantic brand colors (e.g. teal) set directly on the svg.
+const RowActionButton = ({
+  onClick,
+  ariaLabel,
+  title = undefined,
+  disabled = false,
+  dataCy = undefined,
+  isActive = false,
+  children,
+}) => (
+  <button
+    type="button"
+    onClick={onClick}
+    disabled={disabled}
+    aria-label={ariaLabel}
+    title={title ?? ariaLabel}
+    data-cy={dataCy}
+    className={classnames(
+      'inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors duration-150',
+      'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+      disabled
+        ? 'cursor-not-allowed opacity-60'
+        : isActive
+          ? 'hover:bg-white/10 active:bg-white/20'
+          : 'hover:bg-black/10 active:bg-black/20'
+    )}
+  >
+    {children}
+  </button>
 );
 
 // Maps a study status string to a StatusBadge variant. Mirrors the exact same
@@ -955,6 +990,7 @@ function WorkList({
                 label={studyStatus || 'In-Progress'}
                 variant={getStatusBadgeVariant(studyStatus || 'In-Progress')}
                 isActive={isActive}
+                dot
               />
             </span>
           ),
@@ -964,28 +1000,37 @@ function WorkList({
           key: 'actions',
           title: '',
           content: (
-            <div className="actions-container flex flex-wrap items-center gap-1">
+            <div
+              className={classnames(
+                'actions-container inline-flex flex-wrap items-center gap-0.5 rounded-full border p-0.5',
+                isActive ? 'border-border-subtleDark/60 bg-white/[0.03]' : 'border-border-subtle bg-black/[0.02]'
+              )}
+            >
               {isShowFeature('create_study_report') && (
                 <>
-                  <span
-                    id="basic-buttonNew"
-                    aria-controls={
-                      openNew && activeReportMenuStudyId === studyInstanceUid
-                        ? 'basic-menuNew'
-                        : undefined
-                    }
-                    aria-haspopup="true"
-                    aria-expanded={
-                      openNew && activeReportMenuStudyId === studyInstanceUid ? 'true' : undefined
-                    }
-                    aria-label={t('GenerateReport')}
+                  <RowActionButton
+                    isActive={isActive}
+                    dataCy="basic-buttonNew"
+                    ariaLabel={t('GenerateReport')}
                     onClick={event =>
                       handleClickNew(event, studyInstanceUid, modalities, isReportGenerated)
                     }
                   >
-                    {<GenerateReportActionIcon />}
-                    {/* </Link> */}
-                  </span>
+                    <span
+                      id="basic-buttonNew"
+                      aria-controls={
+                        openNew && activeReportMenuStudyId === studyInstanceUid
+                          ? 'basic-menuNew'
+                          : undefined
+                      }
+                      aria-haspopup="true"
+                      aria-expanded={
+                        openNew && activeReportMenuStudyId === studyInstanceUid ? 'true' : undefined
+                      }
+                    >
+                      {<GenerateReportActionIcon />}
+                    </span>
+                  </RowActionButton>
                   {mDropDowns && (
                     <Menu
                       id="basic-menuNew"
@@ -1002,101 +1047,92 @@ function WorkList({
                 </>
               )}
               {!isShowFeature('create_study_report') && (
-                <>
-                  <span
-                    id="basic-buttonNew"
-                    className="disabled-link"
-                    title="You do not have access"
-                  >
-                    {<GenerateReportActionIcon />}
-                  </span>
-                </>
+                <RowActionButton
+                  disabled
+                  isActive={isActive}
+                  ariaLabel={t('GenerateReport')}
+                  title="You do not have access"
+                  onClick={() => {}}
+                >
+                  {<GenerateReportActionIcon />}
+                </RowActionButton>
               )}
               {hideOption && inCloud !== 'Yes' && isShowFeature('save_to_server') && (
-                <Link
+                <RowActionButton
+                  isActive={isActive}
+                  ariaLabel={t('SaveToServer')}
                   title="Save to Server"
-                  aria-label={t('SaveToServer')}
-                  to=""
-                >
-                  <span onClick={() => saveToServer(studyInstanceUid)}>
-                    <SaveToServerActionIcon />
-                  </span>
-                </Link>
-              )}
-              {hideOption && inCloud !== 'Yes' && !isShowFeature('save_to_server') && (
-                <Link
-                  className="disabled-link"
-                  title="You do not have access"
-                  to=""
+                  onClick={() => saveToServer(studyInstanceUid)}
                 >
                   <SaveToServerActionIcon />
-                </Link>
+                </RowActionButton>
+              )}
+              {hideOption && inCloud !== 'Yes' && !isShowFeature('save_to_server') && (
+                <RowActionButton
+                  disabled
+                  isActive={isActive}
+                  ariaLabel={t('SaveToServer')}
+                  title="You do not have access"
+                  onClick={() => {}}
+                >
+                  <SaveToServerActionIcon />
+                </RowActionButton>
               )}
               {isShowFeature('refer_study_to_doctor') && (
-                <Link
+                <RowActionButton
+                  isActive={isActive}
+                  ariaLabel={t('ReferStudy')}
                   title="Refer"
-                  aria-label={t('ReferStudy')}
-                  to=""
-                >
-                  <span onClick={() => handleShowModal(studyInstanceUid)}>
-                    <ReferActionIcon />
-                  </span>
-                </Link>
-              )}
-              {!isShowFeature('refer_study_to_doctor') && (
-                <Link
-                  className="disabled-link"
-                  title="You do not have access"
-                  to=""
+                  onClick={() => handleShowModal(studyInstanceUid)}
                 >
                   <ReferActionIcon />
-                </Link>
+                </RowActionButton>
+              )}
+              {!isShowFeature('refer_study_to_doctor') && (
+                <RowActionButton
+                  disabled
+                  isActive={isActive}
+                  ariaLabel={t('ReferStudy')}
+                  title="You do not have access"
+                  onClick={() => {}}
+                >
+                  <ReferActionIcon />
+                </RowActionButton>
               )}
               <>
-                <span
-                  id="basic-button"
-                  aria-label={t('ViewerActions')}
-                  aria-controls={
-                    open && activeViewerMenuStudyId === studyInstanceUid ? 'basic-menu' : undefined
-                  }
-                  aria-haspopup="true"
-                  aria-expanded={
-                    open && activeViewerMenuStudyId === studyInstanceUid ? 'true' : undefined
-                  }
-                  //onClick={handleClick}
-                  //onClick={(event) => handleViewerImage(event, studyInstanceUid)}
+                <RowActionButton
+                  isActive={isActive}
+                  ariaLabel={t('ViewerActions')}
                   onClick={event => handleClick(event, studyInstanceUid, modalities)}
                 >
-                  <svg
-                    fill="#0a7c6c"
-                    version="1.1"
-                    //id="Capa_1"
-                    xmlns="http://www.w3.org/2000/svg"
-                    viewBox="0 0 24 28"
-                    width="35px"
-                    height="30px"
+                  <span
                     id="basic-button"
                     aria-controls={
-                      open && activeViewerMenuStudyId === studyInstanceUid
-                        ? 'basic-menu'
-                        : undefined
+                      open && activeViewerMenuStudyId === studyInstanceUid ? 'basic-menu' : undefined
                     }
                     aria-haspopup="true"
                     aria-expanded={
                       open && activeViewerMenuStudyId === studyInstanceUid ? 'true' : undefined
                     }
-                    // onClick={handleClick}
-                    //onClick={(event) => handleClick(event, studyInstanceUid, modalities)}
                   >
-                    <g
-                      id="_01_align_center"
-                      data-name="01 align center"
+                    <svg
+                      fill="#0a7c6c"
+                      version="1.1"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 28"
+                      width="35px"
+                      height="30px"
                     >
-                      <path d="M23.821,11.181v0C22.943,9.261,19.5,3,12,3S1.057,9.261.179,11.181a1.969,1.969,0,0,0,0,1.64C1.057,14.739,4.5,21,12,21s10.943-6.261,11.821-8.181A1.968,1.968,0,0,0,23.821,11.181ZM12,19c-6.307,0-9.25-5.366-10-6.989C2.75,10.366,5.693,5,12,5c6.292,0,9.236,5.343,10,7C21.236,13.657,18.292,19,12,19Z" />
-                      <path d="M12,7a5,5,0,1,0,5,5A5.006,5.006,0,0,0,12,7Zm0,8a3,3,0,1,1,3-3A3,3,0,0,1,12,15Z" />
-                    </g>
-                  </svg>
-                </span>
+                      <g
+                        id="_01_align_center"
+                        data-name="01 align center"
+                      >
+                        <path d="M23.821,11.181v0C22.943,9.261,19.5,3,12,3S1.057,9.261.179,11.181a1.969,1.969,0,0,0,0,1.64C1.057,14.739,4.5,21,12,21s10.943-6.261,11.821-8.181A1.968,1.968,0,0,0,23.821,11.181ZM12,19c-6.307,0-9.25-5.366-10-6.989C2.75,10.366,5.693,5,12,5c6.292,0,9.236,5.343,10,7C21.236,13.657,18.292,19,12,19Z" />
+                        <path d="M12,7a5,5,0,1,0,5,5A5.006,5.006,0,0,0,12,7Zm0,8a3,3,0,1,1,3-3A3,3,0,0,1,12,15Z" />
+                      </g>
+                    </svg>
+                  </span>
+                </RowActionButton>
                 <Menu
                   id="basic-menu"
                   className="viewer-sub-menu"
@@ -1145,23 +1181,25 @@ function WorkList({
                 </Menu>
               </>
               {isShowFeature('make_study_as_emergency') && (
-                <Link
-                  title="Add"
-                  aria-label={t('MarkAsEmergency')}
-                  to="javascript:void(0)"
+                <RowActionButton
+                  isActive={isActive}
+                  ariaLabel={t('MarkAsEmergency')}
+                  title="Mark as Emergency"
                   onClick={event => handleEmergency(event, studyInstanceUid)}
                 >
                   <EmergencyActionIcon isEmergency={isEmergency} />
-                </Link>
+                </RowActionButton>
               )}
               {!isShowFeature('make_study_as_emergency') && (
-                <Link
-                  className="disabled-link"
+                <RowActionButton
+                  disabled
+                  isActive={isActive}
+                  ariaLabel={t('MarkAsEmergency')}
                   title="You do not have access"
-                  to="javascript:void(0)"
+                  onClick={() => {}}
                 >
                   <EmergencyActionIcon isEmergency={isEmergency} />
-                </Link>
+                </RowActionButton>
               )}
             </div>
           ),
@@ -1502,6 +1540,7 @@ function WorkList({
               numOfStudies={pageNumber * resultsPerPage > 100 ? 101 : numOfStudies}
               filtersMeta={filtersMeta}
               filterValues={{ ...filterValues, ...defaultSortValues }}
+              defaultFilterValues={defaultFilterValues}
               onChange={setFilterValues}
               clearFilters={() => setFilterValues(defaultFilterValues)}
               isFiltering={isFiltering(filterValues, defaultFilterValues)}
@@ -1543,18 +1582,30 @@ function WorkList({
             )}
           </div>
           {!hasStudies && (
-            <div className="flex flex-col items-center justify-center gap-3 pt-48">
+            <>
               {appConfig.showLoadingIndicator && isLoadingData ? (
-                <>
-                  <LoadingIndicatorProgress className={'h-full w-full bg-black'} />
-                  <p className={isActive ? 'text-content-secondaryDark text-sm' : 'text-content-secondary text-sm'}>
-                    {t('Loading studies…')}
-                  </p>
-                </>
+                <div
+                  className={classnames(
+                    'min-w-[1100px] overflow-x-auto rounded-xl border shadow-sm',
+                    isActive ? 'border-border-subtleDark' : 'border-border-subtle'
+                  )}
+                >
+                  <StudyListSkeleton
+                    filtersMeta={filtersMeta}
+                    isActive={isActive}
+                  />
+                </div>
               ) : (
-                <EmptyStudies isActive={isActive} />
+                <div className="flex flex-col items-center justify-center gap-3 pt-48">
+                  <EmptyStudies
+                    isActive={isActive}
+                    isFiltering={isFiltering(filterValues, defaultFilterValues)}
+                    onClearFilters={() => setFilterValues(defaultFilterValues)}
+                    onUploadClick={uploadProps ? () => show(uploadProps) : undefined}
+                  />
+                </div>
               )}
-            </div>
+            </>
           )}
         </div>
       </div>

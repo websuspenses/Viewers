@@ -1,7 +1,16 @@
 /** CONTAINER STYLES **/
 
+/* The two DateInput fields no longer carry their own border/rounding (see
+   below) — this wrapper now owns the single pill-shaped outline so the
+   start/end fields read as one unified control instead of two separate,
+   disconnected buttons. */
 .DateRangePickerInput {
-	@apply flex border-0 bg-transparent;
+	@apply border-primary-main mt-2 flex items-stretch overflow-hidden rounded-lg border shadow-xs transition duration-150;
+	height: 40px;
+  }
+
+  .DateRangePickerInput:focus-within {
+	@apply border-gray-500;
   }
 
   .DateRangePicker_picker {
@@ -13,6 +22,11 @@
   .DateInput {
 	background: transparent;
 	@apply flex w-auto flex-1;
+  }
+
+  /* Thin divider between the start/end fields instead of a fused-corner hack */
+  .DateInput:last-child {
+	@apply border-l border-primary-main;
   }
 
   /** INPUT FIELD COMMON STYLES **/
@@ -28,38 +42,11 @@
   }
 
   .DateInput_input {
-	@apply border-primary-main mt-2 w-full cursor-pointer appearance-none rounded border-t border-l border-r border-b border-solid bg-black py-2 px-2 pl-7 font-light leading-tight text-white shadow transition duration-300;
+	@apply w-full cursor-pointer appearance-none border-0 bg-transparent py-2 px-2 pl-7 font-light leading-tight text-white transition duration-150;
 	font-size: 13px !important;
 	min-width: 0;
-  }
-
-  .DateInput_input:hover {
-	@apply border-gray-500;
-  }
-
-  .DateInput_input:focus {
-	@apply border-gray-500 outline-none;
-  }
-
-  /** FIRST INPUT STYLES **/
-  .DateInput:first-child .DateInput_input {
-	@apply rounded-r-none;
-  }
-
-  .DateInput:first-child .DateInput_input:hover,
-  .DateInput:first-child .DateInput_input:focus {
-	@apply relative z-10;
-  }
-
-  /** SECOND INPUT STYLES **/
-  .DateInput:last-child .DateInput_input {
-	@apply rounded-l-none;
-	margin-left: -1px;
-  }
-
-  /** ARROW STYLES **/
-  .DateRangePickerInput_arrow {
-	@apply hidden;
+	height: 100%;
+	box-shadow: none !important;
   }
 
 

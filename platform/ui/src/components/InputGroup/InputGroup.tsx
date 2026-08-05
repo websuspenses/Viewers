@@ -90,6 +90,7 @@ const InputGroup = ({
             value={values[name]}
             onChange={handleFieldChange}
             options={inputProps.options}
+            placeholder={inputProps.placeholder || `All ${displayName}`}
             isActive={isActive}
           />
         );
@@ -125,7 +126,7 @@ const InputGroup = ({
 
   return (
     <div className={isActive ? "worklist-filter-grid container relative m-auto flex flex-col worklist_tableHeader" : "worklist-filter-grid container relative m-auto flex flex-col"}>
-      <div className="flex w-full flex-row">
+      <div className="flex w-full flex-row pb-1">
         {inputMeta.map(inputMeta => {
           return (
             <div

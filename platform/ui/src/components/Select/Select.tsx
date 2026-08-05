@@ -40,6 +40,31 @@ const Option = props => {
   );
 };
 
+// react-select renders its own control/menu/option chrome via Emotion
+// (CSS-in-JS), so plain `.customSelect__control`-style class rules can lose
+// a specificity race against react-select's own generated styles. `styles`
+// callbacks are the one override mechanism react-select guarantees wins.
+// Opt-in only (via `isActive` being explicitly boolean, not the untouched
+// default `undefined`) so every other `<Select>` call site in the app that
+// hasn't been audited against this keeps its existing look untouched.
+const getThemedStyles = isActive => ({
+  control: (base, state) => ({
+    ...base,
+    minHeight: 40,
+    borderRadius: 8,
+    backgroundColor: isActive ? 'rgb(28, 28, 20)' : '#ffffff',
+    borderColor: state.isFocused ? '#6b7280' : isActive ? '#4b5563' : '#d8dce3',
+    boxShadow: state.isFocused ? '0 0 0 3px rgba(10, 124, 108, 0.25)' : 'none',
+    '&:hover': {
+      borderColor: '#6b7280',
+    },
+  }),
+  placeholder: base => ({
+    ...base,
+    color: isActive ? '#8890a0' : '#6b7280',
+  }),
+});
+
 const Select = ({
   id,
   className,
@@ -56,6 +81,7 @@ const Select = ({
   menuPlacement,
   components,
   value,
+  isActive = undefined,
 }) => {
   const _noIconComponents = {
     DropdownIndicator: () => null,
@@ -95,6 +121,7 @@ const Select = ({
       placeholder={placeholder}
       options={options}
       value={value && Array.isArray(value) ? selectedOptions : value}
+      styles={typeof isActive === 'boolean' ? getThemedStyles(isActive) : undefined}
       onChange={(selectedOptions, { action }) => {
         const newSelection = !selectedOptions.length
           ? selectedOptions
@@ -138,6 +165,10 @@ Select.propTypes = {
   ),
   placeholder: PropTypes.string,
   value: PropTypes.oneOfType([PropTypes.arrayOf(PropTypes.string), PropTypes.any]),
+  /** Opt-in theming: pass the app's `isActive` dark-mode flag to get a
+   * guaranteed-to-apply control style (see `getThemedStyles`). Omit to keep
+   * this call site's existing look (ancestor-scoped CSS only). */
+  isActive: PropTypes.bool,
 };
 
 export default Select;

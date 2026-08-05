@@ -32,6 +32,7 @@ const filtersMeta = [
     displayName: 'Modality',
     inputType: 'MultiSelect',
     inputProps: {
+      placeholder: 'All Modalities',
       options: [
         { value: 'AR', label: 'AR' },
         { value: 'ASMT', label: 'ASMT' },

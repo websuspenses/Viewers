@@ -607,7 +607,11 @@ svg.text-primary-active {
 }
 
 .worklist_tableHeader {
-  background-color: #0b7c69;
+  /* Intentionally transparent: this sits inside StudyListFilter's
+     `.headContentCls` wrapper, which already provides the header surface
+     color plus a thin accent border. A second opaque background here used
+     to fully cover that subtler treatment with a solid teal band. */
+  background-color: transparent;
 }
 
 .noStudentAvailCls {
@@ -1799,6 +1803,19 @@ body.bg-black-on td[data-id='In-Progress'].border-secondary-light-darkMode {
 
 .worklist-filter-grid .DateInput_input {
   height: 40px;
+}
+
+/* DateRangePickerInput itself is intentionally left with no background in
+   DateRange.css (that file is shared app-wide, not worklist-specific) — give
+   it a real field fill here, matching the same light/dark surface colors
+   every other input in this row already resolves to via the legacy
+   body.bg-black / body.bg-black-on rules above. */
+.worklist-filter-grid .DateRangePickerInput {
+  background-color: #ffffff;
+}
+
+body.bg-black-on .worklist-filter-grid .DateRangePickerInput {
+  background-color: rgb(28, 28, 20);
 }
 
 /* react-select (Select.tsx) — app-wide, purely additive polish */

@@ -9,9 +9,65 @@ import Typography from '../Typography';
 import InputGroup from '../InputGroup';
 import StatusBadge from '../StatusBadge';
 
+/** Renders a single active filter's value as a short, human-readable chip label. */
+const formatChipLabel = (fieldMeta, value) => {
+  const { inputType, displayName } = fieldMeta;
+
+  if (inputType === 'Text') {
+    return `${displayName}: ${value}`;
+  }
+
+  if (inputType === 'MultiSelect' && Array.isArray(value) && value.length > 0) {
+    const shown = value.slice(0, 3).join(', ');
+    const overflow = value.length > 3 ? ` +${value.length - 3}` : '';
+    return `${displayName}: ${shown}${overflow}`;
+  }
+
+  if (inputType === 'DateRange' && value && (value.startDate || value.endDate)) {
+    const { startDate, endDate } = value;
+    if (startDate && endDate) {
+      return `${displayName}: ${startDate} – ${endDate}`;
+    }
+    return `${displayName}: ${startDate ? `from ${startDate}` : `until ${endDate}`}`;
+  }
+
+  return null;
+};
+
+/** Derives the active-filter chip list by diffing `filterValues` against `defaultFilterValues`. */
+const getActiveFilterChips = (filtersMeta, filterValues, defaultFilterValues) => {
+  return filtersMeta
+    .filter(fieldMeta => fieldMeta.inputType !== 'None')
+    .map(fieldMeta => {
+      const { name } = fieldMeta;
+      const value = filterValues[name];
+      const defaultValue = defaultFilterValues[name];
+
+      const isActive =
+        fieldMeta.inputType === 'MultiSelect'
+          ? Array.isArray(value) && value.length > 0
+          : fieldMeta.inputType === 'DateRange'
+            ? Boolean(value?.startDate || value?.endDate)
+            : Boolean(value) && value !== defaultValue;
+
+      if (!isActive) {
+        return null;
+      }
+
+      const label = formatChipLabel(fieldMeta, value);
+      if (!label) {
+        return null;
+      }
+
+      return { name, label, defaultValue };
+    })
+    .filter(Boolean);
+};
+
 const StudyListFilter = ({
   filtersMeta,
   filterValues,
+  defaultFilterValues,
   onChange,
   clearFilters,
   isFiltering,
@@ -32,21 +88,28 @@ const StudyListFilter = ({
   };
   const isSortingEnabled = numOfStudies > 0 && numOfStudies <= 100;
 
+  const activeFilterChips = defaultFilterValues
+    ? getActiveFilterChips(filtersMeta, filterValues, defaultFilterValues)
+    : [];
+  const clearOneFilter = name => {
+    onChange({ ...filterValues, [name]: defaultFilterValues[name] });
+  };
+
 
   return (
     <React.Fragment>
       <div>
         <div
-          className={classnames(isActive ? 'bg-black-on' : 'bg-black', 'py-1')}
+          className={classnames(isActive ? 'bg-black-on' : 'bg-black', 'py-2')}
           id="containerId"
         >
-          <div className="container relative mx-auto flex flex-col pt-2 pb-5">
+          <div className="container relative mx-auto flex flex-col pt-3 pb-5">
             <div className="flex flex-row flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-[1px] shrink flex-row items-center gap-3">
                 <Typography
                   variant="h6"
                   className={classnames(
-                    'text-[22px] font-semibold tracking-tight',
+                    'text-xl font-bold tracking-tight',
                     isActive ? 'text-white-On' : 'text-white'
                   )}
                   id="StudyList"
@@ -62,8 +125,15 @@ const StudyListFilter = ({
                 {getDataSourceConfigurationComponent && getDataSourceConfigurationComponent()}
                 {onUploadClick && (
                   <div
-                    className="text-primary-active hover:text-accent flex cursor-pointer items-center gap-2 self-center text-base font-semibold transition-colors duration-150"
+                    role="button"
+                    tabIndex={0}
+                    className="text-primary-active hover:text-accent focus-visible:ring-accent/60 flex cursor-pointer items-center gap-2 self-center rounded text-sm font-semibold transition-colors duration-150 focus:outline-none focus-visible:ring-2"
                     onClick={onUploadClick}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        onUploadClick();
+                      }
+                    }}
                   >
                     <Icon name="icon-upload"></Icon>
                     <span>Upload</span>
@@ -86,6 +156,41 @@ const StudyListFilter = ({
                 )}
               </div>
             </div>
+            {activeFilterChips.length > 0 && (
+              <div
+                className="mt-3 flex flex-row flex-wrap items-center gap-2"
+                data-cy="active-filter-chips"
+              >
+                {activeFilterChips.map(chip => (
+                  <span
+                    key={chip.name}
+                    className={classnames(
+                      'inline-flex max-w-full items-center gap-1.5 whitespace-nowrap rounded-full py-1 pl-3 pr-1.5 text-xs font-medium',
+                      isActive
+                        ? 'bg-white/10 text-content-primaryDark'
+                        : 'bg-black/5 text-content-primary'
+                    )}
+                  >
+                    <span className="truncate">{chip.label}</span>
+                    <button
+                      type="button"
+                      aria-label={`Clear ${chip.label}`}
+                      onClick={() => clearOneFilter(chip.name)}
+                      className={classnames(
+                        'flex h-4 w-4 items-center justify-center rounded-full transition-colors duration-150',
+                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+                        isActive ? 'hover:bg-white/20' : 'hover:bg-black/10'
+                      )}
+                    >
+                      <Icon
+                        name="cancel"
+                        className="h-2.5 w-2.5"
+                      />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -141,6 +246,8 @@ StudyListFilter.propTypes = {
     })
   ).isRequired,
   filterValues: PropTypes.object.isRequired,
+  /** Same shape as `filterValues`; used to detect which fields are active for filter chips. */
+  defaultFilterValues: PropTypes.object,
   numOfStudies: PropTypes.number.isRequired,
   onChange: PropTypes.func.isRequired,
   clearFilters: PropTypes.func.isRequired,

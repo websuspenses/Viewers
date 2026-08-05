@@ -65,6 +65,7 @@ StatusBadge.defaultProps = {
   variant: 'neutral',
   isActive: false,
   dot: false,
+  className: '',
 };
 
 export default StatusBadge;

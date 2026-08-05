@@ -150,8 +150,8 @@ const DateRange = props => {
       /** OPTIONAL */
       renderCalendarInfo={renderDatePresets}
       renderMonthElement={renderMonthElement}
-      startDatePlaceholderText={t('Start Date')}
-      endDatePlaceholderText={t('End Date')}
+      startDatePlaceholderText={t('Start')}
+      endDatePlaceholderText={t('End')}
       phrases={{
         closeDatePicker: t('Close'),
         clearDates: t('Clear dates'),

@@ -1,6 +1,6 @@
 .customSelect__wrapper .customSelect__control {
-	@apply border-secondary-light w-full rounded border bg-black text-sm leading-tight text-white shadow transition duration-300;
-	min-height: 28px;
+	@apply border-secondary-light w-full rounded-md border bg-black text-sm leading-tight text-white shadow-xs transition duration-150;
+	min-height: 38px;
   }
 
   .customSelect__wrapper .customSelect__control:hover {
@@ -77,7 +77,7 @@
   }
 
   .ohif-select .customSelect__menu-list::-webkit-scrollbar-thumb {
-	background-color: yellow;
+	background-color: #0B7C69;
 	border-radius: 10px;
   }
 
@@ -87,7 +87,8 @@
   }
 
   .ohif-select .customSelect__option:hover {
-	background-color: yellow;
+	background-color: #0B7C69;
+	color: #ffffff;
   }
 
   .ohif-select .customSelect__menu {

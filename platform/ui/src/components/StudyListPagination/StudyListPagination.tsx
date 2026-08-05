@@ -70,6 +70,7 @@ const StudyListPagination = ({
               isSearchable={false}
               closeMenuOnSelect={false}
               hideSelectedOptions={true}
+              isActive={isActive}
               onChange={onSelectedRange}
             />
             <Typography className={isActive ? 'resultsPerPage_dark' : 'text-base opacity-60'}>
@@ -83,7 +84,12 @@ const StudyListPagination = ({
                 variant="neutral"
                 isActive={isActive}
               />
-              <div className="flex items-center gap-1">
+              <div
+                className={classnames(
+                  'flex items-center gap-0.5 rounded-lg p-0.5',
+                  isActive ? 'bg-white/5' : 'bg-black/5'
+                )}
+              >
                 <NavButton
                   onClick={() => navigateToPage(1)}
                   disabled={currentPage === 1}

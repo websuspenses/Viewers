@@ -49,14 +49,18 @@ const StudyListTableRow = props => {
                   className={
                     isActive
                       ? classnames(
-                        'truncate-dark bg-secondary-main-darkMode hover:bg-white/5 cursor-pointer transition duration-200',
+                        'truncate-dark bg-secondary-main-darkMode hover:bg-white/5 cursor-pointer transition-colors duration-150',
                         {
                           'bg-primary-dark-on': !isExpanded,
                         },
                         { 'bg-secondary-dark-on': isExpanded }
                       )
                       : classnames(
-                        'hover:bg-secondary-main cursor-pointer transition duration-200',
+                        // Intentionally not `hover:bg-secondary-main`: that exact Tailwind
+                        // class name is hijacked by legacy global rules in styles.css
+                        // (`.hover\:bg-secondary-main:hover`) into an opaque teal fill that
+                        // swallows this row's own teal/dark text and icons on hover.
+                        'hover:bg-black/[0.04] cursor-pointer transition-colors duration-150',
                         {
                           'bg-primary-dark': !isExpanded,
                         },
@@ -75,7 +79,7 @@ const StudyListTableRow = props => {
                         className={
                           isActive
                             ? classnames(
-                              'px-3 py-3 text-base leading-5',
+                              'px-3 py-3.5 align-middle text-sm leading-5',
                               { 'border-secondary-light-darkMode border-b': !isExpanded },
                               getGridWidthClass(gridCol) + (
                                 title === ('In-Progress' || 'Referrel-Sent' || 'Report-Generated ' || 'Emergency') ? ' ' + title : '') || ''
@@ -84,7 +88,7 @@ const StudyListTableRow = props => {
                               ' ' + title,
                             )
                               : classnames(
-                                'truncate px-3 py-3 text-base leading-5',
+                                'truncate px-3 py-3.5 align-middle text-sm leading-5',
                                 { 'border-secondary-light border-b': !isExpanded },
                                 getGridWidthClass(gridCol) || ''
                               )
