@@ -62,6 +62,18 @@ const getThemedStyles = isActive => ({
   placeholder: base => ({
     ...base,
     color: isActive ? '#8890a0' : '#6b7280',
+    fontSize: 13,
+  }),
+  // `.customSelect__value-container--is-multi` carries its own `py-2` in
+  // Select.css, which stacks on top of the control's min-height and makes the
+  // multi-select render visibly taller than the text/date fields beside it.
+  valueContainer: base => ({
+    ...base,
+    padding: '0 8px',
+  }),
+  indicatorsContainer: base => ({
+    ...base,
+    height: 38,
   }),
 });
 

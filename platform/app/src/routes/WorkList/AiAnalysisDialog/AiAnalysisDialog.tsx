@@ -24,6 +24,36 @@ import Alert from '@mui/material/Alert';
 import LinearProgress from '@mui/material/LinearProgress';
 import CircularProgress from '@mui/material/CircularProgress';
 import Collapse from '@mui/material/Collapse';
+import Tabs from '@mui/material/Tabs';
+import Tab from '@mui/material/Tab';
+import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import Switch from '@mui/material/Switch';
+import Tooltip from '@mui/material/Tooltip';
+
+import {
+  AiCompletePayload,
+  AiFindingSummary,
+  CONSISTENCY_LABELS,
+  EvidenceFinding,
+  buildEvidenceFindings,
+  collectHeatmaps,
+  compareSeverity,
+  formatConfidence,
+  formatDicomDate,
+  getImageSrc,
+  getImageSupportedFindings,
+  getMaxDifferenceMm,
+  getMeasurementRange,
+  parseMeasurement,
+  sortFindingsSummary,
+  summarizeSeverities,
+} from './aiReportModel';
+import { renderSafeReportMarkdown } from './reportMarkdown';
+import { buildCiaiReportHtml } from './buildCiaiReportHtml';
 
 type AiProgressEvent = {
   step?: number;
@@ -34,39 +64,9 @@ type AiProgressEvent = {
   [key: string]: any;
 };
 
-type AiCompletePayload = {
-  patient_info?: Record<string, any>;
-  study_info?: Record<string, any>;
-  series_with_findings?: any[];
-  total_series_analyzed?: number;
-  total_frames_processed?: number;
-  total_anomalies_found?: number;
-  processing_errors?: string[];
-  report?: {
-    report_text?: string;
-    output_path?: string;
-    docx_output_path?: string;
-    user_docx_output_path?: string;
-    [key: string]: any;
-  };
-  report_path?: string;
-  docx_path?: string;
-  user_docx_path?: string;
-  [key: string]: any;
-};
-
-type AiHeatmap = {
-  frame_key?: string;
-  anomaly_regions?: any[];
-  heatmap_image_b64?: string;
-  gemini_annotated_image_b64?: string;
-  summary?: string;
-  output_path?: string;
-  gemini_annotated_output_path?: string;
-  [key: string]: any;
-};
-
 type AiDialogStatus = 'idle' | 'running' | 'completed' | 'warning' | 'unable' | 'failed';
+
+type ReportScope = 'significant' | 'all';
 
 type Props = {
   open: boolean;
@@ -92,7 +92,7 @@ type ParsedSseEvent = {
 
 const BootstrapDialog = styled(Dialog)<DialogProps>(() => ({
   '& .MuiPaper-root': {
-    width: '980px',
+    width: '1140px',
     maxWidth: 'calc(100vw - 32px)',
     borderRadius: 8,
     background: '#071118',
@@ -107,6 +107,8 @@ const BootstrapDialog = styled(Dialog)<DialogProps>(() => ({
     borderTop: '1px solid rgba(255,255,255,0.1)',
     padding: '14px 20px',
     background: '#08131a',
+    flexWrap: 'wrap',
+    gap: '8px',
   },
   '@media (max-width: 720px)': {
     '& .MuiPaper-root': {
@@ -138,6 +140,13 @@ const STATUS_COLORS: Record<AiDialogStatus, 'default' | 'primary' | 'success' | 
     unable: 'error',
     failed: 'error',
   };
+
+const SEVERITY_COLORS: Record<string, string> = {
+  critical: '#b3261e',
+  high: '#c2610a',
+  medium: '#8a6d00',
+  low: '#4a6076',
+};
 
 const GPU_DOWN_MESSAGE =
   'AI image analysis could not be completed because the model service was unavailable. A report was generated from limited processing information and should not be treated as diagnostic.';
@@ -231,6 +240,16 @@ async function startAiAnalysisStream({
   const decoder = new TextDecoder();
   let buffer = '';
 
+  const dispatch = (event: ParsedSseEvent) => {
+    if (event.event === 'progress') {
+      onProgress(event.data);
+    } else if (event.event === 'complete') {
+      onComplete(event.data);
+    } else if (event.event === 'parse_error') {
+      onError(event.error || new Error('Unable to parse stream payload'));
+    }
+  };
+
   while (true) {
     const { done, value } = await reader.read();
 
@@ -246,31 +265,13 @@ async function startAiAnalysisStream({
     buffer += chunk;
     const parsed = parseSseEvents(buffer);
     buffer = parsed.remaining;
-
-    parsed.events.forEach(event => {
-      if (event.event === 'progress') {
-        onProgress(event.data);
-      } else if (event.event === 'complete') {
-        onComplete(event.data);
-      } else if (event.event === 'parse_error') {
-        onError(event.error || new Error('Unable to parse stream payload'));
-      }
-    });
+    parsed.events.forEach(dispatch);
   }
 
   const finalText = decoder.decode();
   const finalBuffer = `${buffer}${finalText}`;
   if (finalBuffer.trim()) {
-    const parsed = parseSseEvents(`${finalBuffer}\n\n`);
-    parsed.events.forEach(event => {
-      if (event.event === 'progress') {
-        onProgress(event.data);
-      } else if (event.event === 'complete') {
-        onComplete(event.data);
-      } else if (event.event === 'parse_error') {
-        onError(event.error || new Error('Unable to parse stream payload'));
-      }
-    });
+    parseSseEvents(`${finalBuffer}\n\n`).events.forEach(dispatch);
   }
 }
 
@@ -318,115 +319,6 @@ function classifyAiAnalysisResult(
   }
 
   return 'completed';
-}
-
-function escapeHtml(value: string) {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#039;');
-}
-
-function formatInlineMarkdown(value: string) {
-  return escapeHtml(value)
-    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-    .replace(/_(.*?)_/g, '<em>$1</em>');
-}
-
-function renderSafeReportMarkdown(markdown: string) {
-  const lines = markdown.split(/\r?\n/);
-  const html: string[] = [];
-  let listOpen = false;
-  let tableRows: string[][] = [];
-
-  const closeList = () => {
-    if (listOpen) {
-      html.push('</ol>');
-      listOpen = false;
-    }
-  };
-
-  const flushTable = () => {
-    if (!tableRows.length) {
-      return;
-    }
-
-    html.push('<table>');
-    tableRows.forEach((cells, index) => {
-      if (index === 1 && cells.every(cell => /^:?-{3,}:?$/.test(cell.trim()))) {
-        return;
-      }
-      const tag = index === 0 ? 'th' : 'td';
-      html.push(
-        `<tr>${cells.map(cell => `<${tag}>${formatInlineMarkdown(cell.trim())}</${tag}>`).join('')}</tr>`
-      );
-    });
-    html.push('</table>');
-    tableRows = [];
-  };
-
-  lines.forEach(line => {
-    const trimmed = line.trim();
-
-    if (!trimmed) {
-      closeList();
-      flushTable();
-      return;
-    }
-
-    if (trimmed.startsWith('|') && trimmed.endsWith('|')) {
-      closeList();
-      tableRows.push(trimmed.slice(1, -1).split('|'));
-      return;
-    }
-
-    flushTable();
-
-    if (trimmed === '---') {
-      closeList();
-      html.push('<hr />');
-      return;
-    }
-
-    if (trimmed.startsWith('## ')) {
-      closeList();
-      html.push(`<h3>${formatInlineMarkdown(trimmed.slice(3))}</h3>`);
-      return;
-    }
-
-    if (trimmed.startsWith('# ')) {
-      closeList();
-      html.push(`<h2>${formatInlineMarkdown(trimmed.slice(2))}</h2>`);
-      return;
-    }
-
-    const orderedMatch = trimmed.match(/^\d+\.\s+(.*)$/);
-    if (orderedMatch) {
-      if (!listOpen) {
-        html.push('<ol>');
-        listOpen = true;
-      }
-      html.push(`<li>${formatInlineMarkdown(orderedMatch[1])}</li>`);
-      return;
-    }
-
-    closeList();
-    html.push(`<p>${formatInlineMarkdown(trimmed)}</p>`);
-  });
-
-  closeList();
-  flushTable();
-  return html.join('');
-}
-
-function formatDate(date?: string) {
-  if (!date || date.length !== 8) {
-    return date || 'Not available';
-  }
-
-  return `${date.slice(6, 8)}-${date.slice(4, 6)}-${date.slice(0, 4)}`;
 }
 
 function formatDuration(milliseconds?: number) {
@@ -492,30 +384,6 @@ function getStageDuration({
   const endedAt = nextStartedAt || (isActiveStep ? now : latestEvent?._receivedAt || now);
 
   return Math.max(0, endedAt - startedAt);
-}
-
-function collectHeatmaps(payload: AiCompletePayload | null): AiHeatmap[] {
-  if (!payload) {
-    return [];
-  }
-
-  const directHeatmaps = Array.isArray(payload.heatmaps) ? payload.heatmaps : [];
-  const reportHeatmaps = Array.isArray(payload.report?.heatmaps) ? payload.report.heatmaps : [];
-  const seriesHeatmaps = (payload.series_with_findings || []).flatMap(series =>
-    Array.isArray(series?.heatmaps) ? series.heatmaps : []
-  );
-
-  return [...directHeatmaps, ...reportHeatmaps, ...seriesHeatmaps].filter(
-    heatmap => heatmap?.heatmap_image_b64 || heatmap?.gemini_annotated_image_b64
-  );
-}
-
-function getHeatmapImageSrc(base64?: string) {
-  if (!base64) {
-    return '';
-  }
-
-  return base64.startsWith('data:') ? base64 : `data:image/png;base64,${base64}`;
 }
 
 function StatusGlyph({ status, size = 18 }: { status: AiDialogStatus; size?: number }) {
@@ -604,6 +472,683 @@ function FieldValue({ label, value }: { label: string; value?: string }) {
   );
 }
 
+function SeverityChip({ severity, size = 'small' }: { severity: string; size?: 'small' | 'medium' }) {
+  const value = (severity || 'low').toLowerCase();
+
+  return (
+    <Chip
+      size={size}
+      label={value.toUpperCase()}
+      sx={{
+        backgroundColor: SEVERITY_COLORS[value] || SEVERITY_COLORS.low,
+        color: '#ffffff',
+        fontWeight: 900,
+        fontSize: 10,
+        letterSpacing: 0.4,
+        height: 20,
+      }}
+    />
+  );
+}
+
+function StatCard({ label, value, hint }: { label: string; value: React.ReactNode; hint?: string }) {
+  return (
+    <Box
+      sx={{
+        border: '1px solid rgba(105, 210, 232, 0.14)',
+        borderRadius: '8px',
+        padding: '12px',
+        background: '#0d1b24',
+        boxShadow: '0 12px 30px rgba(0, 0, 0, 0.18)',
+      }}
+    >
+      <Box
+        sx={{
+          color: '#91b7c2',
+          fontSize: 11,
+          fontWeight: 800,
+          textTransform: 'uppercase',
+        }}
+      >
+        {label}
+      </Box>
+      <Box sx={{ fontSize: 22, fontWeight: 900, marginTop: '4px' }}>{value}</Box>
+      {hint && <Box sx={{ color: '#7fa4b1', fontSize: 11, marginTop: '2px' }}>{hint}</Box>}
+    </Box>
+  );
+}
+
+/**
+ * Draws the AI-detected region over a frame.
+ *
+ * `bbox` is normalised to the frame, so the overlay is positioned in
+ * percentages and stays aligned as the image scales with the dialog.
+ */
+function CaliperOverlay({
+  bbox,
+  label,
+  tone,
+}: {
+  bbox: number[] | null;
+  label: string;
+  tone: 'human' | 'ai';
+}) {
+  if (!bbox) {
+    return null;
+  }
+
+  const [x0, y0, x1, y1] = bbox;
+  const left = Math.min(x0, x1) * 100;
+  const right = Math.max(x0, x1) * 100;
+  const top = Math.min(y0, y1) * 100;
+  const bottom = Math.max(y0, y1) * 100;
+  const width = Math.max(right - left, 0.5);
+  const height = Math.max(bottom - top, 0.5);
+  const centerY = (top + bottom) / 2;
+  const centerX = (left + right) / 2;
+  const color = tone === 'human' ? '#00ffff' : '#ffe600';
+
+  return (
+    <>
+      <Box
+        sx={{
+          position: 'absolute',
+          left: `${left}%`,
+          top: `${top}%`,
+          width: `${width}%`,
+          height: `${height}%`,
+          border: `1px dashed ${color}`,
+          pointerEvents: 'none',
+        }}
+      />
+      <Box
+        sx={{
+          position: 'absolute',
+          left: `${left}%`,
+          top: `${centerY}%`,
+          width: `${width}%`,
+          height: '2px',
+          background: color,
+          pointerEvents: 'none',
+        }}
+      />
+      {[left, right].map(position => (
+        <Box
+          key={position}
+          sx={{
+            position: 'absolute',
+            left: `${position}%`,
+            top: `${centerY - 2}%`,
+            width: '2px',
+            height: '4%',
+            background: color,
+            pointerEvents: 'none',
+          }}
+        />
+      ))}
+      <Box
+        sx={{
+          position: 'absolute',
+          left: `${centerX}%`,
+          top: `${centerY}%`,
+          transform: 'translate(-50%, -160%)',
+          background: '#000000',
+          color: '#ffffff',
+          fontSize: 11,
+          fontWeight: 700,
+          padding: '1px 6px',
+          whiteSpace: 'nowrap',
+          pointerEvents: 'none',
+        }}
+      >
+        {label}
+      </Box>
+    </>
+  );
+}
+
+function EvidencePanel({
+  label,
+  image,
+  emptyText,
+  overlay,
+  caption,
+}: {
+  label: string;
+  image: string;
+  emptyText: string;
+  overlay?: React.ReactNode;
+  caption?: string;
+}) {
+  return (
+    <Box
+      sx={{
+        border: '1px solid rgba(255,255,255,0.1)',
+        borderRadius: '6px',
+        overflow: 'hidden',
+        background: '#050b10',
+        display: 'flex',
+        flexDirection: 'column',
+      }}
+    >
+      <Box
+        sx={{
+          padding: '7px 10px',
+          color: '#cceef7',
+          fontSize: 11,
+          fontWeight: 800,
+          letterSpacing: 0.4,
+          textTransform: 'uppercase',
+          background: 'rgba(13, 27, 36, 0.92)',
+          borderBottom: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        {label}
+      </Box>
+      <Box sx={{ display: 'grid', placeItems: 'center', padding: '8px', flex: 1, minHeight: 160 }}>
+        {image ? (
+          <Box sx={{ position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
+            <Box
+              component="img"
+              src={getImageSrc(image)}
+              alt={label}
+              sx={{ display: 'block', maxWidth: '100%', maxHeight: 340, width: 'auto' }}
+            />
+            {overlay}
+          </Box>
+        ) : (
+          <Box sx={{ color: '#6f8d9b', fontSize: 12, textAlign: 'center' }}>{emptyText}</Box>
+        )}
+      </Box>
+      {caption && (
+        <Box
+          sx={{
+            padding: '6px 10px',
+            color: '#9fc4ce',
+            fontSize: 11,
+            borderTop: '1px solid rgba(255,255,255,0.08)',
+          }}
+        >
+          {caption}
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+function VerificationRow({ label, value, flag }: { label: string; value: React.ReactNode; flag?: boolean }) {
+  return (
+    <>
+      <Box
+        sx={{
+          color: '#8bbfd0',
+          fontSize: 11,
+          fontWeight: 700,
+          padding: '7px 10px',
+          background: 'rgba(255,255,255,0.03)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+        }}
+      >
+        {label}
+      </Box>
+      <Box
+        sx={{
+          fontSize: 12,
+          fontWeight: 700,
+          padding: '7px 10px',
+          color: flag ? '#ff8f7a' : '#eef7fb',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          wordBreak: 'break-word',
+        }}
+      >
+        {value}
+      </Box>
+    </>
+  );
+}
+
+/**
+ * Evidence review for one finding, in the order the report format mandates:
+ * original first, then the manual marking, then the CIAI AI marking, with the
+ * heatmap last as supporting evidence.
+ */
+function EvidenceViewer({
+  findings,
+  index,
+  onIndexChange,
+  studyInstanceUid,
+}: {
+  findings: EvidenceFinding[];
+  index: number;
+  onIndexChange: (next: number) => void;
+  studyInstanceUid: string;
+}) {
+  const [showOverlays, setShowOverlays] = useState(true);
+  const finding = findings[index];
+
+  if (!finding) {
+    return (
+      <Alert severity="info">
+        No finding in this study resolved to an image frame, so there is no image evidence to review.
+      </Alert>
+    );
+  }
+
+  const humanLabel = finding.imageMeasurement.measurable
+    ? finding.imageMeasurement.display
+    : 'Pending';
+  const aiLabel = finding.imageMeasurement.measurable
+    ? finding.imageMeasurement.display
+    : finding.narrativeMeasurement.display;
+  const isMismatch = finding.consistency !== 'match';
+
+  return (
+    <Box>
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        spacing={1.5}
+        alignItems={{ xs: 'flex-start', md: 'center' }}
+        justifyContent="space-between"
+        sx={{ marginBottom: '12px' }}
+      >
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          flexWrap="wrap"
+          useFlexGap
+        >
+          <IconButton
+            aria-label="previous finding"
+            size="small"
+            onClick={() => onIndexChange(index <= 0 ? findings.length - 1 : index - 1)}
+            sx={{ color: '#cceef7', background: 'rgba(255,255,255,0.06)' }}
+          >
+            <NavigateBeforeIcon />
+          </IconButton>
+          <IconButton
+            aria-label="next finding"
+            size="small"
+            onClick={() => onIndexChange(index >= findings.length - 1 ? 0 : index + 1)}
+            sx={{ color: '#cceef7', background: 'rgba(255,255,255,0.06)' }}
+          >
+            <NavigateNextIcon />
+          </IconButton>
+          <SeverityChip severity={finding.severity} />
+          <Box sx={{ fontSize: 16, fontWeight: 900 }}>
+            {finding.findingId} — {finding.name}
+          </Box>
+        </Stack>
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+        >
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                checked={showOverlays}
+                onChange={event => setShowOverlays(event.target.checked)}
+              />
+            }
+            label={<Box sx={{ fontSize: 12, color: '#bcdde7' }}>Markings</Box>}
+          />
+          <Chip
+            size="small"
+            label={`${index + 1} of ${findings.length}`}
+            sx={{
+              color: '#e8fbff',
+              backgroundColor: 'rgba(105, 210, 232, 0.12)',
+              border: '1px solid rgba(105, 210, 232, 0.25)',
+              fontWeight: 800,
+            }}
+          />
+        </Stack>
+      </Stack>
+
+      <TextField
+        select
+        size="small"
+        fullWidth
+        value={index}
+        onChange={event => onIndexChange(Number(event.target.value))}
+        sx={{
+          marginBottom: '14px',
+          '& .MuiInputBase-root': { color: '#eef7fb', background: '#0b1720' },
+          '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(105, 210, 232, 0.25)' },
+          '& .MuiSvgIcon-root': { color: '#8be0f8' },
+        }}
+      >
+        {findings.map((item, itemIndex) => (
+          <MenuItem
+            key={`${item.findingId}-${item.frameKey}`}
+            value={itemIndex}
+          >
+            {item.findingId} — {item.name} ({item.severity})
+          </MenuItem>
+        ))}
+      </TextField>
+
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: '1fr',
+          gap: '10px',
+          marginBottom: '10px',
+        }}
+      >
+        <EvidencePanel
+          label="1. Original diagnostic image"
+          image={finding.originalImage}
+          emptyText="Original frame was not returned by the analysis service."
+          caption="Unmodified frame at the AI-detected location. No overlay applied."
+        />
+      </Box>
+
+      <Box
+        sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+          gap: '10px',
+        }}
+      >
+        <EvidencePanel
+          label="2. Lab / human marking"
+          image={finding.originalImage}
+          emptyText="Original frame unavailable."
+          overlay={
+            showOverlays ? (
+              <CaliperOverlay
+                bbox={finding.bbox}
+                label={humanLabel}
+                tone="human"
+              />
+            ) : null
+          }
+          caption={`Measurement above caliper: ${humanLabel} — draft seeded from the image layer, awaiting radiologist caliper.`}
+        />
+        <EvidencePanel
+          label="3. CIAI AI marking"
+          image={finding.annotatedImage || finding.heatmapImage}
+          emptyText="AI marking was not returned for this frame."
+          overlay={
+            showOverlays ? (
+              <CaliperOverlay
+                bbox={finding.bbox}
+                label={aiLabel}
+                tone="ai"
+              />
+            ) : null
+          }
+          caption={`CIAI measurement above caliper: ${aiLabel}`}
+        />
+      </Box>
+
+      {!!(finding.annotatedImage && finding.heatmapImage) && (
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+            gap: '10px',
+            marginTop: '10px',
+          }}
+        >
+          <EvidencePanel
+            label="4. Heatmap — final evidence layer"
+            image={finding.heatmapImage}
+            emptyText="Heatmap unavailable."
+            caption="Supports the finding. Does not replace the original DICOM image."
+          />
+        </Box>
+      )}
+
+      <Box
+        sx={{
+          marginTop: '14px',
+          border: '1px solid rgba(105, 210, 232, 0.18)',
+          borderRadius: '6px',
+          overflow: 'hidden',
+        }}
+      >
+        <Box
+          sx={{
+            background: '#082a4b',
+            color: '#ffffff',
+            fontSize: 12,
+            fontWeight: 900,
+            letterSpacing: 0.6,
+            textTransform: 'uppercase',
+            padding: '8px 10px',
+          }}
+        >
+          Clinical verification panel
+        </Box>
+        <Box
+          sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '40% 60%', md: '18% 32% 18% 32%' },
+          }}
+        >
+          <VerificationRow
+            label="Image measurement"
+            value={finding.imageMeasurement.display}
+          />
+          <VerificationRow
+            label="Image AI score"
+            value={formatConfidence(finding.imageScore)}
+          />
+          <VerificationRow
+            label="Narrative AI output"
+            value={`${finding.narrativeMeasurement.display} / ${formatConfidence(
+              finding.narrativeScore
+            )}`}
+          />
+          <VerificationRow
+            label="Consistency"
+            value={CONSISTENCY_LABELS[finding.consistency]}
+            flag={isMismatch}
+          />
+          <VerificationRow
+            label="Manual / lab draft"
+            value={humanLabel}
+          />
+          <VerificationRow
+            label="CIAI AI draft"
+            value={aiLabel}
+          />
+          <VerificationRow
+            label="Difference"
+            value={
+              finding.differenceMm === null
+                ? 'Pending radiologist measurement'
+                : `${finding.differenceMm} mm`
+            }
+            flag={Boolean(finding.differenceMm)}
+          />
+          <VerificationRow
+            label="Series"
+            value={finding.seriesLabel || 'Not stated'}
+          />
+          <VerificationRow
+            label="Source frame"
+            value={finding.frameKey || 'Not stated'}
+          />
+          <VerificationRow
+            label="Study UID"
+            value={studyInstanceUid}
+          />
+          <VerificationRow
+            label="Location"
+            value={finding.location || 'Not stated'}
+          />
+          <VerificationRow
+            label="Evidence order"
+            value="Original → Human → CIAI → Heatmap"
+          />
+        </Box>
+      </Box>
+
+      {finding.description && (
+        <Box sx={{ color: '#a6cbd6', fontSize: 12, marginTop: '10px' }}>
+          <strong style={{ color: '#dff6ff' }}>AI description:</strong> {finding.description}
+        </Box>
+      )}
+    </Box>
+  );
+}
+
+function FindingsTable({ findings }: { findings: AiFindingSummary[] }) {
+  const [severity, setSeverity] = useState('all');
+  const [query, setQuery] = useState('');
+
+  const visible = useMemo(() => {
+    const term = query.trim().toLowerCase();
+    return sortFindingsSummary(findings).filter(finding => {
+      if (severity !== 'all' && (finding.severity || '').toLowerCase() !== severity) {
+        return false;
+      }
+
+      if (!term) {
+        return true;
+      }
+
+      return [finding.finding_id, finding.name, finding.location, finding.series, finding.region]
+        .join(' ')
+        .toLowerCase()
+        .includes(term);
+    });
+  }, [findings, severity, query]);
+
+  const counts = useMemo(() => summarizeSeverities(findings), [findings]);
+
+  return (
+    <Box>
+      <Stack
+        direction={{ xs: 'column', sm: 'row' }}
+        spacing={1.5}
+        alignItems={{ xs: 'stretch', sm: 'center' }}
+        sx={{ marginBottom: '12px' }}
+      >
+        <ToggleButtonGroup
+          size="small"
+          exclusive
+          value={severity}
+          onChange={(_event, value) => value && setSeverity(value)}
+          sx={{
+            '& .MuiToggleButton-root': {
+              color: '#bcdde7',
+              borderColor: 'rgba(105, 210, 232, 0.25)',
+              fontWeight: 800,
+              fontSize: 11,
+              padding: '4px 10px',
+            },
+            '& .Mui-selected': {
+              color: '#08131a !important',
+              backgroundColor: '#8be0f8 !important',
+            },
+          }}
+        >
+          <ToggleButton value="all">All ({findings.length})</ToggleButton>
+          <ToggleButton value="critical">Critical ({counts.critical})</ToggleButton>
+          <ToggleButton value="high">High ({counts.high})</ToggleButton>
+          <ToggleButton value="medium">Medium ({counts.medium})</ToggleButton>
+          <ToggleButton value="low">Low ({counts.low})</ToggleButton>
+        </ToggleButtonGroup>
+        <TextField
+          size="small"
+          placeholder="Search findings, location or series"
+          value={query}
+          onChange={event => setQuery(event.target.value)}
+          sx={{
+            flex: 1,
+            '& .MuiInputBase-root': { color: '#eef7fb', background: '#0b1720' },
+            '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(105, 210, 232, 0.25)' },
+          }}
+        />
+      </Stack>
+
+      <Box
+        sx={{
+          maxHeight: '48vh',
+          overflow: 'auto',
+          border: '1px solid rgba(255,255,255,0.1)',
+          borderRadius: '6px',
+        }}
+      >
+        <Box
+          component="table"
+          sx={{
+            width: '100%',
+            borderCollapse: 'collapse',
+            fontSize: 12,
+            '& th': {
+              position: 'sticky',
+              top: 0,
+              background: '#0b1720',
+              color: '#8bbfd0',
+              fontSize: 10,
+              fontWeight: 800,
+              letterSpacing: 0.5,
+              textTransform: 'uppercase',
+              textAlign: 'left',
+              padding: '9px 10px',
+              borderBottom: '1px solid rgba(255,255,255,0.12)',
+              zIndex: 1,
+            },
+            '& td': {
+              padding: '9px 10px',
+              borderBottom: '1px solid rgba(255,255,255,0.06)',
+              verticalAlign: 'top',
+              color: '#dbeef5',
+            },
+          }}
+        >
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Finding</th>
+              <th>Severity</th>
+              <th>Confidence</th>
+              <th>Size</th>
+              <th>Location</th>
+              <th>Series</th>
+            </tr>
+          </thead>
+          <tbody>
+            {visible.map(finding => (
+              <tr key={`${finding.finding_id}-${finding.frame_key}-${finding.name}`}>
+                <td style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>{finding.finding_id}</td>
+                <td>
+                  <Box sx={{ fontWeight: 700 }}>{finding.name}</Box>
+                  <Box sx={{ color: '#8fb4c0', fontSize: 11 }}>{finding.description}</Box>
+                </td>
+                <td>
+                  <SeverityChip severity={finding.severity || 'low'} />
+                </td>
+                <td>{formatConfidence(finding.confidence)}</td>
+                <td>{parseMeasurement(finding.size_estimate).display}</td>
+                <td>{finding.location || '—'}</td>
+                <td style={{ color: '#8fb4c0' }}>{finding.series || '—'}</td>
+              </tr>
+            ))}
+            {!visible.length && (
+              <tr>
+                <td
+                  colSpan={7}
+                  style={{ textAlign: 'center', color: '#8fb4c0', padding: '24px' }}
+                >
+                  No findings match the current filter.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </Box>
+      </Box>
+    </Box>
+  );
+}
+
 export default function AiAnalysisDialog({
   open,
   onClose,
@@ -618,7 +1163,9 @@ export default function AiAnalysisDialog({
   const [streamError, setStreamError] = useState('');
   const [lastHeartbeatAt, setLastHeartbeatAt] = useState<number | null>(null);
   const [showErrors, setShowErrors] = useState(false);
-  const [heatmapIndex, setHeatmapIndex] = useState(0);
+  const [evidenceIndex, setEvidenceIndex] = useState(0);
+  const [activeTab, setActiveTab] = useState(0);
+  const [reportScope, setReportScope] = useState<ReportScope>('significant');
   const [analysisStartedAt, setAnalysisStartedAt] = useState<number | null>(null);
   const [analysisFinishedAt, setAnalysisFinishedAt] = useState<number | null>(null);
   const [timerNow, setTimerNow] = useState(Date.now());
@@ -642,10 +1189,29 @@ export default function AiAnalysisDialog({
       : completePayload
       ? 100
       : 0;
+
   const reportText = completePayload?.report?.report_text || '';
   const reportHtml = useMemo(() => renderSafeReportMarkdown(reportText), [reportText]);
+  const findingsSummary = completePayload?.findings_summary || [];
+  const evidence = useMemo(() => buildEvidenceFindings(completePayload), [completePayload]);
   const heatmaps = useMemo(() => collectHeatmaps(completePayload), [completePayload]);
-  const activeHeatmap = heatmaps[heatmapIndex];
+  const severityCounts = useMemo(() => summarizeSeverities(findingsSummary), [findingsSummary]);
+  const imageSupported = useMemo(() => getImageSupportedFindings(evidence), [evidence]);
+  const mismatchCount = useMemo(
+    () => evidence.filter(finding => finding.consistency !== 'match').length,
+    [evidence]
+  );
+
+  // The report format devotes a full section to every finding it includes, so
+  // the default scope keeps the routine "normal structures" findings out.
+  const reportEvidence = useMemo(
+    () =>
+      reportScope === 'all'
+        ? evidence
+        : evidence.filter(finding => compareSeverity(finding.severity, 'low') < 0),
+    [evidence, reportScope]
+  );
+
   const processingErrors = completePayload?.processing_errors || [];
   const elapsedTime = analysisStartedAt
     ? formatDuration((analysisFinishedAt || timerNow) - analysisStartedAt)
@@ -666,7 +1232,8 @@ export default function AiAnalysisDialog({
     setStreamError('');
     setLastHeartbeatAt(null);
     setShowErrors(false);
-    setHeatmapIndex(0);
+    setEvidenceIndex(0);
+    setActiveTab(0);
     setAnalysisStartedAt(null);
     setAnalysisFinishedAt(null);
   };
@@ -680,7 +1247,8 @@ export default function AiAnalysisDialog({
     setStreamError('');
     setLastHeartbeatAt(null);
     setShowErrors(false);
-    setHeatmapIndex(0);
+    setEvidenceIndex(0);
+    setActiveTab(0);
     const startedAt = Date.now();
     setAnalysisStartedAt(startedAt);
     setAnalysisFinishedAt(null);
@@ -731,7 +1299,7 @@ export default function AiAnalysisDialog({
   }, [completePayload, progressEvents, streamError]);
 
   useEffect(() => {
-    setHeatmapIndex(0);
+    setEvidenceIndex(0);
   }, [completePayload?.study_id]);
 
   useEffect(() => {
@@ -771,94 +1339,17 @@ export default function AiAnalysisDialog({
   };
 
   const buildReportDocumentHtml = () => {
-    if (!reportText) {
+    if (!completePayload) {
       return '';
     }
 
-    const heatmapHtml = heatmaps
-      .map((heatmap, index) => {
-        const heatmapImages = [
-          {
-            label: 'Heatmap',
-            src: heatmap.heatmap_image_b64,
-            alt: `AI heatmap ${index + 1}`,
-          },
-          {
-            label: 'Gemini annotation',
-            src: heatmap.gemini_annotated_image_b64,
-            alt: `Gemini annotated heatmap ${index + 1}`,
-          },
-        ]
-          .filter(image => image.src)
-          .map(
-            image => `
-              <figure class="heatmap-panel">
-                <figcaption>${image.label}</figcaption>
-                <img src="${getHeatmapImageSrc(image.src)}" alt="${image.alt}" />
-              </figure>
-            `
-          )
-          .join('');
-
-        return `
-          <section class="heatmap">
-            <h2>Heatmap ${index + 1}${heatmap.summary ? `: ${escapeHtml(heatmap.summary)}` : ''}</h2>
-            <div class="heatmap-grid ${heatmap.gemini_annotated_image_b64 ? 'has-pair' : ''}">
-              ${heatmapImages}
-            </div>
-            ${heatmap.frame_key ? `<p class="muted">Frame: ${escapeHtml(heatmap.frame_key)}</p>` : ''}
-          </section>
-        `;
-      })
-      .join('');
-
-    return `<!doctype html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <title>AI Analysis Report</title>
-          <style>
-            body { font-family: Arial, Helvetica, sans-serif; color: #1d2b33; margin: 32px; line-height: 1.55; }
-            header { display: flex; align-items: center; gap: 14px; border-bottom: 2px solid #d9e7ec; padding-bottom: 16px; margin-bottom: 24px; }
-            header img { width: 44px; height: 44px; object-fit: contain; }
-            header h1 { font-size: 22px; margin: 0; }
-            header p { margin: 2px 0 0; color: #647b85; font-size: 12px; }
-            h2 { font-size: 21px; margin: 18px 0 10px; }
-            h3 { font-size: 16px; margin: 18px 0 8px; }
-            p { margin: 8px 0; }
-            table { width: 100%; border-collapse: collapse; margin: 12px 0; }
-            th, td { border: 1px solid #d5e1e6; padding: 8px; text-align: left; vertical-align: top; }
-            th { background: #edf5f7; }
-            hr { border: 0; border-top: 1px solid #d5e1e6; margin: 18px 0; }
-            .meta { background: #f2f7f9; border: 1px solid #dbe9ee; padding: 12px; margin-bottom: 20px; }
-            .heatmap { page-break-inside: avoid; margin-top: 28px; padding-top: 16px; border-top: 1px solid #d5e1e6; }
-            .heatmap-grid { display: grid; grid-template-columns: 1fr; gap: 14px; align-items: start; }
-            .heatmap-grid.has-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-            .heatmap-panel { margin: 0; page-break-inside: avoid; }
-            .heatmap-panel figcaption { background: #edf5f7; border: 1px solid #d5e1e6; border-bottom: 0; color: #34515d; font-size: 12px; font-weight: 700; padding: 7px 9px; }
-            .heatmap-panel img { display: block; max-width: 100%; height: auto; border: 1px solid #d5e1e6; box-sizing: border-box; }
-            @media print { .heatmap-grid.has-pair { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-            @media screen and (max-width: 720px) { .heatmap-grid.has-pair { grid-template-columns: 1fr; } }
-            .muted { color: #647b85; font-size: 12px; }
-          </style>
-        </head>
-        <body>
-          <header>
-            <img src="${window.location.origin}/ai-icon-new.png" alt="AI Analysis logo" />
-            <div>
-              <h1>AI Analysis Report</h1>
-              <p>Generated from imaging analysis stream</p>
-            </div>
-          </header>
-          <section class="meta">
-            <strong>Patient:</strong> ${escapeHtml(study.patientName || 'Not available')}<br />
-            <strong>Study:</strong> ${escapeHtml(study.description || 'Medical imaging study')}<br />
-            <strong>Study Date:</strong> ${escapeHtml(formatDate(study.date))}
-          </section>
-          <main>${reportHtml}</main>
-          ${heatmapHtml}
-        </body>
-      </html>`;
+    return buildCiaiReportHtml({
+      payload: completePayload,
+      evidence: reportEvidence,
+      study,
+      logoUrl: `${window.location.origin}/ciai-logo.png`,
+      includeNarrative: true,
+    });
   };
 
   const downloadBlob = (blob: Blob, filename: string) => {
@@ -876,7 +1367,7 @@ export default function AiAnalysisDialog({
       return;
     }
     const blob = new Blob([html], { type: 'application/msword;charset=utf-8' });
-    downloadBlob(blob, `ai-analysis-${study.studyInstanceUid}.doc`);
+    downloadBlob(blob, `ciai-ai-report-${study.studyInstanceUid}.doc`);
   };
 
   const handleDownloadPdf = () => {
@@ -884,24 +1375,49 @@ export default function AiAnalysisDialog({
     if (!html) {
       return;
     }
-    const printWindow = window.open('', '_blank', 'width=960,height=1100');
+
+    const printWindow = window.open('', '_blank', 'width=1040,height=1180');
     if (!printWindow) {
       return;
     }
+
     printWindow.document.open();
     printWindow.document.write(html);
     printWindow.document.close();
     printWindow.focus();
-    window.setTimeout(() => printWindow.print(), 350);
+
+    // The report embeds every evidence frame as a data URI, so it has to wait
+    // for the images to decode — printing early yields blank evidence pages.
+    // A ceiling keeps a stalled decode from leaving the user with no dialog.
+    const print = () => {
+      const images = Array.from(printWindow.document.images);
+      const pending = images
+        .filter(image => !image.complete)
+        .map(
+          image =>
+            new Promise<void>(resolve => {
+              image.addEventListener('load', () => resolve(), { once: true });
+              image.addEventListener('error', () => resolve(), { once: true });
+            })
+        );
+
+      const ceiling = new Promise<void>(resolve => {
+        printWindow.setTimeout(resolve, 15000);
+      });
+
+      Promise.race([Promise.all(pending), ceiling]).then(() => {
+        printWindow.setTimeout(() => printWindow.print(), 250);
+      });
+    };
+
+    if (printWindow.document.readyState === 'complete') {
+      print();
+    } else {
+      printWindow.addEventListener('load', print, { once: true });
+    }
   };
 
-  const goToPreviousHeatmap = () => {
-    setHeatmapIndex(index => (index <= 0 ? heatmaps.length - 1 : index - 1));
-  };
-
-  const goToNextHeatmap = () => {
-    setHeatmapIndex(index => (index >= heatmaps.length - 1 ? 0 : index + 1));
-  };
+  const hasResults = Boolean(completePayload);
 
   return (
     <BootstrapDialog
@@ -925,6 +1441,8 @@ export default function AiAnalysisDialog({
           direction="row"
           spacing={2}
           alignItems="center"
+          flexWrap="wrap"
+          useFlexGap
         >
           <Box
             sx={{
@@ -936,7 +1454,6 @@ export default function AiAnalysisDialog({
               background: 'linear-gradient(135deg, #0a7c6c 0%, #2db4d3 100%)',
               color: '#ffffff',
               fontWeight: 900,
-              letterSpacing: 0,
             }}
           >
             AI
@@ -944,7 +1461,7 @@ export default function AiAnalysisDialog({
           <Box>
             <Box sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1.15 }}>AI Analysis</Box>
             <Box sx={{ color: '#91b7c2', fontSize: 12, marginTop: '3px' }}>
-              Clinical image processing workflow
+              Original → Human → CIAI AI → Heatmap → Radiologist verify
             </Box>
           </Box>
           <Chip
@@ -954,9 +1471,7 @@ export default function AiAnalysisDialog({
             label={STATUS_LABELS[displayStatus]}
             sx={{
               fontWeight: 800,
-              '& .MuiChip-icon': {
-                color: 'inherit',
-              },
+              '& .MuiChip-icon': { color: 'inherit' },
             }}
           />
           <Chip
@@ -994,24 +1509,27 @@ export default function AiAnalysisDialog({
             <Box
               sx={{
                 display: 'grid',
-                gridTemplateColumns: {
-                  xs: '1fr',
-                  sm: '1.35fr 0.75fr 1.25fr',
-                },
+                gridTemplateColumns: { xs: '1fr', sm: '1.35fr 0.75fr 1.25fr' },
                 gap: '14px',
               }}
             >
               <FieldValue
                 label="Patient"
-                value={study.patientName}
+                value={completePayload?.patient_info?.patient_name || study.patientName}
               />
               <FieldValue
                 label="Study Date"
-                value={formatDate(study.date)}
+                value={formatDicomDate(
+                  completePayload?.study_info?.study_date || study.date
+                )}
               />
               <FieldValue
                 label="Study"
-                value={study.description || 'Medical imaging study'}
+                value={
+                  completePayload?.study_info?.study_description ||
+                  study.description ||
+                  'Medical imaging study'
+                }
               />
             </Box>
             <Box
@@ -1066,9 +1584,7 @@ export default function AiAnalysisDialog({
                   height: 10,
                   borderRadius: 5,
                   backgroundColor: 'rgba(255,255,255,0.12)',
-                  '& .MuiLinearProgress-bar': {
-                    backgroundColor: '#21b59b',
-                  },
+                  '& .MuiLinearProgress-bar': { backgroundColor: '#21b59b' },
                 }}
               />
             </Box>
@@ -1192,276 +1708,272 @@ export default function AiAnalysisDialog({
             </Box>
           )}
 
-          {completePayload && (
+          {hasResults && (
             <Box>
-              <Box
+              <Tabs
+                value={activeTab}
+                onChange={(_event, value) => setActiveTab(value)}
+                variant="scrollable"
+                scrollButtons="auto"
                 sx={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
-                  gap: '10px',
-                  marginBottom: '18px',
+                  borderBottom: '1px solid rgba(255,255,255,0.1)',
+                  marginBottom: '16px',
+                  minHeight: 40,
+                  '& .MuiTab-root': {
+                    color: '#91b7c2',
+                    fontWeight: 800,
+                    fontSize: 13,
+                    textTransform: 'none',
+                    minHeight: 40,
+                  },
+                  '& .Mui-selected': { color: '#8be0f8 !important' },
+                  '& .MuiTabs-indicator': { backgroundColor: '#8be0f8' },
                 }}
               >
-                {[
-                  ['Series', completePayload.total_series_analyzed],
-                  ['Frames processed', completePayload.total_frames_processed],
-                  ['Findings', completePayload.total_anomalies_found],
-                  ['Heatmaps', heatmaps.length],
-                  ['Elapsed', elapsedTime],
-                ].map(([label, value]) => (
+                <Tab label="Overview" />
+                <Tab label={`Findings (${findingsSummary.length})`} />
+                <Tab label={`Image evidence (${evidence.length})`} />
+                <Tab label="Narrative report" />
+              </Tabs>
+
+              {activeTab === 0 && (
+                <Box>
                   <Box
-                    key={label}
                     sx={{
-                      border: '1px solid rgba(105, 210, 232, 0.14)',
-                      borderRadius: '8px',
-                      padding: '12px',
-                      background: '#0d1b24',
-                      boxShadow: '0 12px 30px rgba(0, 0, 0, 0.18)',
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))',
+                      gap: '10px',
+                      marginBottom: '16px',
                     }}
                   >
-                    <Box
-                      sx={{
-                        color: '#91b7c2',
-                        fontSize: 11,
-                        fontWeight: 800,
-                        letterSpacing: 0,
-                        textTransform: 'uppercase',
-                      }}
-                    >
-                      {label}
-                    </Box>
-                    <Box sx={{ fontSize: 22, fontWeight: 900, marginTop: '4px' }}>
-                      {value ?? 0}
-                    </Box>
+                    <StatCard
+                      label="Image-supported"
+                      value={imageSupported.length}
+                      hint="Findings with a recovered measurement"
+                    />
+                    <StatCard
+                      label="Measurements"
+                      value={getMeasurementRange(evidence)}
+                      hint="Image-level range"
+                    />
+                    <StatCard
+                      label="Max difference"
+                      value={`${getMaxDifferenceMm(evidence)} mm`}
+                      hint="Image vs narrative"
+                    />
+                    <StatCard
+                      label="Mismatches"
+                      value={mismatchCount}
+                      hint="Flagged for verification"
+                    />
+                    <StatCard
+                      label="Heatmaps"
+                      value={heatmaps.length}
+                    />
+                    <StatCard
+                      label="Elapsed"
+                      value={elapsedTime}
+                    />
                   </Box>
-                ))}
-              </Box>
 
-              {reportText ? (
-                <Box
-                  sx={{
-                    border: '1px solid rgba(255,255,255,0.12)',
-                    background: '#fbfdfe',
-                    color: '#1c2b33',
-                    borderRadius: '8px',
-                    boxShadow: '0 22px 55px rgba(0, 0, 0, 0.32)',
-                    overflow: 'hidden',
-                    '& h2': { margin: '0 0 14px', fontSize: 22 },
-                    '& h3': { margin: '18px 0 8px', fontSize: 16 },
-                    '& p': { lineHeight: 1.55, margin: '8px 0' },
-                    '& table': { width: '100%', borderCollapse: 'collapse', margin: '10px 0' },
-                    '& th, & td': {
-                      border: '1px solid #d9e5ea',
-                      padding: '8px',
-                      textAlign: 'left',
-                    },
-                    '& th': { background: '#eaf3f6' },
-                    '& hr': { border: 0, borderTop: '1px solid #d9e5ea', margin: '16px 0' },
-                  }}
-                >
                   <Stack
                     direction="row"
-                    spacing={1.5}
-                    alignItems="center"
-                    sx={{
-                      padding: '16px 20px',
-                      borderBottom: '1px solid #d9e5ea',
-                      background: '#eef7fa',
-                    }}
-                  >
-                    <Box
-                      component="img"
-                      src="/ai-icon-new.png"
-                      alt="AI Analysis"
-                      sx={{
-                        width: 42,
-                        height: 42,
-                        objectFit: 'contain',
-                      }}
-                    />
-                    <Box>
-                      <Box sx={{ fontSize: 18, fontWeight: 900 }}>AI Analysis Report</Box>
-                      <Box sx={{ color: '#5f7884', fontSize: 12 }}>
-                        Review generated findings with the original study images.
-                      </Box>
-                    </Box>
-                  </Stack>
-                  <Box
-                    sx={{
-                      padding: '22px',
-                      maxHeight: '40vh',
-                      overflow: 'auto',
-                    }}
-                    dangerouslySetInnerHTML={{ __html: reportHtml }}
-                  />
-                </Box>
-              ) : (
-                <Alert severity="warning">Report text unavailable.</Alert>
-              )}
-
-              {!!activeHeatmap && (
-                <Box
-                  sx={{
-                    marginTop: '18px',
-                    border: '1px solid rgba(105, 210, 232, 0.18)',
-                    background: '#0d1b24',
-                    borderRadius: '8px',
-                    padding: '16px',
-                    boxShadow: '0 18px 45px rgba(0, 0, 0, 0.28)',
-                  }}
-                >
-                  <Stack
-                    direction={{ xs: 'column', sm: 'row' }}
                     spacing={1}
-                    alignItems={{ xs: 'flex-start', sm: 'center' }}
-                    justifyContent="space-between"
-                    sx={{ marginBottom: '12px' }}
+                    flexWrap="wrap"
+                    useFlexGap
+                    sx={{ marginBottom: '16px' }}
                   >
-                    <Box>
-                      <Box sx={{ color: '#eef7fb', fontSize: 16, fontWeight: 900 }}>
-                        Heatmap Review
-                      </Box>
-                      <Box sx={{ color: '#9fc4ce', fontSize: 12 }}>
-                        {activeHeatmap.summary || 'AI-generated visual attention map'}
-                      </Box>
-                    </Box>
-                    <Chip
-                      size="small"
-                      label={`${heatmapIndex + 1} of ${heatmaps.length}`}
-                      sx={{
-                        color: '#e8fbff',
-                        backgroundColor: 'rgba(105, 210, 232, 0.12)',
-                        border: '1px solid rgba(105, 210, 232, 0.25)',
-                        fontWeight: 800,
-                      }}
-                    />
+                    {(['critical', 'high', 'medium', 'low'] as const).map(severity => (
+                      <Chip
+                        key={severity}
+                        size="small"
+                        label={`${severity.toUpperCase()} ${severityCounts[severity]}`}
+                        sx={{
+                          backgroundColor: SEVERITY_COLORS[severity],
+                          color: '#ffffff',
+                          fontWeight: 900,
+                          fontSize: 11,
+                        }}
+                      />
+                    ))}
                   </Stack>
 
+                  <Box sx={{ fontSize: 14, fontWeight: 900, marginBottom: '8px' }}>
+                    Recovered image-level AI measurements
+                  </Box>
                   <Box
                     sx={{
-                      position: 'relative',
-                      borderRadius: '8px',
-                      overflow: 'hidden',
-                      background: '#050b10',
+                      maxHeight: '38vh',
+                      overflow: 'auto',
                       border: '1px solid rgba(255,255,255,0.1)',
-                      boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.03)',
+                      borderRadius: '6px',
                     }}
                   >
                     <Box
+                      component="table"
                       sx={{
-                        display: 'grid',
-                        gridTemplateColumns: {
-                          xs: '1fr',
-                          md: activeHeatmap.gemini_annotated_image_b64 ? '1fr 1fr' : '1fr',
+                        width: '100%',
+                        borderCollapse: 'collapse',
+                        fontSize: 12,
+                        '& th': {
+                          position: 'sticky',
+                          top: 0,
+                          background: '#0b1720',
+                          color: '#8bbfd0',
+                          fontSize: 10,
+                          fontWeight: 800,
+                          textTransform: 'uppercase',
+                          textAlign: 'left',
+                          padding: '9px 10px',
+                          borderBottom: '1px solid rgba(255,255,255,0.12)',
+                          zIndex: 1,
                         },
-                        gap: '1px',
-                        backgroundColor: 'rgba(255,255,255,0.1)',
+                        '& td': {
+                          padding: '9px 10px',
+                          borderBottom: '1px solid rgba(255,255,255,0.06)',
+                          color: '#dbeef5',
+                          verticalAlign: 'top',
+                        },
                       }}
                     >
-                      {[
-                        {
-                          label: 'Heatmap',
-                          src: activeHeatmap.heatmap_image_b64,
-                          alt: activeHeatmap.summary || `AI heatmap ${heatmapIndex + 1}`,
-                        },
-                        {
-                          label: 'Gemini annotation',
-                          src: activeHeatmap.gemini_annotated_image_b64,
-                          alt: `Gemini annotated heatmap ${heatmapIndex + 1}`,
-                        },
-                      ]
-                        .filter(image => image.src)
-                        .map(image => (
-                          <Box
-                            key={image.label}
-                            sx={{
-                              minHeight: { xs: 260, sm: 420 },
-                              display: 'grid',
-                              gridTemplateRows: 'auto 1fr',
-                              background: '#050b10',
-                            }}
-                          >
-                            <Box
-                              sx={{
-                                padding: '8px 10px',
-                                color: '#cceef7',
-                                fontSize: 12,
-                                fontWeight: 800,
-                                background: 'rgba(13, 27, 36, 0.92)',
-                                borderBottom: '1px solid rgba(255,255,255,0.08)',
-                              }}
-                            >
-                              {image.label}
-                            </Box>
-                            <Box
-                              sx={{
-                                display: 'grid',
-                                placeItems: 'center',
-                                padding: '10px',
-                              }}
-                            >
+                      <thead>
+                        <tr>
+                          <th>Finding</th>
+                          <th>Image measurement</th>
+                          <th>Image score</th>
+                          <th>Narrative output</th>
+                          <th>CIAI action</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {evidence.map((finding, index) => (
+                          <tr key={`${finding.findingId}-${finding.frameKey}`}>
+                            <td>
                               <Box
-                                component="img"
-                                src={getHeatmapImageSrc(image.src)}
-                                alt={image.alt}
-                                sx={{
-                                  maxWidth: '100%',
-                                  maxHeight: { xs: 320, sm: 520 },
-                                  width: 'auto',
-                                  height: 'auto',
-                                  display: 'block',
+                                component="button"
+                                type="button"
+                                onClick={() => {
+                                  setEvidenceIndex(index);
+                                  setActiveTab(2);
                                 }}
-                              />
-                            </Box>
-                          </Box>
+                                sx={{
+                                  background: 'none',
+                                  border: 0,
+                                  padding: 0,
+                                  color: '#8be0f8',
+                                  fontWeight: 800,
+                                  fontSize: 12,
+                                  cursor: 'pointer',
+                                  textAlign: 'left',
+                                }}
+                              >
+                                {finding.findingId} — {finding.name}
+                              </Box>
+                              <Box sx={{ color: '#8fb4c0', fontSize: 11 }}>
+                                {finding.seriesLabel}
+                              </Box>
+                            </td>
+                            <td>{finding.imageMeasurement.display}</td>
+                            <td>{formatConfidence(finding.imageScore)}</td>
+                            <td>
+                              {finding.narrativeMeasurement.display} /{' '}
+                              {formatConfidence(finding.narrativeScore)}
+                            </td>
+                            <td
+                              style={{
+                                color: finding.consistency === 'match' ? '#3fcf8e' : '#ff8f7a',
+                                fontWeight: 700,
+                              }}
+                            >
+                              {finding.consistency === 'match'
+                                ? 'Consistent — preserve both'
+                                : 'Preserve both + flag mismatch'}
+                            </td>
+                          </tr>
                         ))}
+                        {!evidence.length && (
+                          <tr>
+                            <td
+                              colSpan={5}
+                              style={{ textAlign: 'center', color: '#8fb4c0', padding: '24px' }}
+                            >
+                              No finding resolved to an image frame.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
                     </Box>
-
-                    {heatmaps.length > 1 && (
-                      <>
-                        <IconButton
-                          aria-label="previous heatmap"
-                          onClick={goToPreviousHeatmap}
-                          sx={{
-                            position: 'absolute',
-                            left: 12,
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            color: '#ffffff',
-                            backgroundColor: 'rgba(0,0,0,0.52)',
-                            boxShadow: '0 8px 20px rgba(0,0,0,0.35)',
-                            '&:hover': { backgroundColor: 'rgba(0,0,0,0.72)' },
-                          }}
-                        >
-                          <NavigateBeforeIcon />
-                        </IconButton>
-                        <IconButton
-                          aria-label="next heatmap"
-                          onClick={goToNextHeatmap}
-                          sx={{
-                            position: 'absolute',
-                            right: 12,
-                            top: '50%',
-                            transform: 'translateY(-50%)',
-                            color: '#ffffff',
-                            backgroundColor: 'rgba(0,0,0,0.52)',
-                            boxShadow: '0 8px 20px rgba(0,0,0,0.35)',
-                            '&:hover': { backgroundColor: 'rgba(0,0,0,0.72)' },
-                          }}
-                        >
-                          <NavigateNextIcon />
-                        </IconButton>
-                      </>
-                    )}
                   </Box>
-
-                  {activeHeatmap.frame_key && (
-                    <Box sx={{ color: '#9fc4ce', fontSize: 12, marginTop: '10px' }}>
-                      Frame: {activeHeatmap.frame_key}
-                    </Box>
-                  )}
                 </Box>
               )}
+
+              {activeTab === 1 && <FindingsTable findings={findingsSummary} />}
+
+              {activeTab === 2 && (
+                <EvidenceViewer
+                  findings={evidence}
+                  index={Math.min(evidenceIndex, Math.max(evidence.length - 1, 0))}
+                  onIndexChange={setEvidenceIndex}
+                  studyInstanceUid={study.studyInstanceUid}
+                />
+              )}
+
+              {activeTab === 3 &&
+                (reportText ? (
+                  <Box
+                    sx={{
+                      border: '1px solid rgba(255,255,255,0.12)',
+                      background: '#fbfdfe',
+                      color: '#1c2b33',
+                      borderRadius: '8px',
+                      overflow: 'hidden',
+                      '& h2': { margin: '0 0 14px', fontSize: 22 },
+                      '& h3': { margin: '18px 0 8px', fontSize: 16 },
+                      '& h4': { margin: '14px 0 6px', fontSize: 14 },
+                      '& p': { lineHeight: 1.55, margin: '8px 0' },
+                      '& ul, & ol': { margin: '8px 0', paddingLeft: '22px' },
+                      '& table': { width: '100%', borderCollapse: 'collapse', margin: '10px 0' },
+                      '& th, & td': {
+                        border: '1px solid #d9e5ea',
+                        padding: '8px',
+                        textAlign: 'left',
+                        fontSize: 12,
+                      },
+                      '& th': { background: '#eaf3f6' },
+                      '& hr': { border: 0, borderTop: '1px solid #d9e5ea', margin: '16px 0' },
+                    }}
+                  >
+                    <Stack
+                      direction="row"
+                      spacing={1.5}
+                      alignItems="center"
+                      sx={{
+                        padding: '16px 20px',
+                        borderBottom: '1px solid #d9e5ea',
+                        background: '#eef7fa',
+                      }}
+                    >
+                      <Box
+                        component="img"
+                        src="/ciai-logo.png"
+                        alt="CIAI"
+                        sx={{ height: 28, objectFit: 'contain' }}
+                      />
+                      <Box>
+                        <Box sx={{ fontSize: 18, fontWeight: 900 }}>AI Analysis Report</Box>
+                        <Box sx={{ color: '#5f7884', fontSize: 12 }}>
+                          Review generated findings with the original study images.
+                        </Box>
+                      </Box>
+                    </Stack>
+                    <Box
+                      sx={{ padding: '22px', maxHeight: '46vh', overflow: 'auto' }}
+                      dangerouslySetInnerHTML={{ __html: reportHtml }}
+                    />
+                  </Box>
+                ) : (
+                  <Alert severity="warning">Report text unavailable.</Alert>
+                ))}
 
               {!!processingErrors.length && (
                 <Box sx={{ marginTop: '14px' }}>
@@ -1516,6 +2028,27 @@ export default function AiAnalysisDialog({
             Retry
           </Button>
         )}
+
+        {hasResults && (
+          <TextField
+            select
+            size="small"
+            value={reportScope}
+            onChange={event => setReportScope(event.target.value as ReportScope)}
+            sx={{
+              minWidth: 230,
+              '& .MuiInputBase-root': { color: '#eef7fb', background: '#0b1720' },
+              '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(105, 210, 232, 0.25)' },
+              '& .MuiSvgIcon-root': { color: '#8be0f8' },
+            }}
+          >
+            <MenuItem value="significant">
+              Report: significant findings ({reportEvidence.length})
+            </MenuItem>
+            <MenuItem value="all">Report: all image evidence ({evidence.length})</MenuItem>
+          </TextField>
+        )}
+
         <Box sx={{ flex: 1 }} />
         <Button
           variant="outlined"
@@ -1529,21 +2062,25 @@ export default function AiAnalysisDialog({
         <Button
           variant="outlined"
           onClick={handleDownloadDoc}
-          disabled={!reportText}
+          disabled={!hasResults}
           startIcon={<DescriptionIcon />}
           sx={{ color: '#dff6ff', borderColor: '#477889' }}
         >
           Download DOC
         </Button>
-        <Button
-          variant="outlined"
-          onClick={handleDownloadPdf}
-          disabled={!reportText}
-          startIcon={<PictureAsPdfIcon />}
-          sx={{ color: '#dff6ff', borderColor: '#477889' }}
-        >
-          Download PDF
-        </Button>
+        <Tooltip title="Opens the print view — choose “Save as PDF”">
+          <span>
+            <Button
+              variant="outlined"
+              onClick={handleDownloadPdf}
+              disabled={!hasResults}
+              startIcon={<PictureAsPdfIcon />}
+              sx={{ color: '#dff6ff', borderColor: '#477889' }}
+            >
+              Download PDF
+            </Button>
+          </span>
+        </Tooltip>
         <Button
           variant="contained"
           onClick={handleClose}

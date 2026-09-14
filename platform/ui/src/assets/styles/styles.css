@@ -1782,11 +1782,32 @@ body.bg-black-on td[data-id='In-Progress'].border-secondary-light-darkMode {
   font-weight: 600;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  opacity: 0.7;
+  /* Explicit muted color is required, not cosmetic: InputLabelWrapper applies
+     `text-white`, which the legacy rule near the top of this file rewrites to
+     brand teal (#0a7c6c) in light mode — rendering every column label as a
+     teal link rather than a quiet, secondary column header. */
+  color: #6b7280;
+}
+
+body.bg-black-on .worklist-filter-grid label span[role='button'] {
+  color: #8890a0;
+}
+
+/* Sort chevrons should read as a quiet affordance beside the label, not as
+   brand-colored iconography competing with it. */
+.worklist-filter-grid label span[role='button'] svg {
+  color: #9ca3af;
+}
+
+body.bg-black-on .worklist-filter-grid label span[role='button'] svg {
+  color: #6b7280;
 }
 
 .worklist-filter-grid input[type='text']:not(.DateInput_input) {
   height: 40px;
+  /* 8px matches the date-range wrapper (rounded-lg) and the react-select
+     control, so all three field types share one corner radius. */
+  border-radius: 8px;
   padding-left: 34px;
   background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%236b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>');
   background-repeat: no-repeat;

@@ -177,7 +177,7 @@ const RowActionButton = ({
     data-cy={dataCy}
     className={classnames(
       'inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors duration-150',
-      'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
+      'focus-visible:ring-accent/60 focus:outline-none focus-visible:ring-2',
       disabled
         ? 'cursor-not-allowed opacity-60'
         : isActive
@@ -923,7 +923,7 @@ function WorkList({
           ) : (
             <span className="text-gray-700">(Empty)</span>
           ),
-          gridCol: 5,
+          gridCol: 4,
         },
         {
           key: 'mrn',
@@ -939,7 +939,7 @@ function WorkList({
             </>
           ),
           title: `${studyDate || ''} ${studyTime || ''}`,
-          gridCol: 4,
+          gridCol: 5,
         },
         // {
         //   key: 'description',
@@ -994,7 +994,7 @@ function WorkList({
               />
             </span>
           ),
-          gridCol: 4,
+          gridCol: 3,
         },
         {
           key: 'actions',
@@ -1003,7 +1003,9 @@ function WorkList({
             <div
               className={classnames(
                 'actions-container inline-flex flex-wrap items-center gap-0.5 rounded-full border p-0.5',
-                isActive ? 'border-border-subtleDark/60 bg-white/[0.03]' : 'border-border-subtle bg-black/[0.02]'
+                isActive
+                  ? 'border-border-subtleDark/60 bg-white/[0.03]'
+                  : 'border-border-subtle bg-black/[0.02]'
               )}
             >
               {isShowFeature('create_study_report') && (
@@ -1108,7 +1110,9 @@ function WorkList({
                   <span
                     id="basic-button"
                     aria-controls={
-                      open && activeViewerMenuStudyId === studyInstanceUid ? 'basic-menu' : undefined
+                      open && activeViewerMenuStudyId === studyInstanceUid
+                        ? 'basic-menu'
+                        : undefined
                     }
                     aria-haspopup="true"
                     aria-expanded={
@@ -1387,7 +1391,7 @@ function WorkList({
       className={
         isActive
           ? 'bg-surface-canvasDark trad-bg-black flex h-screen flex-col'
-          : 'trad-bg-black flex h-screen flex-col bg-surface-canvas'
+          : 'trad-bg-black bg-surface-canvas flex h-screen flex-col'
       }
     >
       <Header
