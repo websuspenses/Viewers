@@ -46,3 +46,8 @@ platform/app/.recipes/OpenResty-Orthanc/logs/*
 .vercel
 
 .vs
+Analyze API response
+Analyze API response.json
+required-report-format.pdf
+response-2.json
+docs/ai-analysis-plan.md

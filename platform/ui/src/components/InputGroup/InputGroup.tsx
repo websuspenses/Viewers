@@ -76,6 +76,7 @@ const InputGroup = ({
             value={values[name]}
             onChange={handleFieldChange}
             isActive={isActive}
+            placeholder={inputProps?.placeholder}
           />
         );
       case 'MultiSelect':
@@ -131,7 +132,16 @@ const InputGroup = ({
           return (
             <div
               key={inputMeta.name}
-              className={classnames('pl-4 first:pl-12 label-'+inputMeta.name, getGridWidthClass(inputMeta.gridCol)) }
+              // px-4 matches StudyListTableRow's cell padding exactly, so each
+              // column label sits over its own data. `first:pl-12` used to
+              // indent the first header 32px past its column.
+              // shrink-0 keeps the declared column width authoritative. Without
+              // it these flex items shrink to fit their inputs, so the header
+              // drifts out of step with the fixed-layout table underneath.
+              className={classnames(
+                'shrink-0 px-4 label-' + inputMeta.name,
+                getGridWidthClass(inputMeta.gridCol)
+              )}
             >
               {renderFieldInputComponent(inputMeta)}
             </div>

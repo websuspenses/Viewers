@@ -154,42 +154,47 @@ function createDicomWebApi(dicomWebConfig, servicesManager) {
         },
 
         sendToCloud: async function (studyInstanceUid) {
-          //const navigate = useNavigate();
-          // appConfig.showLoadingIndicator=true;
           qidoDicomWebClient.headers = getAuthrorizationHeader();
-          const url = dicomWebConfig.wadoRoot + '/studies/' + studyInstanceUid + '/send_to_cloud';
-          await fetch(url, qidoDicomWebClient)
-            .then(response => response.json())
-            .then(result => {
-              // console.log('result ', result);
-              if (result.StudyID) {
-                let url = `${dicomWebConfig.wadoRoot}/studies/${studyInstanceUid}/update_status`;
-                const statusBody = { status: 'Ready to Refer' };
-                const options = {
-                  method: 'POST',
-                  headers: qidoDicomWebClient.headers,
-                  body: JSON.stringify(statusBody),
-                };
+          const base = `${dicomWebConfig.wadoRoot}/studies/${studyInstanceUid}`;
 
-                try {
-                  const res = fetch(url, options);
-                  if (res) {
-                    //navigate('/workList');
-                    console.log('Status updated Save to server', res);
-                    // appConfig.showLoadingIndicator=true;
-                    console.log('Status updated Save to server 123456', result);
-                    return result;
-                  }
-                  console.log('response ', res);
-                } catch (error) {
-                  console.error('Error:', error);
-                }
-                console.log('Status updated Save to server xyz', result);
-              }
-            })
-            .catch(err => {
-              console.log(err.message);
+          // The result has to be returned, and failures have to reach the
+          // caller: the previous version awaited the fetch but returned nothing
+          // and swallowed errors in a `.catch`, so every save — successful or
+          // not — looked like a failure to the worklist.
+          const response = await fetch(`${base}/send_to_cloud`, {
+            headers: qidoDicomWebClient.headers,
+          });
+
+          if (!response.ok) {
+            throw new Error(`Save to server failed with HTTP ${response.status}`);
+          }
+
+          const result = await response.json();
+
+          if (!result || !result.StudyID) {
+            throw new Error('Save to server did not return a study id.');
+          }
+
+          // Best-effort: the study is already on the server at this point, so a
+          // failure to flip the status should not be reported as a failed save.
+          try {
+            const statusResponse = await fetch(`${base}/update_status`, {
+              method: 'POST',
+              headers: {
+                ...qidoDicomWebClient.headers,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ status: 'Ready to Refer' }),
             });
+
+            if (!statusResponse.ok) {
+              console.warn('sendToCloud: status update failed', statusResponse.status);
+            }
+          } catch (error) {
+            console.warn('sendToCloud: status update failed', error);
+          }
+
+          return result;
         },
       },
       series: {

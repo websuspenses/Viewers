@@ -5,10 +5,14 @@ import { useTranslation } from 'react-i18next';
 
 import Icon from '../Icon';
 
-const baseLabelClassName = 'flex flex-col flex-1 text-white text-sm font-semibold tracking-wide pl-1 select-none';
-const baseLabelClassNameForSwitch = 'flex flex-col flex-1 text-white-On text-sm font-semibold tracking-wide pl-1 select-none';
+// Column headers are labels, not content: they sit at 11px uppercase in the
+// muted tone so the row values below them are what the eye reads first.
+// Deliberately not `text-white` — legacy styles.css rewrites that class to
+// brand teal, which made every column header look like a link.
+const baseLabelClassName = 'flex flex-col flex-1 select-none';
+const baseLabelClassNameForSwitch = 'flex flex-col flex-1 select-none';
 const spanClassName =
-  'flex flex-row items-center rounded transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60';
+  'flex flex-row items-center gap-1 rounded text-[11px] font-bold uppercase tracking-[0.07em] transition-colors duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60';
 const sortIconMap = {
   descending: 'sorting-active-up',
   ascending: 'sorting-active-down',
@@ -29,7 +33,7 @@ const InputLabelWrapper = ({
   ...props
 }) => {
   const { t } = useTranslation('StudyList');
-
+  const isSorted = isSortable && sortDirection !== 'none';
 
   const onClickHandler = e => {
     if (!isSortable) {
@@ -45,7 +49,20 @@ const InputLabelWrapper = ({
         role="button"
         className={classnames(
           spanClassName,
-          isSortable ? 'cursor-pointer hover:text-accent' : 'cursor-default',
+          // An active sort is the one piece of state in this row worth
+          // accenting; everything else stays quiet.
+          isSorted
+            ? isActive
+              ? 'text-accent-bright'
+              : 'text-accent'
+            : isActive
+              ? 'text-content-mutedDark'
+              : 'text-content-muted',
+          isSortable
+            ? isActive
+              ? 'cursor-pointer hover:text-accent-bright'
+              : 'cursor-pointer hover:text-accent'
+            : 'cursor-default',
           labelTextClassName
         )}
         onClick={onClickHandler}
@@ -56,17 +73,20 @@ const InputLabelWrapper = ({
         {isSortable && (
           <Icon
             name={sortIconMap[sortDirection]}
-            className={isActive ? classnames(
-              'mx-2 w-2 transition-colors duration-150',
-              sortDirection !== 'none' || isActive ? 'headericonCls' : 'text-primary-light'
-            ) : classnames(
-              'mx-2 w-2 transition-colors duration-150',
-              sortDirection !== 'none' ? 'text-primary-light' : 'text-primary-main'
+            className={classnames(
+              'w-2 shrink-0 transition-colors duration-150',
+              isSorted
+                ? isActive
+                  ? 'text-accent-bright'
+                  : 'text-accent'
+                : isActive
+                  ? 'text-content-mutedDark/70'
+                  : 'text-border-strong'
             )}
           />
         )}
       </span>
-      <span>{children}</span>
+      {children ? <span className="mt-1.5 block">{children}</span> : null}
     </label>
   );
 };

@@ -3,11 +3,40 @@ import PropTypes from 'prop-types';
 import classnames from 'classnames';
 import { useTranslation } from 'react-i18next';
 
-import Typography from '../Typography';
 import Select from '../Select';
-import Icon from '../Icon';
-import StatusBadge from '../StatusBadge';
 
+const RANGES = [
+  { value: '10', label: '10' },
+  { value: '25', label: '25' },
+  { value: '50', label: '50' },
+  { value: '100', label: '100' },
+];
+
+const ChevronIcon = ({ direction = 'left', double = false }) => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2.4"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+    className={direction === 'right' ? 'rotate-180' : undefined}
+  >
+    <path d="M14 6l-6 6 6 6" />
+    {double && <path d="M19 6l-6 6 6 6" />}
+  </svg>
+);
+
+/**
+ * Worklist pagination.
+ *
+ * The page indicator is the anchor and sits between the two direction
+ * controls, so moving through pages is a single left/right decision rather
+ * than a hunt through a row of same-looking buttons.
+ */
 const StudyListPagination = ({
   onChangePage,
   currentPage,
@@ -19,21 +48,24 @@ const StudyListPagination = ({
   const { t } = useTranslation('StudyList');
 
   const navigateToPage = page => {
-    const toPage = page < 1 ? 1 : page;
-    onChangePage(toPage);
+    onChangePage(page < 1 ? 1 : page);
   };
 
-  const ranges = [
-    { value: '10', label: '10' },
-    { value: '25', label: '25' },
-    { value: '50', label: '50' },
-    { value: '100', label: '100' },
-  ];
-  const [selectedRange, setSelectedRange] = useState(ranges.find(r => Number(r.value) === perPage));
-  const onSelectedRange = selectedRange => {
-    setSelectedRange(selectedRange);
-    onChangePerPage(selectedRange.value);
+  const [selectedRange, setSelectedRange] = useState(
+    RANGES.find(range => Number(range.value) === perPage)
+  );
+
+  const onSelectedRange = range => {
+    setSelectedRange(range);
+    onChangePerPage(range.value);
   };
+
+  const isFirstPage = currentPage === 1;
+  // The API reports no total, so a short page is the only signal that this is
+  // the last one.
+  const isLastPage = numOfStudies === 0 || numOfStudies < perPage;
+  const rangeStart = numOfStudies === 0 ? 0 : (currentPage - 1) * perPage + 1;
+  const rangeEnd = (currentPage - 1) * perPage + numOfStudies;
 
   const NavButton = ({ onClick, disabled, ariaLabel, children }) => (
     <button
@@ -42,13 +74,14 @@ const StudyListPagination = ({
       disabled={disabled}
       aria-label={ariaLabel}
       className={classnames(
-        'flex h-9 items-center gap-1 rounded-md px-3 text-sm font-medium transition duration-150',
-        'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+        'inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-[13px] font-semibold',
+        'transition-colors duration-150 focus:outline-none focus-visible:ring-2',
+        'focus-visible:ring-accent/50',
         disabled
-          ? 'cursor-not-allowed opacity-35'
+          ? 'cursor-not-allowed opacity-40'
           : isActive
-            ? 'text-content-primaryDark hover:bg-white/10'
-            : 'text-content-primary hover:bg-black/5'
+            ? 'border-border-defaultDark text-content-secondaryDark hover:border-accent hover:text-accent-bright'
+            : 'border-border-default bg-surface-raised text-content-secondary hover:border-accent hover:text-accent'
       )}
     >
       {children}
@@ -56,78 +89,88 @@ const StudyListPagination = ({
   );
 
   return (
-    <div className={isActive ? 'bg-black-on border-border-subtleDark rounded-b-xl border-t py-4' : 'bg-black border-border-subtle rounded-b-xl border-t py-4'}>
-      <div className="container relative m-auto px-8">
+    <div
+      className={classnames(
+        'rounded-b-xl border-t py-3',
+        isActive ? 'bg-black-on border-border-subtleDark' : 'bg-black border-border-subtle'
+      )}
+    >
+      <div className="container relative m-auto px-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div className="flex items-center">
+          <div className="flex items-center gap-2.5">
+            <label
+              htmlFor="rows-per-page"
+              className={classnames(
+                'text-[13px]',
+                isActive ? 'text-content-mutedDark' : 'text-content-muted'
+              )}
+            >
+              {t('Results per page')}
+            </label>
             <Select
               id="rows-per-page"
-              className="border-primary-main relative mr-3 w-24"
-              options={ranges}
+              className="relative w-[84px]"
+              options={RANGES}
               value={selectedRange}
               isMulti={false}
               isClearable={false}
               isSearchable={false}
-              closeMenuOnSelect={false}
-              hideSelectedOptions={true}
+              closeMenuOnSelect={true}
+              hideSelectedOptions={false}
               isActive={isActive}
               onChange={onSelectedRange}
             />
-            <Typography className={isActive ? 'resultsPerPage_dark' : 'text-base opacity-60'}>
-              {t('ResultsPerPage')}
-            </Typography>
-          </div>
-          <div className="">
-            <div className="flex items-center gap-3">
-              <StatusBadge
-                label={`${t('Page')} ${currentPage}`}
-                variant="neutral"
-                isActive={isActive}
-              />
-              <div
+            {numOfStudies > 0 && (
+              <span
                 className={classnames(
-                  'flex items-center gap-0.5 rounded-lg p-0.5',
-                  isActive ? 'bg-white/5' : 'bg-black/5'
+                  'hidden text-[13px] tabular-nums sm:inline',
+                  isActive ? 'text-content-mutedDark' : 'text-content-muted'
                 )}
               >
-                <NavButton
-                  onClick={() => navigateToPage(1)}
-                  disabled={currentPage === 1}
-                  ariaLabel={t('First page')}
-                >
-                  <Icon
-                    name="arrow-left-small"
-                    className="h-3.5 w-3.5"
-                  />
-                  <Icon
-                    name="arrow-left-small"
-                    className="-ml-2.5 h-3.5 w-3.5"
-                  />
-                </NavButton>
-                <NavButton
-                  onClick={() => navigateToPage(currentPage - 1)}
-                  disabled={currentPage === 1}
-                  ariaLabel={t('Previous')}
-                >
-                  <Icon
-                    name="arrow-left-small"
-                    className="h-3.5 w-3.5"
-                  />
-                  {t('Previous')}
-                </NavButton>
-                <NavButton
-                  onClick={() => navigateToPage(currentPage + 1)}
-                  disabled={numOfStudies === 0 || numOfStudies < perPage}
-                  ariaLabel={t('Next')}
-                >
-                  {t('Next')}
-                  <Icon
-                    name="arrow-right-small"
-                    className="h-3.5 w-3.5"
-                  />
-                </NavButton>
-              </div>
-            </div>
+                {rangeStart}&ndash;{rangeEnd}
+              </span>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <NavButton
+              onClick={() => navigateToPage(1)}
+              disabled={isFirstPage}
+              ariaLabel={t('First page')}
+            >
+              <ChevronIcon
+                direction="left"
+                double
+              />
+            </NavButton>
+            <NavButton
+              onClick={() => navigateToPage(currentPage - 1)}
+              disabled={isFirstPage}
+              ariaLabel={t('Previous')}
+            >
+              <ChevronIcon direction="left" />
+              <span className="hidden sm:inline">{t('Previous')}</span>
+            </NavButton>
+
+            <span
+              className={classnames(
+                'inline-flex h-8 items-center rounded-lg px-3 text-[13px] font-semibold tabular-nums',
+                isActive
+                  ? 'bg-accent-lightDark text-accent-bright'
+                  : 'bg-accent-light text-accent'
+              )}
+            >
+              {t('Page')} {currentPage}
+            </span>
+
+            <NavButton
+              onClick={() => navigateToPage(currentPage + 1)}
+              disabled={isLastPage}
+              ariaLabel={t('Next')}
+            >
+              <span className="hidden sm:inline">{t('Next')}</span>
+              <ChevronIcon direction="right" />
+            </NavButton>
           </div>
         </div>
       </div>
@@ -140,6 +183,8 @@ StudyListPagination.propTypes = {
   currentPage: PropTypes.number.isRequired,
   perPage: PropTypes.number.isRequired,
   onChangePerPage: PropTypes.func.isRequired,
+  numOfStudies: PropTypes.number,
+  isActive: PropTypes.bool,
 };
 
 export default StudyListPagination;

@@ -41,7 +41,7 @@ import {
   useModal,
   AboutModal,
   UserPreferences,
-  LoadingIndicatorProgress,
+  ProgressBanner,
   StatusBadge,
 } from '@ohif/ui';
 
@@ -60,11 +60,11 @@ const seriesInStudiesMap = new Map();
 // duplicating the raw SVG path data across the row-cell builder below.
 const GenerateReportActionIcon = () => (
   <svg
-    fill="#0a7c6c"
+    fill="currentColor"
     version="1.1"
     id="Capa_1"
-    width="35px"
-    height="30px"
+    width="19px"
+    height="19px"
     className="svg-icon"
     viewBox="0 0 1024 1024"
     xmlns="http://www.w3.org/2000/svg"
@@ -78,10 +78,10 @@ const SaveToServerActionIcon = () => (
     xmlns="http://www.w3.org/2000/svg"
     version="1.1"
     viewBox="-5.0 -10.0 110.0 135.0"
-    fill="#0a7c6c"
+    fill="currentColor"
     id="Capa_1"
-    width="35px"
-    height="30px"
+    width="19px"
+    height="19px"
   >
     <path d="M88.03,50c1.17-2.81,1.76-5.77,1.76-8.81c0-12.77-10.39-23.16-23.16-23.16c-7.73,0-14.99,3.93-19.27,10.34  c-2.12-0.9-4.37-1.36-6.69-1.36c-7.56,0-14.13,4.88-16.37,12C12.77,39.37,3.5,48.87,3.5,60.48c0,11.85,9.64,21.49,21.49,21.49h15.16  c0.83,0,1.5-0.67,1.5-1.5s-0.67-1.5-1.5-1.5H24.99c-10.19,0-18.49-8.29-18.49-18.49C6.5,50.29,14.79,42,24.99,42  c0.05,0,0.1,0,0.14,0.01c0.09,0.01,0.18,0.01,0.27,0.01l1.21,0.03l0.28-1.18c1.54-6.4,7.2-10.86,13.78-10.86  c2.3,0,4.51,0.54,6.56,1.62l1.27,0.66l0.72-1.24c3.61-6.18,10.28-10.03,17.41-10.03c11.12,0,20.16,9.04,20.16,20.16  c0,3.06-0.69,6.02-2.05,8.81l-0.66,1.36l1.36,0.65c4.97,2.39,8.06,7.29,8.06,12.78c0,7.82-6.36,14.19-14.19,14.19H51.5V48.19  l8.16,14.14c0.28,0.48,0.78,0.75,1.3,0.75c0.25,0,0.51-0.06,0.75-0.2c0.72-0.41,0.96-1.33,0.55-2.05L51.3,41.84  c-0.01-0.01-0.02-0.02-0.02-0.03c-0.06-0.1-0.13-0.2-0.22-0.28c0,0,0,0,0,0c-0.08-0.08-0.18-0.15-0.27-0.21  c-0.03-0.02-0.06-0.03-0.09-0.05c-0.08-0.04-0.16-0.07-0.24-0.1c-0.03-0.01-0.06-0.02-0.09-0.03c-0.12-0.03-0.23-0.05-0.36-0.05  s-0.24,0.02-0.36,0.05c-0.03,0.01-0.06,0.02-0.09,0.03c-0.08,0.03-0.17,0.06-0.24,0.1c-0.03,0.02-0.06,0.03-0.09,0.05  c-0.1,0.06-0.19,0.13-0.27,0.21c0,0,0,0,0,0c-0.08,0.08-0.15,0.18-0.22,0.28c-0.01,0.01-0.02,0.02-0.02,0.03L37.74,60.83  c-0.41,0.72-0.17,1.63,0.55,2.05c0.72,0.42,1.63,0.17,2.05-0.55l8.16-14.14v32.28c0,0.83,0.67,1.5,1.5,1.5h29.31  c9.48,0,17.19-7.71,17.19-17.19C96.5,58.72,93.22,53.07,88.03,50z" />
   </svg>
@@ -92,10 +92,10 @@ const ReferActionIcon = () => (
     xmlns="http://www.w3.org/2000/svg"
     version="1.1"
     viewBox="-5.0 -10.0 110.0 135.0"
-    fill="#0a7c6c"
+    fill="currentColor"
     id="Capa_1"
-    width="35px"
-    height="30px"
+    width="19px"
+    height="19px"
   >
     <g>
       <path d="m6.8789 80.059v5.3203 0.33984l0.019532 0.55859c0.011718 0.37109 0.089843 0.75 0.14062 1.1211 0.16016 0.73047 0.37891 1.4609 0.73047 2.1289 0.64844 1.3594 1.6797 2.5117 2.9102 3.3711 1.2383 0.83984 2.7109 1.3711 4.2109 1.4883 0.87891 0.050781 1.1289 0.019531 1.6211 0.03125h1.3281 5.3203 10.641c4.6719-0.019531 11.602 0.96875 11.898-2.7109 0.32031-3.9805-6.9297-2.8594-11.371-2.9102l-10.41-0.089844-5.1992-0.03125h-2.6016c-0.19141-0.011719-0.48828 0-0.60156-0.019531-0.12891 0-0.25 0-0.37109-0.039062-0.25-0.03125-0.48047-0.12109-0.71094-0.19922-0.91016-0.39844-1.6094-1.2812-1.7383-2.2617-0.050781-0.23828-0.039062-0.44922-0.039062-0.96094v-1.3008-2.6016-2.6016c0-0.92969 0.011719-1.5508 0.10938-2.3203 0.17969-1.4688 0.64062-2.8984 1.3086-4.2188 0.67188-1.3203 1.5781-2.5195 2.6602-3.5391 1.2188-1.1406 2.4883-2.25 3.8008-3.3086 2.6094-2.1094 5.3906-4.0195 8.2891-5.6992 1.4492-0.82812 2.9414-1.6016 4.4492-2.3086 0.76172-0.32812 1.5195-0.69141 2.3008-0.98828l1.2812-0.51953c0.66016-0.30078 1.2812-0.73047 1.7812-1.3008 0.5-0.57031 0.89062-1.2695 1.0781-2.0312 0.10156-0.37891 0.14844-0.76953 0.14844-1.1602v-0.35156c0-0.078124 0-0.35156-0.019531-0.51172-0.070312-0.76172-0.30078-1.5-0.71094-2.1719-0.21094-0.33984-0.46094-0.64844-0.76172-0.94141-0.14844-0.14062-0.30859-0.28125-0.48828-0.39844l-0.30859-0.21875c-1.3008-0.87891-2.5-1.8984-3.5586-3.0586-4.2812-4.6016-6.1719-11.27-4.9102-17.398 1.1719-6.1211 5.3984-11.578 11.02-14.129 2.7812-1.3008 5.8516-1.9492 8.8984-1.8594 1.5312 0.058594 3.0117 0.32031 4.4609 0.69141 1.4297 0.46094 2.8516 0.98047 4.1406 1.75 2.6211 1.4609 4.8711 3.5508 6.5117 6.0195 1.6602 2.4414 2.7383 5.2305 3.0391 8.0703 0.039063 0.32813 0.078125 0.67188 0.12109 1.0117 0 0.35156 0.011719 0.69922 0.019531 1.0586 0.039063 0.71094 0.011719 1.4492-0.03125 2.1797-0.078125 1.4688-0.28125 2.8984-0.41016 4.2109-0.25 2.6016-0.35938 4.8984 1.8398 6.1289 1.7695 0.98828 3.9805-0.75 5.3594-4.0195 0.67969-1.6211 1.1406-3.5586 1.2891-5.5312 0.17188-1.9609 0.019531-3.9609-0.23828-5.7109-0.60156-3.9805-2.1094-7.8203-4.3984-11.078-2.2891-3.2695-5.2891-6.0195-8.7383-8.0312-3.4805-1.9609-7.4219-3.1484-11.43-3.3789-3.9805-0.19141-8 0.48047-11.672 2.0312-7.3086 3.1211-13.09 9.6211-15.078 17.309-1 3.8203-1.2109 7.8398-0.46875 11.711 0.73828 3.8711 2.3594 7.5703 4.6992 10.719 1.2305 1.6484 2.6484 3.1602 4.2188 4.4688 0.39844 0.32031 0.78906 0.64844 1.2109 0.94922l0.14062 0.10156-0.73047 0.28906c-1.7383 0.73828-3.4492 1.5391-5.1094 2.4219-3.3203 1.7695-6.4688 3.8086-9.4297 6.0781-1.4805 1.1289-2.9219 2.3203-4.3086 3.5586l-1.0391 0.94141c-0.33984 0.32812-0.78125 0.73828-1.1289 1.1289-0.73828 0.80078-1.4219 1.6719-2.0117 2.5898-1.1797 1.8516-2.0508 3.8984-2.5195 6.0508-0.23828 1.0703-0.37891 2.1719-0.42188 3.2695l-0.019531 0.80859v0.67187 1.3281zm27.641-29.5h-0.03125v0.011718c0.011719 0 0.03125-0.011718 0.03125-0.011718z" />
@@ -107,8 +107,8 @@ const ReferActionIcon = () => (
 const EmergencyActionIcon = ({ isEmergency }: { isEmergency: string }) => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    width="35"
-    height="30"
+    width="19px"
+    height="19px"
     viewBox="0 0 128 128"
   >
     <title>Emergency</title>
@@ -176,13 +176,15 @@ const RowActionButton = ({
     title={title ?? ariaLabel}
     data-cy={dataCy}
     className={classnames(
-      'inline-flex h-9 w-9 items-center justify-center rounded-full transition-colors duration-150',
-      'focus-visible:ring-accent/60 focus:outline-none focus-visible:ring-2',
+      'inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg transition-colors duration-150',
+      'focus-visible:ring-accent/50 focus:outline-none focus-visible:ring-2',
+      isActive ? 'text-content-secondaryDark' : 'text-content-secondary',
+      !disabled && (isActive ? 'hover:text-accent-bright' : 'hover:text-accent'),
       disabled
-        ? 'cursor-not-allowed opacity-60'
+        ? 'cursor-not-allowed opacity-40'
         : isActive
-          ? 'hover:bg-white/10 active:bg-white/20'
-          : 'hover:bg-black/10 active:bg-black/20'
+          ? 'hover:bg-white/10 active:bg-white/[0.16]'
+          : 'hover:bg-accent-light active:bg-accent-light'
     )}
   >
     {children}
@@ -275,6 +277,9 @@ function WorkList({
 
   const [userInfoData, setUserInfoResult] = useState({});
   const [isSaveToServerInprogress, setIsSaveToServerInprogress] = useState(false);
+  // Named in the progress banner so the user can tell which row is in flight.
+  const [savingStudyLabel, setSavingStudyLabel] = useState('');
+  const [saveToServerError, setSaveToServerError] = useState('');
 
   /*
    * The default sort value keep the filters synchronized with runtime conditional sorting
@@ -677,36 +682,37 @@ function WorkList({
   //     console.warn(ex);
   //   }
   // };
-  const saveToServer = async studyId => {
-    try {
-      const confirmationText =
-        'Do you really want to save this study to the server? It may take some time to process your request.';
-      if (confirm(confirmationText)) {
-        setIsSaveToServerInprogress(true);
-        // Call the sendToCloud function
-        const result = await dataSource.query.studies.sendToCloud(studyId);
+  const saveToServer = async (studyId, studyLabel = '') => {
+    const confirmationText =
+      'Do you really want to save this study to the server? It may take some time to process your request.';
 
-        isLoadingData = true;
-        if (result && result.StudyID) {
-          console.log('Study successfully saved to the server:', result);
-          setIsSaveToServerInprogress(false);
-          // Optionally, show a success notification
-          alert('Study successfully saved to the server.');
-          navigate(0);
-        } else {
-          console.error('Failed to save the study:', result);
-          setIsSaveToServerInprogress(false);
-          navigate(0);
-        }
+    if (!confirm(confirmationText)) {
+      return;
+    }
+
+    setSaveToServerError('');
+    setSavingStudyLabel(studyLabel);
+    setIsSaveToServerInprogress(true);
+
+    try {
+      const result = await dataSource.query.studies.sendToCloud(studyId);
+      console.log('Study successfully saved to the server:', result);
+      setIsSaveToServerInprogress(false);
+      setSavingStudyLabel('');
+      // Refresh the list in place. `navigate(0)` used to hard-reload the page
+      // here, which tore down the progress banner the moment it appeared.
+      if (typeof onRefresh === 'function') {
+        onRefresh();
       }
     } catch (error) {
-      // Handle any errors that occur during the process
       console.error('Error saving the study to the server:', error);
       setIsSaveToServerInprogress(false);
-      alert('An error occurred while saving the study. Please try again.');
-      navigate(0);
+      setSaveToServerError(
+        error instanceof Error ? error.message : 'The study could not be saved to the server.'
+      );
     }
   };
+
   const handleShowModal = studyId => {
     setShowStudyInstanceID(studyId);
     setReferralPopup(true);
@@ -950,7 +956,7 @@ function WorkList({
           key: 'modality',
           content: modalities,
           title: modalities,
-          gridCol: 2,
+          gridCol: 3,
         },
         // {
         //   key: 'accession',
@@ -1000,14 +1006,7 @@ function WorkList({
           key: 'actions',
           title: '',
           content: (
-            <div
-              className={classnames(
-                'actions-container inline-flex flex-wrap items-center gap-0.5 rounded-full border p-0.5',
-                isActive
-                  ? 'border-border-subtleDark/60 bg-white/[0.03]'
-                  : 'border-border-subtle bg-black/[0.02]'
-              )}
-            >
+            <div className="actions-container inline-flex flex-nowrap items-center gap-0.5">
               {isShowFeature('create_study_report') && (
                 <>
                   <RowActionButton
@@ -1064,7 +1063,14 @@ function WorkList({
                   isActive={isActive}
                   ariaLabel={t('SaveToServer')}
                   title="Save to Server"
-                  onClick={() => saveToServer(studyInstanceUid)}
+                  onClick={() =>
+                    saveToServer(
+                      studyInstanceUid,
+                      [patientName, modalities, instances && `${instances} instances`]
+                        .filter(Boolean)
+                        .join(' · ')
+                    )
+                  }
                 >
                   <SaveToServerActionIcon />
                 </RowActionButton>
@@ -1207,7 +1213,7 @@ function WorkList({
               )}
             </div>
           ),
-          gridCol: 6,
+          gridCol: 5,
         },
       ],
       // Todo: This is actually running for all rows, even if they are
@@ -1557,12 +1563,34 @@ function WorkList({
               isActive={isActive}
             />
 
-            {isSaveToServerInprogress && (
-              <div className="flex flex-row items-center justify-between px-4">
-                <p className="saveServer-text">
-                  Processing your request, Your file is being processed...
-                </p>
-                <LoadingIndicatorProgress className={'h-full w-full bg-black'} />
+            {(isSaveToServerInprogress || saveToServerError) && (
+              <div className="container m-auto">
+                {isSaveToServerInprogress ? (
+                  <ProgressBanner
+                    isActive={isActive}
+                    title="Saving study to server"
+                    statusLabel="In progress"
+                    description={
+                      savingStudyLabel
+                        ? `${savingStudyLabel} — this can take a few minutes. The list refreshes automatically when it finishes.`
+                        : 'This can take a few minutes. The list refreshes automatically when it finishes.'
+                    }
+                  />
+                ) : (
+                  <ProgressBanner
+                    isActive={isActive}
+                    variant="error"
+                    title="Could not save the study to the server"
+                    statusLabel="Failed"
+                    description={`${
+                      savingStudyLabel ? `${savingStudyLabel} — ` : ''
+                    }${saveToServerError} Nothing was changed; you can try again.`}
+                    onDismiss={() => {
+                      setSaveToServerError('');
+                      setSavingStudyLabel('');
+                    }}
+                  />
+                )}
               </div>
             )}
             {hasStudies && (

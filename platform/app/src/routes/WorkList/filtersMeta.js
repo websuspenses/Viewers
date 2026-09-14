@@ -1,15 +1,21 @@
+// Column widths here must match the per-row `gridCol` values in WorkList's
+// `tableDataSource`, or the filter header sits offset from the data beneath it.
+// Both lists total 24: patientName 4, mrn 2, studyDate 5, modalities 2,
+// instances 2, status 3, actions 5.
 const filtersMeta = [
   {
     name: 'patientName',
     displayName: 'PatientName',
     inputType: 'Text',
+    inputProps: { placeholder: 'Search name' },
     isSortable: true,
-    gridCol: 5,
+    gridCol: 4,
   },
   {
     name: 'mrn',
     displayName: 'MRN',
     inputType: 'Text',
+    inputProps: { placeholder: 'Search MRN' },
     isSortable: true,
     gridCol: 2,
   },
@@ -18,7 +24,7 @@ const filtersMeta = [
     displayName: 'StudyDate',
     inputType: 'DateRange',
     isSortable: true,
-    gridCol: 4,
+    gridCol: 5,
   },
   // {
   //   name: 'description',
@@ -32,7 +38,7 @@ const filtersMeta = [
     displayName: 'Modality',
     inputType: 'MultiSelect',
     inputProps: {
-      placeholder: 'All Modalities',
+      placeholder: 'All',
       options: [
         { value: 'AR', label: 'AR' },
         { value: 'ASMT', label: 'ASMT' },
@@ -107,7 +113,7 @@ const filtersMeta = [
       ],
     },
     isSortable: true,
-    gridCol: 2,
+    gridCol: 3,
   },
   // {
   //   name: 'accession',
@@ -128,14 +134,14 @@ const filtersMeta = [
     displayName: 'Status',
     inputType: 'None',
     isSortable: false,
-    gridCol: 4,
+    gridCol: 3,
   },
   {
     name: 'actions',
     displayName: 'Actions',
     inputType: 'None',
     isSortable: false,
-    gridCol: 6,
+    gridCol: 5,
   },
 ];
 

@@ -1,13 +1,25 @@
 import React from 'react';
 import PropTypes from 'prop-types';
+import classnames from 'classnames';
 
 import StudyListTableRow from './StudyListTableRow';
 
 const StudyListTable = ({ tableDataSource, querying, isActive }) => {
   return (
-    <div className={isActive ? "bg-black-on bg-primary-dark-on" : "bg-black"}>
-      <div className="container relative m-auto overflow-x-auto pb-6">
-        <table className={isActive ? "w-full text-white-On" : "w-full text-white"}>
+    <div className={isActive ? 'bg-surface-raisedDark' : 'bg-surface-raised'}>
+      <div className="container relative m-auto overflow-x-auto">
+        {/*
+          Deliberately not `text-white`: legacy styles.css rewrites that class to
+          brand teal (#0a7c6c), which turned every value in the worklist — names,
+          MRNs, dates — into what looked like a link. Study data is set in the
+          neutral content tones instead, leaving teal to mean "interactive".
+        */}
+        <table
+          className={classnames(
+            'w-full border-separate border-spacing-0',
+            isActive ? 'text-content-primaryDark' : 'text-content-primary'
+          )}
+        >
           <tbody
             data-cy="study-list-results"
             data-querying={querying}

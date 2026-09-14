@@ -722,10 +722,10 @@ svg.text-primary-active {
 .headContentCls {
   padding-bottom: 0.75rem;
   padding-top: 0.5rem;
-  background-color: #171a21 !important;
+  background-color: #102330 !important;
   border-top-left-radius: 10px;
   border-top-right-radius: 10px;
-  border-bottom: 2px solid #0a7c6c;
+  border-bottom: 2px solid #12a58c;
 }
 
 .rounded {
@@ -939,21 +939,26 @@ div#ohif-thumbnail-list > div > div:nth-child(2) {
   background-color: #000000;
 }
 
+/* Size, padding and hover for the row actions live on the button element in
+   RowActionButton. The icon just fills it, and inherits the button's color.
+   The width/height are pinned here because the source SVGs carry their own
+   intrinsic sizes and would otherwise render at four different scales. */
 .actions-container svg {
-  display: inline;
+  display: block;
   margin: 0;
-  padding: 7px;
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
+  padding: 0;
+  width: 19px;
+  height: 19px;
   background-color: transparent;
   box-shadow: none;
-  transition: background-color 150ms ease, transform 150ms ease;
 }
 
-div.actions-container svg:hover {
-  background-color: rgba(10, 124, 108, 0.14);
-  transform: translateY(-1px);
+/* The instances glyph is a label, not an action: keep it quiet and aligned with
+   the count it sits beside. */
+tbody[data-cy='study-list-results'] svg.instances-svg {
+  width: 15px;
+  height: 15px;
+  opacity: 0.55;
 }
 
 .DateInput_input,
@@ -994,42 +999,19 @@ p.m-0.leading-tight.text-base.text-white:hover {
   opacity: 1;
 }
 
-# viewer table styles [data-cy='study-list-results'] tr:hover {
-  z-index: -1;
-  background-color: transparent;
-  color: #0a7c6c;
-  box-shadow:
-    rgba(50, 50, 93, 0.25) 0px 50px 100px -20px,
-    rgba(0, 0, 0, 0.3) 0px 30px 60px -30px,
-    rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
-}
-
-[data-cy='study-list-results'] tr:hover .actions-container svg {
-  fill: #0a7c6c;
-}
-
+/* Row actions are plain icon buttons: the tinted hover and focus ring come from
+   RowActionButton's own classes. The heavy inset box-shadow that used to be set
+   here rendered every action as an empty outlined box, and `color: transparent`
+   plus a hard-coded teal `fill` made the icons impossible to theme. */
 [data-cy='study-list-results'] button {
-  color: #0a7c6c;
   background-color: transparent;
-  box-shadow:
-    rgba(50, 50, 93, 0.25) 0px 50px 100px -20px,
-    rgba(0, 0, 0, 0.3) 0px 30px 60px -30px,
-    rgba(10, 37, 64, 0.35) 0px -2px 6px 0px inset;
-  border-radius: 5px;
+  box-shadow: none;
 }
 
-[data-cy='study-list-results'] button:hover,
-[data-cy='study-list-results'] button:hover svg {
-  color: #ffffff;
-  background-color: #0a7c6c;
-}
-
-[data-cy='study-list-results'] button svg {
-  color: transparent;
-}
-
-[data-cy='study-list-results'] button svg path {
-  fill: #0a7c6c;
+/* The icons are single-color glyphs, so they follow the button's text color. */
+[data-cy='study-list-results'] .actions-container button svg,
+[data-cy='study-list-results'] .actions-container button svg path {
+  fill: currentColor;
 }
 
 tr.max-h-0.w-full.select-text.overflow-hidden.bg-black {
@@ -1455,7 +1437,6 @@ span.emergency-placeholder {
 }
 
 span.extra-padding {
-  margin-left: 20px;
   color: #727070 !important;
 }
 
@@ -1587,8 +1568,10 @@ svg.mr-2.inline-flex.w-4.instances-svg.text-secondary-light g {
   font-style: normal;
 } */
 body {
-  font-family: sans-serif !important;
-  /* font-weight: 700 !important; */
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, Arial,
+    sans-serif !important;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .normal {
@@ -1721,11 +1704,24 @@ a.disabled-link:hover svg {
    to win over the pre-existing .bg-primary-dark(-on) !important rules without
    touching those shared classes or plumbing a row index through React props. */
 tbody[data-cy='study-list-results'] > tr:nth-child(even) tbody tr:first-child {
-  background-color: rgba(10, 124, 108, 0.05) !important;
+  /* Neutral, not teal: a brand-tinted stripe under every other row was a large
+     part of the green cast over the whole worklist. */
+  background-color: #fafbfc;
 }
 
 body.bg-black-on tbody[data-cy='study-list-results'] > tr:nth-child(even) tbody tr:first-child {
-  background-color: rgba(255, 255, 255, 0.025) !important;
+  background-color: rgba(255, 255, 255, 0.022);
+}
+
+/* Hover has to outrank the stripe, so it is stated after it at equal weight.
+   Neither uses !important, which is what previously made hover unreachable on
+   every second row. */
+tbody[data-cy='study-list-results'] > tr tbody tr:first-child:hover {
+  background-color: rgba(10, 124, 108, 0.07);
+}
+
+body.bg-black-on tbody[data-cy='study-list-results'] > tr tbody tr:first-child:hover {
+  background-color: rgba(255, 255, 255, 0.055);
 }
 
 ul.MuiList-root .ai-img-class img {
@@ -1739,17 +1735,11 @@ li.ai-class-li .text-common-light {
   color: #ffffff !important;
 }
 
-body.bg-black-on tr.bg-secondary-main-darkMode:hover {
-  background-color: #5a5a5a !important;
-}
 body.bg-black-on .commonReport,
 body.bg-black-on .commonIn-Progress {
   color: #000000;
 }
 
-body.bg-black-on tr.bg-secondary-main-darkMode:hover svg {
-  fill: #ffffff;
-}
 body.bg-black-on .bg-black-on .DateInput_input,
 .bg-black-on .customSelect__wrapper,
 .bg-black-on .customSelect__control {
@@ -1773,46 +1763,217 @@ body.bg-black-on td[data-id='In-Progress'].border-secondary-light-darkMode {
    rendered by the Worklist filter bar) so nothing outside that context
    is affected.
    ---------------------------------------------------------------------- */
+/* Instances is the one numeric column, right-aligned in the body — its header
+   has to follow. The label is a column flex box, so the header text is pushed
+   over with align-items; the label text itself is a row flex box, so that one
+   needs justify-content. */
+.worklist-filter-grid .label-instances > label {
+  align-items: flex-end;
+}
+
 .worklist-filter-grid .label-instances span[role='button'] {
   justify-content: flex-end;
 }
 
-.worklist-filter-grid label span[role='button'] {
-  font-size: 0.6875rem;
+/* The worklist is typeset in Inter with the OpenType features that make a dense
+   data table readable: `tnum` so digits share one advance width and columns of
+   counts line up, `cv05`/`ss01` for the disambiguated l/I shapes. Set here
+   rather than on <body> so nothing outside the worklist shifts. */
+/* `table-layout: fixed` is what actually makes the column headers line up with
+   the data: without it the browser re-distributes column widths to fit content,
+   so the flex header row and the table below it drift apart. It is also what
+   lets `max-width: 0` on a cell produce a real ellipsis. */
+tbody[data-cy='study-list-results'] table {
+  table-layout: fixed;
+}
+
+/* ----------------------------------------------------------------------
+   Modality multi-select.
+   react-select's multi value container is given `inline-block` by Select.css,
+   which breaks the control's flex layout — the filter rendered as a ~90px tall
+   slab and set the height of the whole filter band. Selected modalities render
+   as one comma-joined string (see Select.tsx's MultiValue), so the container is
+   a single-line, ellipsised row.
+   ---------------------------------------------------------------------- */
+.worklist-filter-grid .customSelect__value-container,
+.worklist-filter-grid .customSelect__value-container--is-multi {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  padding: 0 8px;
+  overflow: hidden;
+}
+
+.worklist-filter-grid .customSelect__value-container > span,
+.worklist-filter-grid .customSelect__value-container--is-multi > span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+}
+
+.worklist-filter-grid .customSelect__wrapper .customSelect__control {
+  min-height: 36px;
+  height: 36px;
+}
+
+.worklist-filter-grid .customSelect__indicators {
+  height: 34px;
+}
+
+/* The dropdown panel. Select.css leaves the menu transparent and paints every
+   option brand teal, which made the open list unreadable over the rows behind
+   it. Give it a real surface, and reserve teal for the selected row. */
+.worklist-filter-grid .customSelect__menu,
+.ohif-select .customSelect__menu {
+  background-color: #ffffff !important;
+  border: 1px solid #d8dce3;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow:
+    0 10px 15px -3px rgba(16, 24, 40, 0.1),
+    0 4px 6px -4px rgba(16, 24, 40, 0.1);
+  z-index: 30;
+}
+
+body.bg-black-on .worklist-filter-grid .customSelect__menu,
+body.bg-black-on .ohif-select .customSelect__menu {
+  background-color: #102330 !important;
+  border-color: rgba(255, 255, 255, 0.16);
+}
+
+.worklist-filter-grid .customSelect__menu-list {
+  padding: 4px;
+  max-height: 260px;
+}
+
+.worklist-filter-grid .customSelect__option {
+  color: #111827;
+  font-size: 13px;
+  border-radius: 6px;
+  padding: 7px 9px;
+  cursor: pointer;
+}
+
+body.bg-black-on .worklist-filter-grid .customSelect__option {
+  color: #e8f4f8;
+}
+
+.worklist-filter-grid .customSelect__option--is-focused {
+  background-color: #e6f5f3;
+}
+
+body.bg-black-on .worklist-filter-grid .customSelect__option--is-focused {
+  background-color: rgba(18, 165, 140, 0.16);
+}
+
+.worklist-filter-grid .customSelect__option--is-selected {
+  background-color: transparent;
+  color: #0a7c6c;
   font-weight: 600;
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  /* Explicit muted color is required, not cosmetic: InputLabelWrapper applies
-     `text-white`, which the legacy rule near the top of this file rewrites to
-     brand teal (#0a7c6c) in light mode — rendering every column label as a
-     teal link rather than a quiet, secondary column header. */
-  color: #6b7280;
 }
 
-body.bg-black-on .worklist-filter-grid label span[role='button'] {
-  color: #8890a0;
+body.bg-black-on .worklist-filter-grid .customSelect__option--is-selected {
+  color: #4fd8bd;
 }
 
-/* Sort chevrons should read as a quiet affordance beside the label, not as
-   brand-colored iconography competing with it. */
-.worklist-filter-grid label span[role='button'] svg {
-  color: #9ca3af;
+/* The option's checkbox ships as an 8x8 box, far too small to read or hit. */
+.worklist-filter-grid .customSelect__option .h-2.w-2 {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-body.bg-black-on .worklist-filter-grid label span[role='button'] svg {
-  color: #6b7280;
+.worklist-filter-grid .customSelect__option .h-2.w-2 svg {
+  width: 16px;
+  height: 16px;
+}
+
+.worklist-filter-grid .customSelect__option label {
+  margin-top: 0;
+  margin-left: 10px;
+  cursor: pointer;
+}
+
+/* The two-line patient cell: the name reserves space for the emergency dot, so
+   the description below it must reserve exactly the same, or the two lines sit
+   on different left edges. */
+span.emergency-placeholder {
+  width: 18px;
+}
+
+span.extra-padding {
+  margin-left: 18px;
+}
+
+/* Typography and color for these labels is owned by InputLabelWrapper, which
+   also needs to accent the actively-sorted column — so no color is forced here. */
+
+/* The app-wide `input[type='text']` and `.customSelect__control` rules above
+   paint every field with a 100px drop shadow and no border. Inside the filter
+   row that reads as a floating slab rather than a form field, so all three
+   control types are re-based here on one flat, bordered treatment. */
+.worklist-filter-grid input[type='text'],
+.worklist-filter-grid .DateInput_input,
+.worklist-filter-grid .DateRangePickerInput,
+.worklist-filter-grid .customSelect__wrapper .customSelect__control {
+  box-shadow: none;
+  border: 1px solid #d8dce3;
+  color: #111827;
+}
+
+/* Dark fields sit on the report viewer's sunken surface. The app-wide
+   `.bg-black-on` / `.customSelect__control` rules paint them olive-brown
+   (`rgb(28,28,20)` / `rgb(59,53,53)`) with !important, so these have to match
+   that weight to win inside the filter row. */
+body.bg-black-on .worklist-filter-grid input[type='text'],
+body.bg-black-on .worklist-filter-grid .DateInput_input,
+body.bg-black-on .worklist-filter-grid .DateRangePickerInput,
+body.bg-black-on .worklist-filter-grid .customSelect__wrapper,
+body.bg-black-on .worklist-filter-grid .customSelect__wrapper .customSelect__control {
+  background-color: #070f16 !important;
+  border-color: rgba(255, 255, 255, 0.16);
+  color: #e8f4f8;
+}
+
+body.bg-black-on .worklist-filter-grid input[type='text']::placeholder,
+body.bg-black-on .worklist-filter-grid .DateInput_input::placeholder {
+  color: #6f92a6;
+}
+
+body.bg-black-on .worklist-filter-grid .customSelect__single-value,
+body.bg-black-on .worklist-filter-grid .customSelect__value-container > span {
+  color: #e8f4f8;
+}
+
+/* Row actions need more weight against a near-black surface than they do
+   against white. */
+body.bg-black-on [data-cy='study-list-results'] .actions-container button {
+  color: #a9c4d4;
+}
+
+/* The date range is a wrapper around its own inputs — only the wrapper should
+   carry the border, or the field renders as a box inside a box. */
+.worklist-filter-grid .DateRangePickerInput .DateInput_input {
+  border: none;
 }
 
 .worklist-filter-grid input[type='text']:not(.DateInput_input) {
-  height: 40px;
+  height: 36px;
   /* 8px matches the date-range wrapper (rounded-lg) and the react-select
      control, so all three field types share one corner radius. */
   border-radius: 8px;
-  padding-left: 34px;
-  background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%236b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>');
-  background-repeat: no-repeat;
-  background-position: 10px center;
-  background-size: 14px 14px;
+  background-image: none;
+}
+
+/* Clears the leading search icon rendered beside it by InputText. !important
+   is needed to beat the base `px-3` utility on the input itself. */
+.worklist-filter-grid input.worklist-search-input {
+  padding-left: 32px !important;
+  padding-right: 10px !important;
 }
 
 .worklist-filter-grid input[type='text']:not(.DateInput_input):focus,
@@ -1823,7 +1984,17 @@ body.bg-black-on .worklist-filter-grid label span[role='button'] svg {
 }
 
 .worklist-filter-grid .DateInput_input {
-  height: 40px;
+  height: 36px;
+}
+
+/* One field height across text inputs, the date range and the modality select,
+   so the filter row reads as a single band rather than three stacked controls. */
+.worklist-filter-grid .customSelect__control {
+  min-height: 36px;
+}
+
+.worklist-filter-grid .DateRangePickerInput {
+  border-radius: 8px;
 }
 
 /* DateRangePickerInput itself is intentionally left with no background in

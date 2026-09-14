@@ -98,6 +98,7 @@ import LayoutPreset from './LayoutPreset';
 import ActionButtons from './ActionButtons';
 import ToggleSwitch from './ToggleSwitch';
 import StatusBadge from './StatusBadge';
+import ProgressBanner from './ProgressBanner';
 import InlineAlert from './InlineAlert';
 import AccessDenied from './AccessDenied';
 
@@ -105,6 +106,7 @@ export {
   ActionButtons,
   AboutModal,
   StatusBadge,
+  ProgressBanner,
   InlineAlert,
   AccessDenied,
   AdvancedToolbox,

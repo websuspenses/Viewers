@@ -3,9 +3,7 @@ import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
 
 import classnames from 'classnames';
-import LegacyButton from '../LegacyButton';
 import Icon from '../Icon';
-import Typography from '../Typography';
 import InputGroup from '../InputGroup';
 import StatusBadge from '../StatusBadge';
 
@@ -100,75 +98,98 @@ const StudyListFilter = ({
     <React.Fragment>
       <div>
         <div
-          className={classnames(isActive ? 'bg-black-on' : 'bg-black', 'py-2')}
+          className={classnames(
+            isActive ? 'bg-surface-overlayDark' : 'bg-surface-canvas',
+            'rounded-t-xl'
+          )}
           id="containerId"
         >
-          <div className="container relative mx-auto flex flex-col pt-3 pb-5">
+          <div className="container relative mx-auto flex flex-col pt-4 pb-3">
             <div className="flex flex-row flex-wrap items-center justify-between gap-3">
               <div className="flex min-w-[1px] shrink flex-row items-center gap-3">
-                <Typography
-                  variant="h6"
-                  className={classnames(
-                    'text-xl font-bold tracking-tight',
-                    isActive ? 'text-white-On' : 'text-white'
-                  )}
+                {/* A plain heading, not <Typography>: that component defaults to
+                    `color="initial"` -> `text-white`, and legacy styles.css
+                    repaints `.text-white` brand teal — which is why the page
+                    title rendered as if it were a link. */}
+                <h1
                   id="StudyList"
+                  className={classnames(
+                    'm-0 text-[21px] font-semibold leading-tight tracking-[-0.01em]',
+                    isActive ? 'text-content-primaryDark' : 'text-content-primary'
+                  )}
                 >
                   {t('StudyList')}
-                </Typography>
+                </h1>
                 <StatusBadge
                   label={`${numOfStudies > 100 ? '100+' : numOfStudies} ${t('Studies')}`}
-                  variant="info"
+                  variant="neutral"
                   isActive={isActive}
                   data-cy="num-studies"
                 />
                 {getDataSourceConfigurationComponent && getDataSourceConfigurationComponent()}
-                {onUploadClick && (
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    className="text-primary-active hover:text-accent focus-visible:ring-accent/60 flex cursor-pointer items-center gap-2 self-center rounded text-sm font-semibold transition-colors duration-150 focus:outline-none focus-visible:ring-2"
-                    onClick={onUploadClick}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        onUploadClick();
-                      }
-                    }}
-                  >
-                    <Icon name="icon-upload"></Icon>
-                    <span>Upload</span>
-                  </div>
-                )}
               </div>
-              <div className="flex flex-row items-center">
-                {/* TODO revisit the completely rounded style of button used for clearing the study list filter - for now use LegacyButton*/}
+              <div className="flex flex-row items-center gap-2">
+                {onUploadClick && (
+                  <button
+                    type="button"
+                    className={classnames(
+                      'inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-sm font-semibold',
+                      'focus-visible:ring-accent/50 transition-colors duration-150 focus:outline-none focus-visible:ring-2',
+                      isActive
+                        ? 'border-border-defaultDark text-content-secondaryDark hover:border-border-strongDark hover:text-content-primaryDark'
+                        : 'border-border-default bg-surface-raised text-content-secondary hover:border-border-strong hover:text-content-primary'
+                    )}
+                    onClick={onUploadClick}
+                  >
+                    <Icon
+                      name="icon-upload"
+                      className="h-4 w-4"
+                    />
+                    <span>Upload</span>
+                  </button>
+                )}
                 {isFiltering && (
-                  <LegacyButton
-                    rounded="full"
-                    variant="outlined"
-                    color={isActive ? "primaryActive_dark_color" : "primaryActive"}
-                    border={isActive ? "primaryActive_dark_border" : "primaryActive"}
-                    startIcon={<Icon name="cancel" />}
+                  <button
+                    type="button"
+                    className={classnames(
+                      'focus-visible:ring-accent/50 inline-flex h-9 items-center gap-1.5 rounded-lg px-3',
+                      'text-sm font-semibold transition-colors duration-150 focus:outline-none focus-visible:ring-2',
+                      isActive
+                        ? 'text-accent-bright hover:bg-accent-lightDark'
+                        : 'text-accent hover:bg-accent-light'
+                    )}
                     onClick={clearFilters}
                   >
+                    <svg
+                      className="h-3.5 w-3.5"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2.6"
+                      strokeLinecap="round"
+                      aria-hidden="true"
+                    >
+                      <path d="M18 6L6 18M6 6l12 12" />
+                    </svg>
                     {t('ClearFilters')}
-                  </LegacyButton>
+                  </button>
                 )}
               </div>
             </div>
             {activeFilterChips.length > 0 && (
               <div
-                className="mt-3 flex flex-row flex-wrap items-center gap-2"
+                className="mt-2.5 flex flex-row flex-wrap items-center gap-1.5"
                 data-cy="active-filter-chips"
               >
                 {activeFilterChips.map(chip => (
                   <span
                     key={chip.name}
                     className={classnames(
-                      'inline-flex max-w-full items-center gap-1.5 whitespace-nowrap rounded-full py-1 pl-3 pr-1.5 text-xs font-medium',
+                      'inline-flex max-w-full items-center gap-1 whitespace-nowrap rounded-full py-1 pl-2.5 pr-1',
+                      'text-[12px] font-medium ring-1 ring-inset',
                       isActive
-                        ? 'bg-white/10 text-content-primaryDark'
-                        : 'bg-black/5 text-content-primary'
+                        ? 'bg-accent-lightDark text-content-primaryDark ring-accent/30'
+                        : 'bg-accent-light text-content-primary ring-accent/25'
                     )}
                   >
                     <span className="truncate">{chip.label}</span>
@@ -177,15 +198,24 @@ const StudyListFilter = ({
                       aria-label={`Clear ${chip.label}`}
                       onClick={() => clearOneFilter(chip.name)}
                       className={classnames(
-                        'flex h-4 w-4 items-center justify-center rounded-full transition-colors duration-150',
-                        'focus:outline-none focus-visible:ring-2 focus-visible:ring-accent/60',
-                        isActive ? 'hover:bg-white/20' : 'hover:bg-black/10'
+                        'focus-visible:ring-accent/60 flex h-5 w-5 shrink-0 items-center justify-center rounded-full',
+                        'transition-colors duration-150 focus:outline-none focus-visible:ring-2',
+                        isActive
+                          ? 'text-content-secondaryDark hover:bg-white/15 hover:text-content-primaryDark'
+                          : 'text-content-muted hover:bg-black/10 hover:text-content-primary'
                       )}
                     >
-                      <Icon
-                        name="cancel"
-                        className="h-2.5 w-2.5"
-                      />
+                      <svg
+                        className="h-3 w-3"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.6"
+                        strokeLinecap="round"
+                        aria-hidden="true"
+                      >
+                        <path d="M18 6L6 18M6 6l12 12" />
+                      </svg>
                     </button>
                   </span>
                 ))}
@@ -196,10 +226,13 @@ const StudyListFilter = ({
       </div>
       <div className="sticky -top-1 z-10 mx-auto">
         <div
+          // Continues the title panel above it, closing with the single
+          // hairline that separates the whole control surface from the rows.
           className={classnames(
-            'rounded-t-xl',
-            isActive ? 'bg-primary-dark-on headContentCls' : 'bg-primary-dark border-border-subtle border-b pb-4',
-            'pt-4'
+            'border-b pb-3.5',
+            isActive
+              ? 'bg-surface-overlayDark border-border-subtleDark'
+              : 'border-border-subtle bg-surface-canvas'
           )}
         >
           <InputGroup
