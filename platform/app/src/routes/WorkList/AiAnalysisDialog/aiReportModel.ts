@@ -118,6 +118,8 @@ export type EvidenceFinding = {
   heatmapImage: string;
   annotatedImage: string;
   summary: string;
+  /** False for normal-structure entries the models emit alongside findings. */
+  isAnomaly: boolean;
 };
 
 export type SeverityCounts = {
@@ -230,6 +232,74 @@ export function parseMeasurement(raw?: string): Measurement {
           )} cm)`
         : `${trimNumber(low)}–${trimNumber(high)} mm`,
   };
+}
+
+/**
+ * The models enumerate every structure they inspect, so `findings_summary`
+ * mixes real anomalies with negative statements ("No skull fracture") and plain
+ * anatomy inventory ("The left pons is visualized"). Roughly half the entries in
+ * a normal study are the latter, which drowns the actual findings.
+ *
+ * These patterns identify the non-findings. Anything not matched is treated as
+ * an anomaly, so an unfamiliar phrasing errs towards being shown rather than
+ * hidden.
+ */
+const NEGATIVE_NAME = /^\s*(no|normal|unremarkable|negative)\b/i;
+
+const NEGATIVE_BODY = new RegExp(
+  [
+    /^\s*normal\b/, // "Normal calvarium."
+    /^\s*unremarkable\b/,
+    /no\s+evidence/,
+    /within\s+normal\s+limits/,
+    /no\s+significant/,
+    /no\s+acute/,
+    /no\s+focal/,
+    /not\s+identified/,
+    /showing\s+normal\s+structures/,
+    /^the\s+image\s+shows\s+a\s+ct\s+scan/,
+  ]
+    .map(pattern => pattern.source)
+    .join('|'),
+  'i'
+);
+
+/**
+ * Matches a description that is *entirely* a statement of normality, such as
+ * "The cerebral cortex appears normal." A trailing clause stops the match, so
+ * "Multiple calcifications are present, likely incidental." stays a finding.
+ */
+const NORMAL_STATEMENT =
+  /^\s*(the\s+)?[^.]{0,70}?\s+(?:is|are|appears?|appear)\s+(?:to\s+be\s+)?(?:present|visualized|visualised|patent|unremarkable|intact(?:\s+and\s+well[-\s]defined)?|within\s+normal\s+limits|normal(?:\s+in\s+[a-z\s,]+)?)\s*\.?\s*$/i;
+
+/** True when a finding reports something abnormal rather than a normal structure. */
+export function isAnomalyFinding(finding: {
+  severity?: string;
+  name?: string;
+  description?: string;
+}) {
+  if (['critical', 'high', 'medium'].includes((finding.severity || 'low').toLowerCase())) {
+    return true;
+  }
+
+  const name = (finding.name || '').trim();
+  const description = (finding.description || '').trim();
+
+  if (NEGATIVE_NAME.test(name)) {
+    return false;
+  }
+
+  if (description && NEGATIVE_BODY.test(description)) {
+    return false;
+  }
+
+  return !NORMAL_STATEMENT.test(description) && !NORMAL_STATEMENT.test(name);
+}
+
+export function getAnomalyFindings<T extends { severity?: string; name?: string; description?: string }>(
+  findings: T[]
+): T[] {
+  return findings.filter(isAnomalyFinding);
 }
 
 export function formatConfidence(confidence?: number | null) {
@@ -424,6 +494,7 @@ export function buildEvidenceFindings(payload: AiCompletePayload | null): Eviden
       heatmapImage: heatmap.heatmap_image_b64 || '',
       annotatedImage: heatmap.gemini_annotated_image_b64 || '',
       summary: heatmap.summary || '',
+      isAnomaly: isAnomalyFinding(finding),
     });
   });
 

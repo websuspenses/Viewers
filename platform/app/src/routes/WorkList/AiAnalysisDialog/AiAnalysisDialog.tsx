@@ -13,6 +13,7 @@ import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
@@ -44,6 +45,7 @@ import {
   compareSeverity,
   formatConfidence,
   formatDicomDate,
+  getAnomalyFindings,
   getImageSrc,
   getImageSupportedFindings,
   getMaxDifferenceMm,
@@ -54,6 +56,10 @@ import {
 } from './aiReportModel';
 import { renderSafeReportMarkdown } from './reportMarkdown';
 import { buildCiaiReportHtml } from './buildCiaiReportHtml';
+import { buildReportViewerHtml } from './buildReportViewerHtml';
+
+/** Shared with the printed report and the beta viewer so branding stays in step. */
+const LOGO_PATH = '/ohif-whitebg-logo.svg';
 
 type AiProgressEvent = {
   step?: number;
@@ -1001,10 +1007,17 @@ function EvidenceViewer({
 function FindingsTable({ findings }: { findings: AiFindingSummary[] }) {
   const [severity, setSeverity] = useState('all');
   const [query, setQuery] = useState('');
+  // The analysis enumerates every structure it inspects, so normal-structure
+  // entries are hidden by default rather than dropped.
+  const [showNormal, setShowNormal] = useState(false);
+
+  const anomalies = useMemo(() => getAnomalyFindings(findings), [findings]);
+  const scoped = showNormal ? findings : anomalies;
+  const normalCount = findings.length - anomalies.length;
 
   const visible = useMemo(() => {
     const term = query.trim().toLowerCase();
-    return sortFindingsSummary(findings).filter(finding => {
+    return sortFindingsSummary(scoped).filter(finding => {
       if (severity !== 'all' && (finding.severity || '').toLowerCase() !== severity) {
         return false;
       }
@@ -1018,9 +1031,9 @@ function FindingsTable({ findings }: { findings: AiFindingSummary[] }) {
         .toLowerCase()
         .includes(term);
     });
-  }, [findings, severity, query]);
+  }, [scoped, severity, query]);
 
-  const counts = useMemo(() => summarizeSeverities(findings), [findings]);
+  const counts = useMemo(() => summarizeSeverities(scoped), [scoped]);
 
   return (
     <Box>
@@ -1049,7 +1062,7 @@ function FindingsTable({ findings }: { findings: AiFindingSummary[] }) {
             },
           }}
         >
-          <ToggleButton value="all">All ({findings.length})</ToggleButton>
+          <ToggleButton value="all">All ({scoped.length})</ToggleButton>
           <ToggleButton value="critical">Critical ({counts.critical})</ToggleButton>
           <ToggleButton value="high">High ({counts.high})</ToggleButton>
           <ToggleButton value="medium">Medium ({counts.medium})</ToggleButton>
@@ -1067,6 +1080,33 @@ function FindingsTable({ findings }: { findings: AiFindingSummary[] }) {
           }}
         />
       </Stack>
+
+      {!!normalCount && (
+        <Stack
+          direction="row"
+          spacing={1}
+          alignItems="center"
+          sx={{ marginBottom: '10px' }}
+        >
+          <FormControlLabel
+            control={
+              <Switch
+                size="small"
+                checked={showNormal}
+                onChange={event => setShowNormal(event.target.checked)}
+              />
+            }
+            label={
+              <Box sx={{ fontSize: 12, color: '#bcdde7' }}>
+                Include {normalCount} normal-structure entries
+              </Box>
+            }
+          />
+          <Tooltip title='Entries such as "No skull fracture" or "The left pons is visualized" report normal anatomy rather than an anomaly.'>
+            <Box sx={{ color: '#6f92a6', fontSize: 11, cursor: 'help' }}>What are these?</Box>
+          </Tooltip>
+        </Stack>
+      )}
 
       <Box
         sx={{
@@ -1193,9 +1233,10 @@ export default function AiAnalysisDialog({
   const reportText = completePayload?.report?.report_text || '';
   const reportHtml = useMemo(() => renderSafeReportMarkdown(reportText), [reportText]);
   const findingsSummary = completePayload?.findings_summary || [];
+  const anomalyFindings = useMemo(() => getAnomalyFindings(findingsSummary), [findingsSummary]);
   const evidence = useMemo(() => buildEvidenceFindings(completePayload), [completePayload]);
   const heatmaps = useMemo(() => collectHeatmaps(completePayload), [completePayload]);
-  const severityCounts = useMemo(() => summarizeSeverities(findingsSummary), [findingsSummary]);
+  const severityCounts = useMemo(() => summarizeSeverities(anomalyFindings), [anomalyFindings]);
   const imageSupported = useMemo(() => getImageSupportedFindings(evidence), [evidence]);
   const mismatchCount = useMemo(
     () => evidence.filter(finding => finding.consistency !== 'match').length,
@@ -1347,9 +1388,32 @@ export default function AiAnalysisDialog({
       payload: completePayload,
       evidence: reportEvidence,
       study,
-      logoUrl: `${window.location.origin}/ciai-logo.png`,
+      logoUrl: `${window.location.origin}${LOGO_PATH}`,
       includeNarrative: true,
     });
+  };
+
+  const handleOpenReportViewer = () => {
+    if (!completePayload) {
+      return;
+    }
+
+    const html = buildReportViewerHtml({
+      payload: completePayload,
+      evidence,
+      study,
+      logoUrl: `${window.location.origin}${LOGO_PATH}`,
+    });
+
+    const viewerWindow = window.open('', '_blank');
+    if (!viewerWindow) {
+      return;
+    }
+
+    viewerWindow.document.open();
+    viewerWindow.document.write(html);
+    viewerWindow.document.close();
+    viewerWindow.focus();
   };
 
   const downloadBlob = (blob: Blob, filename: string) => {
@@ -1731,7 +1795,7 @@ export default function AiAnalysisDialog({
                 }}
               >
                 <Tab label="Overview" />
-                <Tab label={`Findings (${findingsSummary.length})`} />
+                <Tab label={`Findings (${anomalyFindings.length})`} />
                 <Tab label={`Image evidence (${evidence.length})`} />
                 <Tab label="Narrative report" />
               </Tabs>
@@ -1746,6 +1810,11 @@ export default function AiAnalysisDialog({
                       marginBottom: '16px',
                     }}
                   >
+                    <StatCard
+                      label="Anomalies"
+                      value={anomalyFindings.length}
+                      hint={`of ${findingsSummary.length} entries reviewed`}
+                    />
                     <StatCard
                       label="Image-supported"
                       value={imageSupported.length}
@@ -1783,6 +1852,9 @@ export default function AiAnalysisDialog({
                     useFlexGap
                     sx={{ marginBottom: '16px' }}
                   >
+                    <Box sx={{ color: '#8bbfd0', fontSize: 11, fontWeight: 800, alignSelf: 'center' }}>
+                      ANOMALIES BY SEVERITY
+                    </Box>
                     {(['critical', 'high', 'medium', 'low'] as const).map(severity => (
                       <Chip
                         key={severity}
@@ -1955,9 +2027,9 @@ export default function AiAnalysisDialog({
                     >
                       <Box
                         component="img"
-                        src="/ciai-logo.png"
-                        alt="CIAI"
-                        sx={{ height: 28, objectFit: 'contain' }}
+                        src={LOGO_PATH}
+                        alt="CIAI Teleradiology"
+                        sx={{ height: 30, objectFit: 'contain' }}
                       />
                       <Box>
                         <Box sx={{ fontSize: 18, fontWeight: 900 }}>AI Analysis Report</Box>
@@ -2050,6 +2122,30 @@ export default function AiAnalysisDialog({
         )}
 
         <Box sx={{ flex: 1 }} />
+        <Button
+          variant="outlined"
+          onClick={handleOpenReportViewer}
+          disabled={!hasResults}
+          startIcon={<OpenInNewIcon />}
+          endIcon={
+            <Chip
+              label="BETA"
+              size="small"
+              sx={{
+                height: 16,
+                fontSize: 9,
+                fontWeight: 900,
+                letterSpacing: 0.5,
+                color: '#05221c',
+                backgroundColor: '#12a58c',
+                '& .MuiChip-label': { padding: '0 5px' },
+              }}
+            />
+          }
+          sx={{ color: '#6ee7d0', borderColor: '#12a58c' }}
+        >
+          Report UI
+        </Button>
         <Button
           variant="outlined"
           onClick={handleCopyReport}

@@ -12,15 +12,20 @@
  */
 
 import {
+  AiCompletePayload,
+  AiFindingSummary,
   CONSISTENCY_LABELS,
   EvidenceFinding,
   formatConfidence,
   formatDicomDate,
+  getAnomalyFindings,
   getImageSrc,
   getImageSupportedFindings,
   getMaxDifferenceMm,
   getMeasurementRange,
-  AiCompletePayload,
+  parseMeasurement,
+  sortFindingsSummary,
+  summarizeSeverities,
 } from './aiReportModel';
 import { escapeHtml, renderSafeReportMarkdown, splitReportSections } from './reportMarkdown';
 
@@ -33,12 +38,19 @@ export type ReportBuildOptions = {
     description?: string;
     date?: string;
   };
-  /** Absolute URL for the CIAI logo; embedded assets keep printing offline-safe. */
+  /** Absolute URL for the CIAI Teleradiology logo. */
   logoUrl: string;
   /** Include the full narrative report after the evidence sheets. */
   includeNarrative?: boolean;
   generatedAt?: Date;
 };
+
+/**
+ * The backend narrative repeats every inspected structure in this table. The
+ * report replaces it with an anomaly-only table, so the section is dropped to
+ * avoid printing ~200 rows of normal anatomy.
+ */
+const REPLACED_NARRATIVE_SECTIONS = [/^all findings/i];
 
 const WORKFLOW_STAGES: [string, string][] = [
   [
@@ -82,8 +94,12 @@ const WORKFLOW_STAGES: [string, string][] = [
 const REPORT_CSS = `
   :root {
     --navy: #082a4b;
+    --navy-soft: #16496f;
+    --teal: #0b7c69;
+    --teal-soft: #e6f4f1;
     --panel: #f0f6f9;
     --line: #dfe7ee;
+    --line-strong: #c3d2dd;
     --muted: #667787;
     --ink: #1f2c38;
     --human: #00ffff;
@@ -97,13 +113,15 @@ const REPORT_CSS = `
     font-family: Helvetica, Arial, sans-serif;
     font-size: 10pt;
     line-height: 1.45;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
   .sheet {
     position: relative;
     width: 210mm;
     min-height: 297mm;
     margin: 0 auto 8mm;
-    padding: 12mm 14mm 16mm;
+    padding: 12mm 14mm 14mm;
     background: #ffffff;
     display: flex;
     flex-direction: column;
@@ -112,20 +130,21 @@ const REPORT_CSS = `
   }
   .sheet:last-child { page-break-after: auto; break-after: auto; margin-bottom: 0; }
   .sheet-body { flex: 1 1 auto; }
+  .sheet-cover { padding-top: 0; }
 
   .sheet-header {
     display: flex;
-    align-items: flex-end;
+    align-items: center;
     justify-content: space-between;
     gap: 12mm;
-    border-bottom: 1px solid var(--line);
-    padding-bottom: 4mm;
+    border-bottom: 2px solid var(--teal);
+    padding-bottom: 3.5mm;
     margin-bottom: 6mm;
   }
-  .sheet-header img { height: 11mm; width: auto; object-fit: contain; }
+  .sheet-header img { height: 10mm; width: auto; object-fit: contain; }
   .sheet-header .ident { text-align: right; line-height: 1.35; }
-  .sheet-header .ident strong { display: block; font-size: 8pt; letter-spacing: 0.04em; color: var(--navy); }
-  .sheet-header .ident span { font-size: 7.5pt; color: var(--muted); letter-spacing: 0.03em; }
+  .sheet-header .ident strong { display: block; font-size: 8pt; letter-spacing: 0.06em; color: var(--navy); }
+  .sheet-header .ident span { font-size: 7pt; color: var(--muted); letter-spacing: 0.04em; }
 
   .sheet-footer {
     display: flex;
@@ -133,57 +152,101 @@ const REPORT_CSS = `
     align-items: center;
     border-top: 1px solid var(--line);
     margin-top: 6mm;
-    padding-top: 3mm;
+    padding-top: 2.5mm;
     color: var(--muted);
-    font-size: 7.5pt;
+    font-size: 7pt;
+    letter-spacing: 0.02em;
   }
+
+  /* ---- cover ---- */
+  .cover-brand { display: flex; align-items: center; justify-content: space-between; padding: 8mm 0 6mm; }
+  .cover-brand img { height: 13mm; width: auto; }
+  .cover-brand .stamp { text-align: right; font-size: 7.5pt; color: var(--muted); line-height: 1.5; }
+  .cover-brand .stamp b { display: block; color: var(--navy); font-size: 8pt; letter-spacing: 0.06em; }
 
   .hero {
-    background: var(--navy);
+    background: linear-gradient(135deg, var(--navy) 0%, #0d3c66 100%);
     color: #ffffff;
-    padding: 16mm 12mm;
-    margin-bottom: 10mm;
+    padding: 14mm 12mm;
+    margin-bottom: 8mm;
+    border-left: 3mm solid var(--teal);
   }
-  .hero h1 { margin: 0; font-size: 30pt; line-height: 1.12; letter-spacing: -0.01em; }
-  .hero .pipeline { margin-top: 18mm; font-size: 11pt; color: #d6e2ee; }
-  .cover-logo { text-align: center; margin-bottom: 8mm; }
-  .cover-logo img { height: 13mm; width: auto; }
-  .cover-tagline { color: var(--navy); font-size: 17pt; font-weight: bold; margin: 0 0 3mm; }
-  .cover-lede { margin: 0 0 7mm; font-size: 9pt; }
+  .hero h1 { margin: 0; font-size: 28pt; line-height: 1.12; letter-spacing: -0.015em; }
+  .hero .pipeline {
+    margin-top: 14mm;
+    font-size: 9.5pt;
+    color: #cfe3f2;
+    letter-spacing: 0.04em;
+    border-top: 1px solid rgba(255,255,255,0.25);
+    padding-top: 4mm;
+  }
+  .cover-tagline { color: var(--navy); font-size: 16pt; font-weight: bold; margin: 0 0 2.5mm; }
+  .cover-lede { margin: 0 0 6mm; font-size: 9pt; color: #3d4c5a; }
 
-  .tiles { display: flex; border: 1px solid var(--line); margin-bottom: 7mm; }
-  .tile { flex: 1 1 0; background: var(--panel); text-align: center; padding: 4mm 2mm; border-right: 1px solid var(--line); }
-  .tile:last-child { border-right: 0; }
-  .tile .value { font-size: 17pt; font-weight: bold; color: var(--navy); }
-  .tile .label { margin-top: 2mm; font-size: 6.5pt; font-weight: bold; letter-spacing: 0.05em; color: var(--muted); text-transform: uppercase; }
+  .verdict {
+    display: flex;
+    align-items: center;
+    gap: 5mm;
+    border: 1px solid var(--line-strong);
+    border-left: 2.5mm solid var(--teal);
+    background: var(--teal-soft);
+    padding: 4mm 5mm;
+    margin-bottom: 6mm;
+  }
+  .verdict .headline { font-size: 13pt; font-weight: bold; color: var(--navy); }
+  .verdict .detail { font-size: 8.5pt; color: #3d4c5a; margin-top: 0.8mm; }
+  .verdict.is-critical { border-left-color: #b3261e; background: #fdf0ef; }
 
-  .facts { font-size: 9pt; margin-bottom: 7mm; }
-  .facts div { margin-bottom: 1mm; }
-  .facts b { color: var(--navy); }
+  .tiles { display: flex; gap: 3mm; margin-bottom: 6mm; }
+  .tile {
+    flex: 1 1 0;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-top: 1.2mm solid var(--teal);
+    text-align: center;
+    padding: 4mm 2mm;
+  }
+  .tile .value { font-size: 16pt; font-weight: bold; color: var(--navy); }
+  .tile .label { margin-top: 1.5mm; font-size: 6pt; font-weight: bold; letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; line-height: 1.4; }
 
-  h2.section { color: var(--navy); font-size: 15pt; margin: 0 0 4mm; }
-  h2.finding { color: var(--navy); font-size: 19pt; margin: 0 0 2mm; line-height: 1.2; }
-  .finding-meta { font-size: 9pt; color: var(--ink); margin-bottom: 5mm; }
+  .facts { font-size: 8.5pt; margin-bottom: 6mm; border: 1px solid var(--line); }
+  .facts .row { display: flex; border-bottom: 1px solid var(--line); }
+  .facts .row:last-child { border-bottom: 0; }
+  .facts .key { width: 32mm; background: var(--panel); color: var(--muted); font-weight: bold; font-size: 7.5pt; padding: 2.2mm 3mm; text-transform: uppercase; letter-spacing: 0.04em; }
+  .facts .val { flex: 1; padding: 2.2mm 3mm; word-break: break-word; }
+
+  /* ---- shared ---- */
+  h2.section { color: var(--navy); font-size: 14pt; margin: 0 0 1.5mm; }
+  .section-rule { width: 18mm; height: 1mm; background: var(--teal); margin-bottom: 4mm; }
+  h2.finding { color: var(--navy); font-size: 18pt; margin: 0 0 2mm; line-height: 1.2; }
+  .finding-meta { font-size: 8.5pt; color: var(--ink); margin-bottom: 4mm; }
   .finding-meta b { color: var(--navy); }
-  .sev { display: inline-block; padding: 0.6mm 2mm; border-radius: 2px; font-size: 7.5pt; font-weight: bold; letter-spacing: 0.04em; text-transform: uppercase; color: #ffffff; }
+
+  .sev { display: inline-block; padding: 0.5mm 2mm; border-radius: 1mm; font-size: 7pt; font-weight: bold; letter-spacing: 0.05em; text-transform: uppercase; color: #ffffff; }
   .sev-critical { background: #b3261e; }
   .sev-high { background: #c2610a; }
   .sev-medium { background: #8a6d00; }
   .sev-low { background: #4a6076; }
 
-  table.grid { width: 100%; border-collapse: collapse; font-size: 8.5pt; }
-  table.grid th { background: var(--navy); color: #ffffff; text-align: left; font-size: 7.5pt; letter-spacing: 0.05em; text-transform: uppercase; padding: 2.5mm; }
-  table.grid td { border: 1px solid var(--line); padding: 2.5mm; vertical-align: top; }
+  table.grid { width: 100%; border-collapse: collapse; font-size: 8pt; }
+  table.grid th { background: var(--navy); color: #ffffff; text-align: left; font-size: 7pt; letter-spacing: 0.06em; text-transform: uppercase; padding: 2.4mm; }
+  table.grid td { border: 1px solid var(--line); padding: 2.2mm 2.4mm; vertical-align: top; }
   table.grid tr { page-break-inside: avoid; break-inside: avoid; }
-  table.grid tbody tr:nth-child(even) td { background: #fafcfd; }
-  .note { font-size: 8pt; color: var(--muted); margin-top: 4mm; }
+  table.grid tbody tr:nth-child(even) td { background: #f8fbfc; }
+  table.grid .id { font-weight: bold; color: var(--navy); white-space: nowrap; }
+  table.grid .sub { color: var(--muted); font-size: 7pt; }
+  .note { font-size: 7.5pt; color: var(--muted); margin-top: 3.5mm; line-height: 1.5; }
 
-  .panel { border: 1px solid var(--line); margin-bottom: 4mm; page-break-inside: avoid; break-inside: avoid; }
-  .panel > .panel-label { background: var(--panel); color: var(--muted); font-size: 7.5pt; font-weight: bold; letter-spacing: 0.06em; text-transform: uppercase; padding: 2mm 3mm; border-bottom: 1px solid var(--line); }
+  .group-head { background: var(--teal-soft) !important; }
+  .group-head td { font-weight: bold; color: var(--navy); font-size: 7.5pt; letter-spacing: 0.06em; text-transform: uppercase; border-color: var(--line-strong); }
+
+  /* ---- evidence panels ---- */
+  .panel { border: 1px solid var(--line); margin-bottom: 3.5mm; page-break-inside: avoid; break-inside: avoid; }
+  .panel > .panel-label { background: var(--panel); color: var(--navy); font-size: 7pt; font-weight: bold; letter-spacing: 0.07em; text-transform: uppercase; padding: 2mm 3mm; border-bottom: 1px solid var(--line); }
   .panel .stage { background: #000000; text-align: center; padding: 3mm; }
-  .panel .caption { font-size: 7.5pt; color: var(--muted); padding: 2mm 3mm; border-top: 1px solid var(--line); }
+  .panel .caption { font-size: 7pt; color: var(--muted); padding: 2mm 3mm; border-top: 1px solid var(--line); line-height: 1.5; }
   .panel .caption b { color: var(--ink); }
-  .panel-row { display: flex; gap: 4mm; }
+  .panel-row { display: flex; gap: 3.5mm; }
   .panel-row > .panel { flex: 1 1 0; min-width: 0; }
 
   .frame { position: relative; display: inline-block; max-width: 100%; line-height: 0; }
@@ -193,24 +256,26 @@ const REPORT_CSS = `
   .stage-primary .frame img { max-height: 68mm; }
   .stage-compare .frame img { max-height: 46mm; }
   .stage-support .frame img { max-height: 40mm; }
+
   .caliper-line { position: absolute; height: 2px; background: currentColor; }
   .caliper-tick { position: absolute; width: 2px; background: currentColor; }
-  .caliper-label { position: absolute; transform: translate(-50%, -160%); background: #000000; color: #ffffff; font-size: 7pt; line-height: 1.5; padding: 0.4mm 1.6mm; white-space: nowrap; font-family: Helvetica, Arial, sans-serif; }
+  .caliper-label { position: absolute; transform: translate(-50%, -160%); background: #000000; color: #ffffff; font-size: 6.5pt; line-height: 1.5; padding: 0.4mm 1.6mm; white-space: nowrap; }
   .caliper-box { position: absolute; border: 1px dashed currentColor; }
   .human { color: var(--human); }
   .ai { color: var(--ai); }
 
-  .verify-title { background: var(--navy); color: #ffffff; font-size: 8pt; font-weight: bold; letter-spacing: 0.07em; text-transform: uppercase; padding: 2.5mm 3mm; }
-  table.verify { width: 100%; border-collapse: collapse; font-size: 8.5pt; table-layout: fixed; }
+  .verify-title { background: var(--navy); color: #ffffff; font-size: 7.5pt; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; padding: 2.4mm 3mm; }
+  table.verify { width: 100%; border-collapse: collapse; font-size: 8pt; table-layout: fixed; }
   table.verify tr { page-break-inside: avoid; break-inside: avoid; }
-  table.verify th { background: var(--panel); color: var(--muted); font-weight: normal; text-align: left; width: 22%; padding: 2.2mm 3mm; border: 1px solid var(--line); }
-  table.verify td { padding: 2.2mm 3mm; border: 1px solid var(--line); width: 28%; word-wrap: break-word; }
+  table.verify th { background: var(--panel); color: var(--muted); font-weight: normal; text-align: left; width: 22%; padding: 2.1mm 3mm; border: 1px solid var(--line); }
+  table.verify td { padding: 2.1mm 3mm; border: 1px solid var(--line); width: 28%; word-wrap: break-word; }
   .flag { color: #b3261e; font-weight: bold; }
   .ok { color: #1c6b3f; font-weight: bold; }
 
-  .narrative h2 { color: var(--navy); font-size: 15pt; margin: 0 0 3mm; }
-  .narrative h3 { color: var(--navy); font-size: 12pt; margin: 5mm 0 2mm; }
-  .narrative h4 { color: var(--navy); font-size: 10pt; margin: 4mm 0 1.5mm; }
+  /* ---- narrative ---- */
+  .narrative h2 { color: var(--navy); font-size: 14pt; margin: 0 0 3mm; }
+  .narrative h3 { color: var(--navy); font-size: 12pt; margin: 0 0 3mm; }
+  .narrative h4 { color: var(--navy); font-size: 9.5pt; margin: 4mm 0 1.5mm; padding-left: 2.5mm; border-left: 0.8mm solid var(--teal); }
   .narrative p { margin: 2mm 0; }
   .narrative ul, .narrative ol { margin: 2mm 0; padding-left: 6mm; }
   .narrative li { margin: 1mm 0; }
@@ -223,6 +288,8 @@ const REPORT_CSS = `
   .signatures { display: flex; gap: 8mm; margin-top: 6mm; }
   .signatures div { flex: 1 1 0; font-size: 8pt; }
   .signatures .rule { margin-top: 12mm; border-top: 1px solid var(--navy); padding-top: 1.5mm; color: var(--muted); }
+
+  .disclaimer { margin-top: 5mm; border: 1px solid var(--line); background: var(--panel); padding: 3mm 4mm; font-size: 7.5pt; color: var(--muted); line-height: 1.55; }
 
   @page { size: A4; margin: 0; }
   @media print {
@@ -304,9 +371,9 @@ function renderFrame(image: string, alt: string, overlay = '') {
 function sheetHeader(logoUrl: string, draftId: string) {
   return `
     <header class="sheet-header">
-      <img src="${logoUrl}" alt="CIAI Cyber Intellectus" />
+      <img src="${logoUrl}" alt="CIAI Teleradiology" />
       <div class="ident">
-        <strong>CIAI TELERADIOLOGY AI PART</strong>
+        <strong>AI ANALYSIS REPORT</strong>
         <span>TEAM DRAFT | ${escapeHtml(draftId)}</span>
       </div>
     </header>
@@ -321,13 +388,12 @@ function sheetHeader(logoUrl: string, draftId: string) {
 function sheetFooter(sectionLabel: string) {
   return `
     <footer class="sheet-footer">
-      <span>CIAI TELERADIOLOGY AI PART - Team Draft</span>
+      <span>CIAI Teleradiology — AI analysis, radiologist verification required</span>
       <span>${escapeHtml(sectionLabel)}</span>
     </footer>
   `;
 }
 
-/** Wraps sheet content with the running furniture. */
 function makeSheet(body: string, sectionLabel: string, header: string) {
   return `
     <section class="sheet">
@@ -338,45 +404,76 @@ function makeSheet(body: string, sectionLabel: string, header: string) {
   `;
 }
 
-function renderCoverBody(options: ReportBuildOptions, draftId: string) {
+function sectionHeading(title: string) {
+  return `<h2 class="section">${escapeHtml(title)}</h2><div class="section-rule"></div>`;
+}
+
+function renderCoverBody(options: ReportBuildOptions, draftId: string, anomalies: AiFindingSummary[]) {
   const { payload, evidence, study, logoUrl } = options;
   const imageSupported = getImageSupportedFindings(evidence);
   const patient = payload.patient_info || {};
   const studyInfo = payload.study_info || {};
-  const maxDifference = getMaxDifferenceMm(evidence);
+  const counts = summarizeSeverities(anomalies);
+  const worst = counts.critical ? 'critical' : counts.high ? 'high' : counts.medium ? 'medium' : 'low';
 
   const tiles: [string, string][] = [
+    [String(anomalies.length), 'Anomalies detected'],
     [String(imageSupported.length), 'Image-supported findings'],
     [getMeasurementRange(evidence), 'Recovered image measurements'],
-    [`${maxDifference} mm`, 'Manual vs AI in draft'],
+    [`${getMaxDifferenceMm(evidence)} mm`, 'Manual vs AI in draft'],
+  ];
+
+  const facts: [string, string][] = [
+    ['Patient', patient.patient_name || study.patientName || 'Not available'],
     [
-      String(evidence.length),
-      'Original + human + AI + heatmap',
+      'Sex / ID',
+      [patient.patient_sex, patient.patient_id ? `ID ${patient.patient_id}` : '']
+        .filter(Boolean)
+        .join('  |  ') || 'Not available',
+    ],
+    ['Study date', formatDicomDate(studyInfo.study_date || study.date)],
+    ['Study UID', study.studyInstanceUid],
+    ['AI engines', 'MedGemma + CIAI Model  |  Gemini + CIAI Model'],
+    [
+      'Coverage',
+      `${payload.total_series_analyzed ?? 0} series  |  ${
+        payload.total_frames_processed ?? 0
+      } frames  |  ${(payload.findings_summary || []).length} entries reviewed`,
     ],
   ];
 
-  const patientLine = [
-    patient.patient_name || study.patientName || 'Not available',
-    patient.patient_sex || '',
-    patient.patient_id ? `Patient ID ${patient.patient_id}` : '',
-    `Study date ${formatDicomDate(studyInfo.study_date || study.date)}`,
-  ]
-    .filter(Boolean)
-    .map(escapeHtml)
-    .join('&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;');
-
   return `
+    <div class="cover-brand">
+      <img src="${logoUrl}" alt="CIAI Teleradiology" />
+      <div class="stamp">
+        <b>AI ANALYSIS REPORT</b>
+        TEAM DRAFT | ${escapeHtml(draftId)}
+      </div>
+    </div>
     <div class="hero">
       <h1>CIAI TELERADIOLOGY<br />AI PART</h1>
-      <div class="pipeline">ORIGINAL IMAGE | HUMAN MARKING | CIAI AI | HEATMAP | RADIOLOGIST VERIFY</div>
+      <div class="pipeline">ORIGINAL IMAGE&nbsp;&nbsp;|&nbsp;&nbsp;HUMAN MARKING&nbsp;&nbsp;|&nbsp;&nbsp;CIAI AI&nbsp;&nbsp;|&nbsp;&nbsp;HEATMAP&nbsp;&nbsp;|&nbsp;&nbsp;RADIOLOGIST VERIFY</div>
     </div>
-    <div class="cover-logo"><img src="${logoUrl}" alt="CIAI Cyber Intellectus" /></div>
     <p class="cover-tagline">AI evidence should never hide the diagnostic image.</p>
     <p class="cover-lede">
-      This report presents each finding as the original diagnostic image first, then the human/manual
+      Each finding is presented as the original diagnostic image first, then the human/manual
       measurement, then the CIAI AI measurement, with the heatmap retained at the end as supporting
       evidence. The radiologist remains the final decision-maker.
     </p>
+
+    <div class="verdict ${worst === 'critical' ? 'is-critical' : ''}">
+      <span class="sev ${severityClass(worst)}">${escapeHtml(worst)}</span>
+      <div>
+        <div class="headline">Study result: ${
+          anomalies.length ? `${anomalies.length} anomalies reported` : 'No anomalies reported'
+        }</div>
+        <div class="detail">
+          ${counts.critical} critical &middot; ${counts.high} high &middot; ${counts.medium} medium &middot; ${counts.low} low
+          &nbsp;|&nbsp; normal-structure entries are excluded from this report
+        </div>
+      </div>
+    </div>
+
     <div class="tiles">
       ${tiles
         .map(
@@ -388,28 +485,85 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string) {
         )
         .join('')}
     </div>
+
     <div class="facts">
-      <div><b>AI engines:</b> MedGemma + CIAI Model&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;Gemini + CIAI Model</div>
-      <div><b>Patient:</b> ${patientLine}</div>
-      <div><b>Study UID:</b> ${escapeHtml(study.studyInstanceUid)}</div>
-      <div><b>Series analysed:</b> ${payload.total_series_analyzed ?? 0}&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;<b>Frames processed:</b> ${
-    payload.total_frames_processed ?? 0
-  }&nbsp;&nbsp;&nbsp;|&nbsp;&nbsp;&nbsp;<b>Findings reported:</b> ${
-    (payload.findings_summary || []).length
-  }</div>
+      ${facts
+        .map(
+          ([key, value]) =>
+            `<div class="row"><div class="key">${escapeHtml(key)}</div><div class="val">${escapeHtml(
+              value
+            )}</div></div>`
+        )
+        .join('')}
     </div>
-    <h2 class="section">Report objective</h2>
-    <p class="cover-lede">
-      The viewer and report let a doctor open the exact DICOM slice, see it without overlays, toggle
-      the lab/manual marking, toggle the CIAI AI marking, compare measurements and then inspect the
-      heatmap. Image-level and narrative values remain separate audit fields until radiologist
-      verification.
-    </p>
+
+    <div class="disclaimer">
+      This document is AI-generated decision support, not a diagnosis. Every measurement, marking and
+      impression requires radiologist verification before clinical use. Image-level and narrative
+      values are kept as separate audit fields and any disagreement between them is flagged rather
+      than reconciled automatically.
+    </div>
   `;
 }
 
-/** Rows per measurements sheet — keeps the table from stranding a lone footer. */
+/** Anomaly-only replacement for the narrative's exhaustive findings table. */
+function renderAnomalyTableBody(
+  findings: AiFindingSummary[],
+  part: number,
+  partCount: number,
+  total: number,
+  excluded: number
+) {
+  const rows = findings
+    .map(
+      finding => `
+      <tr>
+        <td class="id">${escapeHtml(finding.finding_id || '—')}</td>
+        <td>
+          <b>${escapeHtml(finding.name || 'Unnamed finding')}</b>
+          ${finding.description ? `<div class="sub">${escapeHtml(finding.description)}</div>` : ''}
+        </td>
+        <td><span class="sev ${severityClass(finding.severity || 'low')}">${escapeHtml(
+        (finding.severity || 'low').toUpperCase()
+      )}</span></td>
+        <td>${escapeHtml(formatConfidence(finding.confidence))}</td>
+        <td>${escapeHtml(parseMeasurement(finding.size_estimate).display)}</td>
+        <td>${escapeHtml(finding.location || '—')}</td>
+        <td class="sub">${escapeHtml(finding.series || '—')}</td>
+      </tr>`
+    )
+    .join('');
+
+  return `
+    ${sectionHeading(`Anomaly Findings${partCount > 1 ? ` (${part} of ${partCount})` : ''}`)}
+    ${
+      part === 1
+        ? `<p class="note" style="margin-top:0;margin-bottom:3.5mm">
+             ${total} anomalies reported. ${excluded} normal-structure and negative entries
+             ("no skull fracture", "the left pons is visualized") are excluded from this table —
+             the analysis enumerates every structure it inspects, not only the abnormal ones.
+           </p>`
+        : ''
+    }
+    <table class="grid">
+      <thead>
+        <tr>
+          <th style="width:10%">ID</th>
+          <th style="width:31%">Finding</th>
+          <th style="width:8%">Severity</th>
+          <th style="width:8%">Conf.</th>
+          <th style="width:12%">Size</th>
+          <th style="width:15%">Location</th>
+          <th style="width:16%">Series</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
+  `;
+}
+
 const MEASUREMENT_ROWS_PER_SHEET = 14;
+const ANOMALY_ROWS_PER_SHEET = 10;
 
 function renderMeasurementsBody(evidence: EvidenceFinding[], part: number, partCount: number) {
   const rows = evidence
@@ -417,8 +571,8 @@ function renderMeasurementsBody(evidence: EvidenceFinding[], part: number, partC
       finding => `
       <tr>
         <td>
-          <b>${escapeHtml(finding.findingId)}</b> — ${escapeHtml(finding.name)}<br />
-          <span style="color:#667787">${escapeHtml(finding.seriesLabel)}</span>
+          <span class="id">${escapeHtml(finding.findingId)}</span> — ${escapeHtml(finding.name)}
+          <div class="sub">${escapeHtml(finding.seriesLabel)}</div>
         </td>
         <td>${escapeHtml(finding.imageMeasurement.display)}</td>
         <td>${escapeHtml(formatConfidence(finding.imageScore))}</td>
@@ -435,9 +589,9 @@ function renderMeasurementsBody(evidence: EvidenceFinding[], part: number, partC
     .join('');
 
   return `
-    <h2 class="section">Recovered Image-Level AI Measurements${
-      partCount > 1 ? ` (${part} of ${partCount})` : ''
-    }</h2>
+    ${sectionHeading(
+      `Recovered Image-Level AI Measurements${partCount > 1 ? ` (${part} of ${partCount})` : ''}`
+    )}
     <table class="grid">
       <thead>
         <tr>
@@ -544,7 +698,10 @@ function renderEvidenceBody(finding: EvidenceFinding, studyInstanceUid: string) 
     <div class="panel-row">
       <div class="panel">
         <div class="panel-label">4. Heatmap - final evidence layer</div>
-        <div class="stage stage-support">${renderFrame(finding.heatmapImage, `${finding.name} heatmap`)}</div>
+        <div class="stage stage-support">${renderFrame(
+          finding.heatmapImage,
+          `${finding.name} heatmap`
+        )}</div>
         <div class="caption">Supports the finding. Does not replace the original DICOM image.</div>
       </div>
       <div class="panel" style="border-color:transparent"></div>
@@ -608,7 +765,7 @@ function renderEvidenceBody(finding: EvidenceFinding, studyInstanceUid: string) 
 
 function renderWorkflowBody() {
   return `
-    <h2 class="section">Final Team Draft - Build This Workflow</h2>
+    ${sectionHeading('Final Team Draft - Build This Workflow')}
     <p class="cover-lede">This is the CIAI AI-part output structure this report implements.</p>
     <table class="grid">
       <thead>
@@ -617,7 +774,7 @@ function renderWorkflowBody() {
       <tbody>
         ${WORKFLOW_STAGES.map(
           ([stage, detail]) =>
-            `<tr><td><b>${escapeHtml(stage)}</b></td><td>${escapeHtml(detail)}</td></tr>`
+            `<tr><td class="id">${escapeHtml(stage)}</td><td>${escapeHtml(detail)}</td></tr>`
         ).join('')}
       </tbody>
     </table>
@@ -642,18 +799,38 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
   const draftId = buildDraftId(payload, study.studyInstanceUid);
   const header = sheetHeader(logoUrl, draftId);
 
+  const allFindings = payload.findings_summary || [];
+  const anomalies = sortFindingsSummary(getAnomalyFindings(allFindings));
+  const excludedCount = allFindings.length - anomalies.length;
+
   const sheets: string[] = [];
   const addSheet = (body: string, sectionLabel: string) => {
     sheets.push(makeSheet(body, sectionLabel, header));
   };
 
-  // Cover carries the hero block instead of the running header band.
+  // Cover carries its own brand band instead of the running header.
   sheets.push(
-    `<section class="sheet">
-      <div class="sheet-body">${renderCoverBody(options, draftId)}</div>
+    `<section class="sheet sheet-cover">
+      <div class="sheet-body">${renderCoverBody(options, draftId, anomalies)}</div>
       ${sheetFooter(draftId)}
     </section>`
   );
+
+  if (anomalies.length) {
+    const parts = chunk(anomalies, ANOMALY_ROWS_PER_SHEET);
+    parts.forEach((part, index) => {
+      addSheet(
+        renderAnomalyTableBody(
+          part,
+          index + 1,
+          parts.length,
+          anomalies.length,
+          excludedCount
+        ),
+        `Anomaly findings${parts.length > 1 ? ` ${index + 1}/${parts.length}` : ''}`
+      );
+    });
+  }
 
   if (evidence.length) {
     const parts = chunk(evidence, MEASUREMENT_ROWS_PER_SHEET);
@@ -671,7 +848,7 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
     );
   } else {
     addSheet(
-      `<h2 class="section">Recovered Image-Level AI Measurements</h2>
+      `${sectionHeading('Recovered Image-Level AI Measurements')}
        <p class="note">No finding in this study resolved to an image frame, so no image-supported
        evidence pages could be produced. The narrative report follows.</p>`,
       'Image-level measurements'
@@ -679,15 +856,18 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
   }
 
   if (includeNarrative && payload.report?.report_text) {
-    const sections = splitReportSections(payload.report.report_text);
-    sections.forEach(section => {
-      const body = `
-        <div class="narrative">
-          ${section.title ? `<h3>${escapeHtml(section.title)}</h3>` : ''}
-          ${renderSafeReportMarkdown(section.body)}
-        </div>`;
-      addSheet(body, section.title || 'Narrative report');
-    });
+    splitReportSections(payload.report.report_text)
+      .filter(
+        section => !REPLACED_NARRATIVE_SECTIONS.some(pattern => pattern.test(section.title || ''))
+      )
+      .forEach(section => {
+        const body = `
+          <div class="narrative">
+            ${section.title ? sectionHeading(section.title) : ''}
+            ${renderSafeReportMarkdown(section.body)}
+          </div>`;
+        addSheet(body, section.title || 'Narrative report');
+      });
   }
 
   addSheet(renderWorkflowBody(), 'Workflow specification');
@@ -696,7 +876,7 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>CIAI Teleradiology AI Report — ${escapeHtml(
+    <title>CIAI AI Analysis Report — ${escapeHtml(
       payload.patient_info?.patient_name || study.patientName || study.studyInstanceUid
     )}</title>
     <style>${REPORT_CSS}</style>
