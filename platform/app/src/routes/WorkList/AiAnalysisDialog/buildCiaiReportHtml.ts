@@ -23,11 +23,17 @@ import {
   getImageSrc,
   getMaxDifferenceMm,
   getMeasurementRange,
+  getReportableFindings,
   getTier,
   groupEvidenceFindings,
   summarizeSeverities,
 } from './aiReportModel';
-import { escapeHtml, renderSafeReportMarkdown, splitReportSections } from './reportMarkdown';
+import {
+  escapeHtml,
+  renderSafeReportMarkdown,
+  splitReportSections,
+  stripLowPriorityFindings,
+} from './reportMarkdown';
 
 export type ReportBuildOptions = {
   payload: AiCompletePayload;
@@ -42,6 +48,15 @@ export type ReportBuildOptions = {
   logoUrl: string;
   /** Include the full narrative report after the evidence sheets. */
   includeNarrative?: boolean;
+  /**
+   * Append the team-facing workflow specification and approval block.
+   *
+   * Off for patient reports: that page is the reference document's build
+   * instruction rather than study data, and it states requirements this
+   * pipeline does not yet meet (source-DICOM originals, stored measurement
+   * coordinates).
+   */
+  includeSpecificationAppendix?: boolean;
   generatedAt?: Date;
 };
 
@@ -102,8 +117,6 @@ const REPORT_CSS = `
     --line-strong: #c3d2dd;
     --muted: #667787;
     --ink: #1f2c38;
-    --human: #00ffff;
-    --ai: #ffe600;
   }
   * { box-sizing: border-box; }
   body {
@@ -263,12 +276,6 @@ const REPORT_CSS = `
   .stage-compare .frame img { max-height: 46mm; }
   .stage-support .frame img { max-height: 40mm; }
 
-  .caliper-line { position: absolute; height: 2px; background: currentColor; }
-  .caliper-tick { position: absolute; width: 2px; background: currentColor; }
-  .caliper-label { position: absolute; transform: translate(-50%, -160%); background: #000000; color: #ffffff; font-size: 6.5pt; line-height: 1.5; padding: 0.4mm 1.6mm; white-space: nowrap; }
-  .caliper-box { position: absolute; border: 1px dashed currentColor; }
-  .human { color: var(--human); }
-  .ai { color: var(--ai); }
 
   .verify-title { background: var(--navy); color: #ffffff; font-size: 7.5pt; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; padding: 2.4mm 3mm; }
   table.verify { width: 100%; border-collapse: collapse; font-size: 8pt; table-layout: fixed; }
@@ -324,54 +331,12 @@ function buildDraftId(payload: AiCompletePayload, studyInstanceUid: string) {
   return `CIAI-RAD-${studyDate}-${patientId}-${draftHash(studyInstanceUid)}`;
 }
 
-/**
- * Draws the caliper for a finding over its frame.
- *
- * `bbox` is normalised to the frame, so the overlay is positioned in percentages
- * and stays aligned at any print scale. The measurement label sits directly
- * above the caliper line, as the format requires.
- */
-function renderCaliper(bbox: number[] | null, label: string, tone: 'human' | 'ai') {
-  if (!bbox) {
-    return '';
-  }
-
-  const [x0, y0, x1, y1] = bbox;
-  const left = Math.min(x0, x1) * 100;
-  const right = Math.max(x0, x1) * 100;
-  const top = Math.min(y0, y1) * 100;
-  const bottom = Math.max(y0, y1) * 100;
-  const width = Math.max(right - left, 0.5);
-  const centerY = (top + bottom) / 2;
-  const centerX = (left + right) / 2;
-
-  return `
-    <span class="${tone}">
-      <span class="caliper-box" style="left:${left}%;top:${top}%;width:${width}%;height:${Math.max(
-    bottom - top,
-    0.5
-  )}%"></span>
-      <span class="caliper-line" style="left:${left}%;top:${centerY}%;width:${width}%"></span>
-      <span class="caliper-tick" style="left:${left}%;top:${centerY - 2}%;height:4%"></span>
-      <span class="caliper-tick" style="left:${right}%;top:${centerY - 2}%;height:4%"></span>
-      <span class="caliper-label" style="left:${centerX}%;top:${centerY}%">${escapeHtml(
-    label
-  )}</span>
-    </span>
-  `;
-}
-
-function renderFrame(image: string, alt: string, overlay = '') {
+function renderFrame(image: string, alt: string) {
   if (!image) {
     return `<div style="color:#8fa2b3;font-size:8pt;padding:10mm 0">Image not returned by the analysis service.</div>`;
   }
 
-  return `
-    <span class="frame">
-      <img src="${getImageSrc(image)}" alt="${escapeHtml(alt)}" />
-      ${overlay}
-    </span>
-  `;
+  return `<span class="frame"><img src="${getImageSrc(image)}" alt="${escapeHtml(alt)}" /></span>`;
 }
 
 function sheetHeader(logoUrl: string, draftId: string) {
@@ -419,13 +384,13 @@ type CoverTotals = {
   grouped: GroupedFinding[];
   measured: GroupedFinding[];
   reported: GroupedFinding[];
-  incidental: GroupedFinding[];
   excludedCount: number;
+  lowSeverityCount: number;
 };
 
 function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: CoverTotals) {
   const { payload, study, logoUrl } = options;
-  const { grouped, measured, reported, incidental, excludedCount } = totals;
+  const { grouped, measured, reported, excludedCount, lowSeverityCount } = totals;
   const patient = payload.patient_info || {};
   const studyInfo = payload.study_info || {};
   // Severity is reported over the findings that survive grouping, not over the
@@ -451,7 +416,6 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
     ],
     ['Study date', formatDicomDate(studyInfo.study_date || study.date)],
     ['Study UID', study.studyInstanceUid],
-    ['AI engines', 'MedGemma + CIAI Model  |  Gemini + CIAI Model'],
     [
       'Coverage',
       `${payload.total_series_analyzed ?? 0} series  |  ${
@@ -472,13 +436,14 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
     </div>
     <div class="hero">
       <h1>CIAI TELERADIOLOGY<br />AI PART</h1>
-      <div class="pipeline">ORIGINAL IMAGE&nbsp;&nbsp;|&nbsp;&nbsp;HUMAN MARKING&nbsp;&nbsp;|&nbsp;&nbsp;CIAI AI&nbsp;&nbsp;|&nbsp;&nbsp;HEATMAP&nbsp;&nbsp;|&nbsp;&nbsp;RADIOLOGIST VERIFY</div>
+      <div class="pipeline">ORIGINAL IMAGE&nbsp;&nbsp;|&nbsp;&nbsp;CIAI AI MARKING&nbsp;&nbsp;|&nbsp;&nbsp;HEATMAP&nbsp;&nbsp;|&nbsp;&nbsp;RADIOLOGIST VERIFY</div>
     </div>
     <p class="cover-tagline">AI evidence should never hide the diagnostic image.</p>
     <p class="cover-lede">
-      Each finding is presented as the original diagnostic image first, then the human/manual
-      measurement, then the CIAI AI measurement, with the heatmap retained at the end as supporting
-      evidence. The radiologist remains the final decision-maker.
+      Each finding is presented as the original diagnostic image first, then the CIAI AI marking,
+      with the heatmap retained at the end as supporting evidence. Every image shown is returned by
+      the analysis service; nothing is redrawn or inferred. The radiologist remains the final
+      decision-maker.
     </p>
 
     <div class="verdict ${worst === 'critical' ? 'is-critical' : ''}">
@@ -488,13 +453,12 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
           grouped.length ? `${grouped.length} distinct findings` : 'No anomalies reported'
         }</div>
         <div class="detail">
-          <b>${measured.length}</b> measured &middot; <b>${reported.length}</b> narrative only &middot;
-          <b>${incidental.length}</b> incidental
-          &nbsp;|&nbsp; ${counts.critical} critical &middot; ${counts.high} high &middot; ${counts.medium} medium &middot; ${counts.low} low
+          <b>${measured.length}</b> measured &middot; <b>${reported.length}</b> narrative only
+          &nbsp;|&nbsp; ${counts.critical} critical &middot; ${counts.high} high &middot; ${counts.medium} medium
         </div>
         <div class="detail">
-          ${excludedCount} normal-structure and negative entries excluded; repeat observations of the
-          same finding across slices merged.
+          ${excludedCount} normal-structure and negative entries and ${lowSeverityCount} low-severity
+          findings excluded; repeat observations of the same finding across slices merged.
         </div>
       </div>
     </div>
@@ -629,7 +593,7 @@ function renderReportedTableBody(rows: GroupedFinding[], part: number, partCount
       part === 1
         ? `<p class="note" style="margin-top:0;margin-bottom:3.5mm">
              Stated by the narrative model without a measurement recovered from the image, so there is
-             nothing to verify a caliper against. Sizes below are the model's own wording.
+             nothing to measure against. Sizes below are the model's own wording.
            </p>`
         : ''
     }
@@ -649,47 +613,6 @@ function renderReportedTableBody(rows: GroupedFinding[], part: number, partCount
   `;
 }
 
-/**
- * Background observations — physiologic calcification, age-related atrophy,
- * chronic white-matter change, scanner artefact. Real, but listing them beside
- * a brain mass at equal weight is what made the findings table unreadable.
- */
-function renderIncidentalBody(rows: GroupedFinding[]) {
-  const items = rows
-    .map(
-      finding => `
-      <tr>
-        <td><b>${escapeHtml(finding.name)}</b> ${occurrenceNote(finding)}</td>
-        <td class="sub">${escapeHtml(finding.locations.join('; ') || '—')}</td>
-        <td class="sub">${escapeHtml(
-          finding.seriesLabels.length > 1
-            ? `${finding.seriesLabels.length} series`
-            : finding.seriesLabels[0] || '—'
-        )}</td>
-      </tr>`
-    )
-    .join('');
-
-  return `
-    ${sectionHeading('Incidental and Chronic Observations')}
-    <p class="note" style="margin-top:0;margin-bottom:3.5mm">
-      ${rows.length} background observations, listed for completeness. None carries a recovered image
-      measurement.
-    </p>
-    <table class="grid">
-      <thead>
-        <tr>
-          <th style="width:46%">Observation</th>
-          <th style="width:32%">Location</th>
-          <th style="width:22%">Seen in</th>
-        </tr>
-      </thead>
-      <tbody>${items}</tbody>
-    </table>
-  `;
-}
-
-const MEASUREMENT_ROWS_PER_SHEET = 14;
 /**
  * Usable height for a table body on one sheet, after the header band, section
  * heading, intro note, table head and footer band are taken out.
@@ -791,32 +714,57 @@ function renderMeasurementsBody(evidence: EvidenceFinding[], part: number, partC
   `;
 }
 
-function chunk<T>(items: T[], size: number): T[][] {
-  const chunks: T[][] = [];
-  for (let index = 0; index < items.length; index += size) {
-    chunks.push(items.slice(index, index + size));
-  }
-  return chunks;
-}
 
 function renderEvidenceBody(finding: EvidenceFinding, studyInstanceUid: string) {
-  const humanLabel = finding.imageMeasurement.measurable
-    ? finding.imageMeasurement.display
-    : 'Pending';
-  const aiLabel = finding.imageMeasurement.measurable
-    ? finding.imageMeasurement.display
-    : finding.narrativeMeasurement.display;
-
-  // Panel 3 shows the AI marking; the raw heatmap is held back as the final
-  // evidence layer whenever both renderings are available.
-  const aiPanelImage = finding.annotatedImage || finding.heatmapImage;
-  const heatmapIsSeparate = Boolean(finding.annotatedImage && finding.heatmapImage);
-
   const consistencyClass = finding.consistency === 'match' ? 'ok' : 'flag';
   const differenceText =
     finding.differenceMm === null
-      ? 'Pending radiologist measurement'
+      ? 'Not comparable — only one layer measured'
       : `${finding.differenceMm} mm between image and narrative layers`;
+
+  // Exactly the three images the analysis service returns, in the order the
+  // format requires. There is deliberately no fourth panel: the service returns
+  // no manual measurement, so a "human marking" panel could only be the AI's
+  // own box drawn over the original and captioned as if a person had placed it.
+  const panels: { label: string; image: string; caption: string; stage: string }[] = [
+    {
+      label: '1. Original diagnostic image',
+      image: finding.originalImage,
+      stage: 'stage-primary',
+      caption: 'Unmodified frame at the AI-detected location. No overlay applied.',
+    },
+  ];
+
+  if (finding.annotatedImage) {
+    panels.push({
+      label: '2. CIAI AI marking',
+      image: finding.annotatedImage,
+      stage: 'stage-compare',
+      // The annotation is baked into this image by the analysis service. Drawing
+      // our own caliper on top of it would double-annotate the same lesion.
+      caption: `AI localization as returned by the analysis service. Image measurement: <b>${escapeHtml(
+        finding.imageMeasurement.display
+      )}</b>.`,
+    });
+  }
+
+  if (finding.heatmapImage) {
+    panels.push({
+      label: `${finding.annotatedImage ? '3' : '2'}. Heatmap — final evidence layer`,
+      image: finding.heatmapImage,
+      stage: 'stage-compare',
+      caption: 'Supports the finding. Does not replace the original DICOM image.',
+    });
+  }
+
+  const [primary, ...rest] = panels;
+
+  const renderPanel = (panel: typeof panels[number]) => `
+    <div class="panel">
+      <div class="panel-label">${panel.label}</div>
+      <div class="stage ${panel.stage}">${renderFrame(panel.image, `${finding.name} — ${panel.label}`)}</div>
+      <div class="caption">${panel.caption}</div>
+    </div>`;
 
   return `
     <h2 class="finding">${escapeHtml(finding.findingId)} - ${escapeHtml(finding.name)}</h2>
@@ -831,58 +779,8 @@ function renderEvidenceBody(finding: EvidenceFinding, studyInstanceUid: string) 
       &nbsp;&nbsp;|&nbsp;&nbsp;<b>Location:</b> ${escapeHtml(finding.location || 'Not stated')}
     </div>
 
-    <div class="panel">
-      <div class="panel-label">1. Original diagnostic image</div>
-      <div class="stage stage-primary">${renderFrame(
-        finding.originalImage,
-        `${finding.name} original diagnostic image`
-      )}</div>
-      <div class="caption">Unmodified frame at the AI-detected location. No overlay applied.</div>
-    </div>
-
-    <div class="panel-row">
-      <div class="panel">
-        <div class="panel-label">2. Lab / human marking</div>
-        <div class="stage stage-compare">${renderFrame(
-          finding.originalImage,
-          `${finding.name} manual marking`,
-          renderCaliper(finding.bbox, humanLabel, 'human')
-        )}</div>
-        <div class="caption">Measurement above caliper: <b>${escapeHtml(humanLabel)}</b><br />
-          Draft seeded from the image layer — awaiting radiologist caliper.</div>
-      </div>
-      <div class="panel">
-        <div class="panel-label">3. CIAI AI marking${heatmapIsSeparate ? '' : ' + heatmap'}</div>
-        <div class="stage stage-compare">${renderFrame(
-          aiPanelImage,
-          `${finding.name} CIAI AI marking`,
-          renderCaliper(finding.bbox, aiLabel, 'ai')
-        )}</div>
-        <div class="caption">CIAI measurement above caliper: <b>${escapeHtml(aiLabel)}</b><br />
-          ${
-            heatmapIsSeparate
-              ? 'Localization shown; heatmap retained below as final evidence layer.'
-              : 'Heatmap/localization retained as final evidence layer.'
-          }</div>
-      </div>
-    </div>
-
-    ${
-      heatmapIsSeparate
-        ? `
-    <div class="panel-row">
-      <div class="panel">
-        <div class="panel-label">4. Heatmap - final evidence layer</div>
-        <div class="stage stage-support">${renderFrame(
-          finding.heatmapImage,
-          `${finding.name} heatmap`
-        )}</div>
-        <div class="caption">Supports the finding. Does not replace the original DICOM image.</div>
-      </div>
-      <div class="panel" style="border-color:transparent"></div>
-    </div>`
-        : ''
-    }
+    ${renderPanel(primary)}
+    ${rest.length ? `<div class="panel-row">${rest.map(renderPanel).join('')}</div>` : ''}
 
     <div class="verify-title">Clinical verification panel</div>
     <table class="verify">
@@ -900,10 +798,6 @@ function renderEvidenceBody(finding: EvidenceFinding, studyInstanceUid: string) 
   )}</td>
         </tr>
         <tr>
-          <th>Manual / lab draft value</th><td>${escapeHtml(humanLabel)}</td>
-          <th>CIAI AI draft value</th><td>${escapeHtml(aiLabel)}</td>
-        </tr>
-        <tr>
           <th>Difference</th><td>${escapeHtml(differenceText)}</td>
           <th>Series</th><td>${escapeHtml(finding.seriesLabel || 'Not stated')}</td>
         </tr>
@@ -919,7 +813,7 @@ function renderEvidenceBody(finding: EvidenceFinding, studyInstanceUid: string) 
         </tr>
         <tr>
           <th>Final report value</th><td>_____________________</td>
-          <th>Evidence order</th><td>Original -&gt; Human -&gt; CIAI -&gt; Heatmap</td>
+          <th>Reported by</th><td>_____________________</td>
         </tr>
       </tbody>
     </table>
@@ -969,7 +863,14 @@ function renderWorkflowBody() {
 }
 
 export function buildCiaiReportHtml(options: ReportBuildOptions) {
-  const { payload, evidence, study, logoUrl, includeNarrative = true } = options;
+  const {
+    payload,
+    evidence,
+    study,
+    logoUrl,
+    includeNarrative = true,
+    includeSpecificationAppendix = false,
+  } = options;
   const generatedAt = options.generatedAt || new Date();
   const draftId = buildDraftId(payload, study.studyInstanceUid);
   const header = sheetHeader(logoUrl, draftId);
@@ -980,11 +881,16 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
   // One row per distinct finding, sorted by what can actually be done with it.
   // The analysis runs per frame, so the same lesion arrives once per slice it
   // appears on; grouping is what stops a single calcification filling six rows.
-  const grouped = groupEvidenceFindings(buildAllFindingRecords(payload));
+  // Low-severity findings are excluded from the report: they are two thirds of
+  // a study and none of them has ever carried a measurement recoverable from
+  // the image, so nothing verifiable is lost.
+  const grouped = getReportableFindings(groupEvidenceFindings(buildAllFindingRecords(payload)));
   const measured = getTier(grouped, 'measured');
   const reported = getTier(grouped, 'reported');
-  const incidental = getTier(grouped, 'incidental');
   const excludedCount = allFindings.length - anomalies.length;
+  const lowSeverityCount = anomalies.filter(
+    finding => (finding.severity || 'low').toLowerCase() === 'low'
+  ).length;
 
   const sheets: string[] = [];
   const addSheet = (body: string, sectionLabel: string) => {
@@ -999,8 +905,8 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
         grouped,
         measured,
         reported,
-        incidental,
         excludedCount,
+        lowSeverityCount,
       })}</div>
       ${sheetFooter(draftId)}
     </section>`
@@ -1026,17 +932,11 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
     });
   }
 
-  if (incidental.length) {
-    chunkByHeight(incidental, 70, TABLE_BUDGET_MM + 10).forEach(part => {
-      addSheet(renderIncidentalBody(part), 'Incidental observations');
-    });
-  }
-
   // Evidence sections are reserved for findings there is something to verify.
   // Printing two pages of "Pending / Not measured" for a narrative-only finding
   // added length without adding anything a radiologist could check.
   if (measured.length) {
-    const parts = chunk(measured, MEASUREMENT_ROWS_PER_SHEET);
+    const parts = chunkByHeight(measured, 40);
     parts.forEach((part, index) => {
       addSheet(
         renderMeasurementsBody(part, index + 1, parts.length),
@@ -1059,7 +959,7 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
   }
 
   if (includeNarrative && payload.report?.report_text) {
-    splitReportSections(payload.report.report_text)
+    splitReportSections(stripLowPriorityFindings(payload.report.report_text))
       .filter(
         section => !REPLACED_NARRATIVE_SECTIONS.some(pattern => pattern.test(section.title || ''))
       )
@@ -1073,7 +973,9 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
       });
   }
 
-  addSheet(renderWorkflowBody(), 'Workflow specification');
+  if (includeSpecificationAppendix) {
+    addSheet(renderWorkflowBody(), 'Workflow specification');
+  }
 
   return `<!doctype html>
 <html>

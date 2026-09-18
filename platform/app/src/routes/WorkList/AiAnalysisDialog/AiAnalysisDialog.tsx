@@ -51,11 +51,12 @@ import {
   getImageSrc,
   getMaxDifferenceMm,
   getMeasurementRange,
+  getReportableFindings,
   getTier,
   groupEvidenceFindings,
   summarizeSeverities,
 } from './aiReportModel';
-import { renderSafeReportMarkdown } from './reportMarkdown';
+import { renderSafeReportMarkdown, stripLowPriorityFindings } from './reportMarkdown';
 import { buildCiaiReportHtml } from './buildCiaiReportHtml';
 import { buildReportViewerHtml } from './buildReportViewerHtml';
 
@@ -525,106 +526,15 @@ function StatCard({ label, value, hint }: { label: string; value: React.ReactNod
   );
 }
 
-/**
- * Draws the AI-detected region over a frame.
- *
- * `bbox` is normalised to the frame, so the overlay is positioned in
- * percentages and stays aligned as the image scales with the dialog.
- */
-function CaliperOverlay({
-  bbox,
-  label,
-  tone,
-}: {
-  bbox: number[] | null;
-  label: string;
-  tone: 'human' | 'ai';
-}) {
-  if (!bbox) {
-    return null;
-  }
-
-  const [x0, y0, x1, y1] = bbox;
-  const left = Math.min(x0, x1) * 100;
-  const right = Math.max(x0, x1) * 100;
-  const top = Math.min(y0, y1) * 100;
-  const bottom = Math.max(y0, y1) * 100;
-  const width = Math.max(right - left, 0.5);
-  const height = Math.max(bottom - top, 0.5);
-  const centerY = (top + bottom) / 2;
-  const centerX = (left + right) / 2;
-  const color = tone === 'human' ? '#00ffff' : '#ffe600';
-
-  return (
-    <>
-      <Box
-        sx={{
-          position: 'absolute',
-          left: `${left}%`,
-          top: `${top}%`,
-          width: `${width}%`,
-          height: `${height}%`,
-          border: `1px dashed ${color}`,
-          pointerEvents: 'none',
-        }}
-      />
-      <Box
-        sx={{
-          position: 'absolute',
-          left: `${left}%`,
-          top: `${centerY}%`,
-          width: `${width}%`,
-          height: '2px',
-          background: color,
-          pointerEvents: 'none',
-        }}
-      />
-      {[left, right].map(position => (
-        <Box
-          key={position}
-          sx={{
-            position: 'absolute',
-            left: `${position}%`,
-            top: `${centerY - 2}%`,
-            width: '2px',
-            height: '4%',
-            background: color,
-            pointerEvents: 'none',
-          }}
-        />
-      ))}
-      <Box
-        sx={{
-          position: 'absolute',
-          left: `${centerX}%`,
-          top: `${centerY}%`,
-          transform: 'translate(-50%, -160%)',
-          background: '#000000',
-          color: '#ffffff',
-          fontSize: 11,
-          fontWeight: 700,
-          padding: '1px 6px',
-          whiteSpace: 'nowrap',
-          pointerEvents: 'none',
-        }}
-      >
-        {label}
-      </Box>
-    </>
-  );
-}
-
 function EvidencePanel({
   label,
   image,
   emptyText,
-  overlay,
   caption,
 }: {
   label: string;
   image: string;
   emptyText: string;
-  overlay?: React.ReactNode;
   caption?: string;
 }) {
   return (
@@ -654,15 +564,12 @@ function EvidencePanel({
       </Box>
       <Box sx={{ display: 'grid', placeItems: 'center', padding: '8px', flex: 1, minHeight: 160 }}>
         {image ? (
-          <Box sx={{ position: 'relative', display: 'inline-block', maxWidth: '100%' }}>
-            <Box
-              component="img"
-              src={getImageSrc(image)}
-              alt={label}
-              sx={{ display: 'block', maxWidth: '100%', maxHeight: 340, width: 'auto' }}
-            />
-            {overlay}
-          </Box>
+          <Box
+            component="img"
+            src={getImageSrc(image)}
+            alt={label}
+            sx={{ display: 'block', maxWidth: '100%', maxHeight: 340, width: 'auto' }}
+          />
         ) : (
           <Box sx={{ color: '#6f8d9b', fontSize: 12, textAlign: 'center' }}>{emptyText}</Box>
         )}
@@ -730,7 +637,6 @@ function EvidenceViewer({
   onIndexChange: (next: number) => void;
   studyInstanceUid: string;
 }) {
-  const [showOverlays, setShowOverlays] = useState(true);
   const finding = findings[index];
 
   if (!finding) {
@@ -741,9 +647,6 @@ function EvidenceViewer({
     );
   }
 
-  const humanLabel = finding.imageMeasurement.measurable
-    ? finding.imageMeasurement.display
-    : 'Pending';
   const aiLabel = finding.imageMeasurement.measurable
     ? finding.imageMeasurement.display
     : finding.narrativeMeasurement.display;
@@ -791,16 +694,6 @@ function EvidenceViewer({
           spacing={1}
           alignItems="center"
         >
-          <FormControlLabel
-            control={
-              <Switch
-                size="small"
-                checked={showOverlays}
-                onChange={event => setShowOverlays(event.target.checked)}
-              />
-            }
-            label={<Box sx={{ fontSize: 12, color: '#bcdde7' }}>Markings</Box>}
-          />
           <Chip
             size="small"
             label={`${index + 1} of ${findings.length}`}
@@ -853,6 +746,10 @@ function EvidenceViewer({
         />
       </Box>
 
+      {/* The three images the analysis service returns, and nothing else. There
+          is no manual measurement in the response, so a "human marking" panel
+          could only be the AI's own box drawn over the original and captioned as
+          though a person had placed it. */}
       <Box
         sx={{
           display: 'grid',
@@ -860,55 +757,23 @@ function EvidenceViewer({
           gap: '10px',
         }}
       >
-        <EvidencePanel
-          label="2. Lab / human marking"
-          image={finding.originalImage}
-          emptyText="Original frame unavailable."
-          overlay={
-            showOverlays ? (
-              <CaliperOverlay
-                bbox={finding.bbox}
-                label={humanLabel}
-                tone="human"
-              />
-            ) : null
-          }
-          caption={`Measurement above caliper: ${humanLabel} — draft seeded from the image layer, awaiting radiologist caliper.`}
-        />
-        <EvidencePanel
-          label="3. CIAI AI marking"
-          image={finding.annotatedImage || finding.heatmapImage}
-          emptyText="AI marking was not returned for this frame."
-          overlay={
-            showOverlays ? (
-              <CaliperOverlay
-                bbox={finding.bbox}
-                label={aiLabel}
-                tone="ai"
-              />
-            ) : null
-          }
-          caption={`CIAI measurement above caliper: ${aiLabel}`}
-        />
-      </Box>
-
-      {!!(finding.annotatedImage && finding.heatmapImage) && (
-        <Box
-          sx={{
-            display: 'grid',
-            gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-            gap: '10px',
-            marginTop: '10px',
-          }}
-        >
+        {!!finding.annotatedImage && (
           <EvidencePanel
-            label="4. Heatmap — final evidence layer"
+            label="2. CIAI AI marking"
+            image={finding.annotatedImage}
+            emptyText="AI marking was not returned for this frame."
+            caption={`AI localization as returned by the analysis service. Image measurement: ${aiLabel}`}
+          />
+        )}
+        {!!finding.heatmapImage && (
+          <EvidencePanel
+            label={`${finding.annotatedImage ? '3' : '2'}. Heatmap — final evidence layer`}
             image={finding.heatmapImage}
             emptyText="Heatmap unavailable."
             caption="Supports the finding. Does not replace the original DICOM image."
           />
-        </Box>
-      )}
+        )}
+      </Box>
 
       <Box
         sx={{
@@ -957,14 +822,6 @@ function EvidenceViewer({
             flag={isMismatch}
           />
           <VerificationRow
-            label="Manual / lab draft"
-            value={humanLabel}
-          />
-          <VerificationRow
-            label="CIAI AI draft"
-            value={aiLabel}
-          />
-          <VerificationRow
             label="Difference"
             value={
               finding.differenceMm === null
@@ -989,10 +846,6 @@ function EvidenceViewer({
             label="Location"
             value={finding.location || 'Not stated'}
           />
-          <VerificationRow
-            label="Evidence order"
-            value="Original → Human → CIAI → Heatmap"
-          />
         </Box>
       </Box>
 
@@ -1008,7 +861,6 @@ function EvidenceViewer({
 const TIER_HINTS: Record<EvidenceTier, string> = {
   measured: 'Has a measurement recovered from the image, a locating box and a source frame — these can be checked against a picture.',
   reported: 'Stated by the narrative model with no measurable image evidence behind it.',
-  incidental: 'Background observations: physiologic calcification, age-related atrophy, chronic change, scanner artefact.',
 };
 
 function FindingsTable({
@@ -1026,7 +878,6 @@ function FindingsTable({
       all: findings.length,
       measured: getTier(findings, 'measured').length,
       reported: getTier(findings, 'reported').length,
-      incidental: getTier(findings, 'incidental').length,
     }),
     [findings]
   );
@@ -1079,7 +930,6 @@ function FindingsTable({
         >
           <ToggleButton value="measured">Measured ({counts.measured})</ToggleButton>
           <ToggleButton value="reported">Narrative only ({counts.reported})</ToggleButton>
-          <ToggleButton value="incidental">Incidental ({counts.incidental})</ToggleButton>
           <ToggleButton value="all">All ({counts.all})</ToggleButton>
         </ToggleButtonGroup>
         <TextField
@@ -1276,7 +1126,10 @@ export default function AiAnalysisDialog({
       : 0;
 
   const reportText = completePayload?.report?.report_text || '';
-  const reportHtml = useMemo(() => renderSafeReportMarkdown(reportText), [reportText]);
+  const reportHtml = useMemo(
+    () => renderSafeReportMarkdown(stripLowPriorityFindings(reportText)),
+    [reportText]
+  );
   const findingsSummary = completePayload?.findings_summary || [];
   const anomalyFindings = useMemo(() => getAnomalyFindings(findingsSummary), [findingsSummary]);
   const evidence = useMemo(() => buildEvidenceFindings(completePayload), [completePayload]);
@@ -1286,13 +1139,14 @@ export default function AiAnalysisDialog({
   // analysis runs per frame, so the same lesion arrives once per slice it
   // appears on; grouping is what keeps a single calcification from filling six
   // rows, and the tier is what separates a measurable mass from background.
+  // Low-severity findings are excluded: two thirds of a study, and none has
+  // carried a measurement recoverable from the image.
   const grouped = useMemo(
-    () => groupEvidenceFindings(buildAllFindingRecords(completePayload)),
+    () => getReportableFindings(groupEvidenceFindings(buildAllFindingRecords(completePayload))),
     [completePayload]
   );
   const measuredFindings = useMemo(() => getTier(grouped, 'measured'), [grouped]);
   const reportedFindings = useMemo(() => getTier(grouped, 'reported'), [grouped]);
-  const incidentalFindings = useMemo(() => getTier(grouped, 'incidental'), [grouped]);
 
   const severityCounts = useMemo(() => summarizeSeverities(grouped), [grouped]);
   const mismatchCount = useMemo(
@@ -1579,7 +1433,7 @@ export default function AiAnalysisDialog({
           <Box>
             <Box sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1.15 }}>AI Analysis</Box>
             <Box sx={{ color: '#91b7c2', fontSize: 12, marginTop: '3px' }}>
-              Original → Human → CIAI AI → Heatmap → Radiologist verify
+              Original → CIAI AI marking → Heatmap → Radiologist verify
             </Box>
           </Box>
           <Chip
@@ -1873,11 +1727,6 @@ export default function AiAnalysisDialog({
                       label="Narrative only"
                       value={reportedFindings.length}
                       hint="No measurable image evidence"
-                    />
-                    <StatCard
-                      label="Incidental"
-                      value={incidentalFindings.length}
-                      hint="Background observations"
                     />
                     <StatCard
                       label="Measurements"

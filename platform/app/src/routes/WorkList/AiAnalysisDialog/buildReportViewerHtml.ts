@@ -20,6 +20,7 @@ import {
   formatDicomDate,
   getAnomalyFindings,
   getImageSrc,
+  getReportableFindings,
   groupEvidenceFindings,
   summarizeSeverities,
 } from './aiReportModel';
@@ -253,15 +254,6 @@ const VIEWER_CSS = `
   }
   .frame { position: relative; display: inline-block; max-width: 100%; max-height: 100%; line-height: 0; }
   .frame img { display: block; max-width: 100%; max-height: 62vh; width: auto; height: auto; }
-  .cal-box { position: absolute; border: 1px dashed currentColor; pointer-events: none; }
-  .cal-line { position: absolute; height: 2px; background: currentColor; pointer-events: none; }
-  .cal-tick { position: absolute; width: 2px; background: currentColor; pointer-events: none; }
-  .cal-label {
-    position: absolute; transform: translate(-50%, -170%); background: #000; color: #fff;
-    font-size: 11px; font-weight: 700; padding: 1px 6px; white-space: nowrap; pointer-events: none; border-radius: 2px;
-  }
-  .human { color: #00ffff; }
-  .ai { color: #ffe600; }
   .stage-foot {
     flex: 0 0 auto; padding: 9px 16px; border-top: 1px solid var(--line);
     color: var(--muted-2); font-size: 11px; display: flex; gap: 18px; flex-wrap: wrap; background: var(--panel);
@@ -302,7 +294,9 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
   const { payload, evidence, study, logoUrl } = options;
   // De-duplicate before building tiles: the same lesion arrives once per slice
   // it appears on, which filled the rail with repeats of one calcification.
-  const grouped = groupEvidenceFindings(evidence);
+  // Low severity is excluded here for the same reason as the report: two thirds
+  // of a study, none of it carrying a measurement recoverable from the image.
+  const grouped = getReportableFindings(groupEvidenceFindings(evidence));
   const findings = grouped.map(toViewerFinding);
   const withEvidence = findings.filter(finding => finding.isAnomaly);
   const studyAnomalies = getAnomalyFindings(payload.findings_summary || []);
@@ -388,9 +382,6 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
               <button data-mode="ai" aria-pressed="false">AI marked</button>
               <button data-mode="heatmap" aria-pressed="false">Heatmap</button>
             </div>
-            <button class="toggle" id="markToggle" aria-pressed="true">
-              <span class="dot"></span> Markings
-            </button>
             <div class="nav">
               <span class="count" id="count">—</span>
               <button id="prev" title="Previous (↑)" aria-label="Previous finding">&uarr;</button>
@@ -421,7 +412,6 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
         query: '',
         showNormal: false,
         mode: 'compare',
-        markings: true,
         selectedId: null,
       };
 
@@ -510,25 +500,9 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
       }
 
       /* ---------- centre ---------- */
-      function caliper(f, tone, label) {
-        if (!state.markings || !f.bbox) return '';
-        var b = f.bbox;
-        var left = Math.min(b[0], b[2]) * 100, right = Math.max(b[0], b[2]) * 100;
-        var top = Math.min(b[1], b[3]) * 100, bottom = Math.max(b[1], b[3]) * 100;
-        var w = Math.max(right - left, 0.5), h = Math.max(bottom - top, 0.5);
-        var cy = (top + bottom) / 2, cx = (left + right) / 2;
-        return '<span class="' + tone + '">' +
-          '<span class="cal-box" style="left:' + left + '%;top:' + top + '%;width:' + w + '%;height:' + h + '%"></span>' +
-          '<span class="cal-line" style="left:' + left + '%;top:' + cy + '%;width:' + w + '%"></span>' +
-          '<span class="cal-tick" style="left:' + left + '%;top:' + (cy - 2) + '%;height:4%"></span>' +
-          '<span class="cal-tick" style="left:' + right + '%;top:' + (cy - 2) + '%;height:4%"></span>' +
-          '<span class="cal-label" style="left:' + cx + '%;top:' + cy + '%">' + esc(label) + '</span>' +
-        '</span>';
-      }
-
-      function view(label, hint, src, overlay) {
+      function view(label, hint, src) {
         var inner = src
-          ? '<span class="frame"><img src="' + src + '" alt="' + esc(label) + '" />' + (overlay || '') + '</span>'
+          ? '<span class="frame"><img src="' + src + '" alt="' + esc(label) + '" /></span>'
           : '<span class="empty">Not returned by the analysis service.</span>';
         return '<section class="view"><div class="vlabel">' + esc(label) +
           (hint ? '<i>' + esc(hint) + '</i>' : '') + '</div><div class="holder">' + inner + '</div></section>';
@@ -544,18 +518,17 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
           return;
         }
 
-        var measured = f.imageMeasurement !== 'Not measured' ? f.imageMeasurement : 'Pending';
         var html;
 
         if (state.mode === 'original') {
-          html = view('Original diagnostic image', 'no overlay', f.original, '');
+          html = view('Original diagnostic image', 'no overlay', f.original);
         } else if (state.mode === 'ai') {
-          html = view('CIAI AI marking', f.imageScore, f.annotated, caliper(f, 'ai', measured));
+          html = view('CIAI AI marking', f.imageScore, f.annotated);
         } else if (state.mode === 'heatmap') {
-          html = view('Heatmap — supporting evidence', 'does not replace the original', f.heatmap, '');
+          html = view('Heatmap — supporting evidence', 'does not replace the original', f.heatmap);
         } else {
-          html = view('1. Original', 'unmodified frame', f.original, '') +
-                 view('2. CIAI AI marking', f.imageScore, f.annotated, caliper(f, 'ai', measured));
+          html = view('1. Original', 'unmodified frame', f.original) +
+                 view('2. CIAI AI marking', f.imageScore, f.annotated);
         }
 
         host.innerHTML = html;
@@ -690,12 +663,6 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
         Array.prototype.forEach.call(this.querySelectorAll('button'), function (item) {
           item.setAttribute('aria-pressed', String(item === button));
         });
-        renderCanvas();
-      });
-
-      document.getElementById('markToggle').addEventListener('click', function () {
-        state.markings = !state.markings;
-        this.setAttribute('aria-pressed', String(state.markings));
         renderCanvas();
       });
 

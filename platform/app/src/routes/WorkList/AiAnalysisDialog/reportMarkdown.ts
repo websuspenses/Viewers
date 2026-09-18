@@ -170,3 +170,45 @@ export function splitReportSections(markdown: string) {
   flush();
   return sections.filter(section => section.title || section.body);
 }
+
+/**
+ * Removes the `[LOW PRIORITY]` finding blocks from the narrative's Findings
+ * section, so the prose agrees with the tables rather than reintroducing the
+ * severity the report excludes.
+ *
+ * Scoped deliberately narrowly: only `###` blocks inside `## Findings`, which
+ * are self-contained (heading plus its own bullets). Impression and
+ * Recommendations are left untouched — they are numbered summary judgements,
+ * and dropping an item there would renumber a list the radiologist may be
+ * citing.
+ */
+export function stripLowPriorityFindings(markdown: string) {
+  const lines = (markdown || '').split(/\r?\n/);
+  const kept: string[] = [];
+  let inFindings = false;
+  let skipping = false;
+
+  lines.forEach(line => {
+    const trimmed = line.trim();
+
+    if (/^##\s+/.test(trimmed)) {
+      inFindings = /^##\s+findings\b/i.test(trimmed);
+      skipping = false;
+      kept.push(line);
+      return;
+    }
+
+    if (inFindings && /^###\s+/.test(trimmed)) {
+      skipping = /\[LOW PRIORITY\]/i.test(trimmed);
+      if (skipping) {
+        return;
+      }
+    }
+
+    if (!skipping) {
+      kept.push(line);
+    }
+  });
+
+  return kept.join('\n');
+}

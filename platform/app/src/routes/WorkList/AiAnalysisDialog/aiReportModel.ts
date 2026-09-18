@@ -303,46 +303,35 @@ export function getAnomalyFindings<T extends { severity?: string; name?: string;
   return findings.filter(isAnomalyFinding);
 }
 
-/**
- * Findings the models emit as background context rather than as something to
- * act on: physiologic calcifications, age-related atrophy, chronic white-matter
- * change, scanner artefact. They are real observations and belong in the
- * report, but listing them beside a brain mass at equal weight is what made the
- * findings table unreadable.
- */
-const INCIDENTAL = new RegExp(
-  [
-    /calcification/,
-    /atrophy/,
-    /artifact|artefact/,
-    /sinusitis|opacification/,
-    /white\s+matter\s+change/,
-    /ventriculomegaly|ventricular\s+enlargement/,
-    /prominence|prominent/,
-    /age[-\s]related/,
-    /incidental/,
-  ]
-    .map(pattern => pattern.source)
-    .join('|'),
-  'i'
-);
-
-export type EvidenceTier = 'measured' | 'reported' | 'incidental';
+export type EvidenceTier = 'measured' | 'reported';
 
 export const TIER_LABELS: Record<EvidenceTier, string> = {
   measured: 'Measured',
   reported: 'Narrative only',
-  incidental: 'Incidental',
 };
+
+/**
+ * Findings below this severity are left out of the report altogether.
+ *
+ * The models rate roughly two thirds of a study "low", and on every study
+ * reviewed so far none of those carried a measurement recoverable from the
+ * image — so nothing verifiable is lost by excluding them.
+ */
+export function isReportableFinding(finding: { severity?: string }) {
+  return (finding.severity || 'low').toLowerCase() !== 'low';
+}
+
+export function getReportableFindings<T extends { severity?: string }>(findings: T[]): T[] {
+  return findings.filter(isReportableFinding);
+}
 
 /**
  * Sorts a finding by what a radiologist can actually do with it.
  *
- * `measured` is the only tier that can be verified against a picture — it has a
- * recovered millimetre value, a bounding box and a frame. `reported` is the
- * narrative model asserting something with no measurable evidence. `incidental`
- * is background. Severity does not decide this: the models rate almost
- * everything 95% confident, and two thirds of a study's findings land in "low".
+ * `measured` can be verified against a picture — it has a recovered millimetre
+ * value, a bounding box and a frame. `reported` is the narrative model asserting
+ * something with no measurable evidence. Severity does not decide this: the
+ * models rate almost everything 95% confident.
  */
 export function getEvidenceTier(finding: {
   imageMeasurement: Measurement;
@@ -354,11 +343,6 @@ export function getEvidenceTier(finding: {
 }): EvidenceTier {
   if (finding.imageMeasurement.measurable && finding.bbox && finding.originalImage) {
     return 'measured';
-  }
-
-  const isMinor = ['low', 'medium'].includes((finding.severity || 'low').toLowerCase());
-  if (isMinor && INCIDENTAL.test(`${finding.name} ${finding.description}`)) {
-    return 'incidental';
   }
 
   return 'reported';
@@ -399,7 +383,7 @@ export type GroupedFinding = EvidenceFinding & {
 };
 
 function tierRank(tier: EvidenceTier) {
-  return ['measured', 'reported', 'incidental'].indexOf(tier);
+  return ['measured', 'reported'].indexOf(tier);
 }
 
 /**
