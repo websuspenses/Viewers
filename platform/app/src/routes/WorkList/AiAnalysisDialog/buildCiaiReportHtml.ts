@@ -13,18 +13,18 @@
 
 import {
   AiCompletePayload,
-  AiFindingSummary,
   CONSISTENCY_LABELS,
   EvidenceFinding,
+  GroupedFinding,
+  buildAllFindingRecords,
   formatConfidence,
   formatDicomDate,
   getAnomalyFindings,
   getImageSrc,
-  getImageSupportedFindings,
   getMaxDifferenceMm,
   getMeasurementRange,
-  parseMeasurement,
-  sortFindingsSummary,
+  getTier,
+  groupEvidenceFindings,
   summarizeSeverities,
 } from './aiReportModel';
 import { escapeHtml, renderSafeReportMarkdown, splitReportSections } from './reportMarkdown';
@@ -119,7 +119,10 @@ const REPORT_CSS = `
   .sheet {
     position: relative;
     width: 210mm;
-    min-height: 297mm;
+    /* Deliberately a few mm under A4's 297mm. At exactly 297 any sub-pixel
+       rounding in the print pipeline tips the sheet onto a second page, which
+       shows up as a blank page carrying nothing but the footer. */
+    min-height: 288mm;
     margin: 0 auto 8mm;
     padding: 12mm 14mm 14mm;
     background: #ffffff;
@@ -167,13 +170,13 @@ const REPORT_CSS = `
   .hero {
     background: linear-gradient(135deg, var(--navy) 0%, #0d3c66 100%);
     color: #ffffff;
-    padding: 14mm 12mm;
-    margin-bottom: 8mm;
+    padding: 11mm 12mm;
+    margin-bottom: 6mm;
     border-left: 3mm solid var(--teal);
   }
-  .hero h1 { margin: 0; font-size: 28pt; line-height: 1.12; letter-spacing: -0.015em; }
+  .hero h1 { margin: 0; font-size: 26pt; line-height: 1.12; letter-spacing: -0.015em; }
   .hero .pipeline {
-    margin-top: 14mm;
+    margin-top: 10mm;
     font-size: 9.5pt;
     color: #cfe3f2;
     letter-spacing: 0.04em;
@@ -181,7 +184,7 @@ const REPORT_CSS = `
     padding-top: 4mm;
   }
   .cover-tagline { color: var(--navy); font-size: 16pt; font-weight: bold; margin: 0 0 2.5mm; }
-  .cover-lede { margin: 0 0 6mm; font-size: 9pt; color: #3d4c5a; }
+  .cover-lede { margin: 0 0 5mm; font-size: 9pt; color: #3d4c5a; }
 
   .verdict {
     display: flex;
@@ -190,8 +193,8 @@ const REPORT_CSS = `
     border: 1px solid var(--line-strong);
     border-left: 2.5mm solid var(--teal);
     background: var(--teal-soft);
-    padding: 4mm 5mm;
-    margin-bottom: 6mm;
+    padding: 3.5mm 5mm;
+    margin-bottom: 5mm;
   }
   .verdict .headline { font-size: 13pt; font-weight: bold; color: var(--navy); }
   .verdict .detail { font-size: 8.5pt; color: #3d4c5a; margin-top: 0.8mm; }
@@ -204,12 +207,12 @@ const REPORT_CSS = `
     border: 1px solid var(--line);
     border-top: 1.2mm solid var(--teal);
     text-align: center;
-    padding: 4mm 2mm;
+    padding: 3.5mm 2mm;
   }
   .tile .value { font-size: 16pt; font-weight: bold; color: var(--navy); }
   .tile .label { margin-top: 1.5mm; font-size: 6pt; font-weight: bold; letter-spacing: 0.06em; color: var(--muted); text-transform: uppercase; line-height: 1.4; }
 
-  .facts { font-size: 8.5pt; margin-bottom: 6mm; border: 1px solid var(--line); }
+  .facts { font-size: 8.5pt; margin-bottom: 5mm; border: 1px solid var(--line); }
   .facts .row { display: flex; border-bottom: 1px solid var(--line); }
   .facts .row:last-child { border-bottom: 0; }
   .facts .key { width: 32mm; background: var(--panel); color: var(--muted); font-weight: bold; font-size: 7.5pt; padding: 2.2mm 3mm; text-transform: uppercase; letter-spacing: 0.04em; }
@@ -227,6 +230,9 @@ const REPORT_CSS = `
   .sev-high { background: #c2610a; }
   .sev-medium { background: #8a6d00; }
   .sev-low { background: #4a6076; }
+  .sevdot { display: inline-block; width: 2mm; height: 2mm; border-radius: 50%; vertical-align: middle; margin-right: 1.5mm; }
+  .sevword { font-size: 7.5pt; text-transform: capitalize; color: var(--muted); vertical-align: middle; }
+  .occ { display: inline-block; margin-left: 1.5mm; padding: 0.3mm 1.6mm; border-radius: 1mm; background: var(--panel); border: 1px solid var(--line); color: var(--muted); font-size: 6.5pt; font-weight: bold; white-space: nowrap; }
 
   table.grid { width: 100%; border-collapse: collapse; font-size: 8pt; }
   table.grid th { background: var(--navy); color: #ffffff; text-align: left; font-size: 7pt; letter-spacing: 0.06em; text-transform: uppercase; padding: 2.4mm; }
@@ -408,19 +414,31 @@ function sectionHeading(title: string) {
   return `<h2 class="section">${escapeHtml(title)}</h2><div class="section-rule"></div>`;
 }
 
-function renderCoverBody(options: ReportBuildOptions, draftId: string, anomalies: AiFindingSummary[]) {
-  const { payload, evidence, study, logoUrl } = options;
-  const imageSupported = getImageSupportedFindings(evidence);
+type CoverTotals = {
+  anomalies: AiFindingSummary[];
+  grouped: GroupedFinding[];
+  measured: GroupedFinding[];
+  reported: GroupedFinding[];
+  incidental: GroupedFinding[];
+  excludedCount: number;
+};
+
+function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: CoverTotals) {
+  const { payload, study, logoUrl } = options;
+  const { grouped, measured, reported, incidental, excludedCount } = totals;
   const patient = payload.patient_info || {};
   const studyInfo = payload.study_info || {};
-  const counts = summarizeSeverities(anomalies);
+  // Severity is reported over the findings that survive grouping, not over the
+  // raw entry list where two thirds are duplicates and background noise.
+  const counts = summarizeSeverities(grouped);
   const worst = counts.critical ? 'critical' : counts.high ? 'high' : counts.medium ? 'medium' : 'low';
+  const maxDifference = getMaxDifferenceMm(measured);
 
   const tiles: [string, string][] = [
-    [String(anomalies.length), 'Anomalies detected'],
-    [String(imageSupported.length), 'Image-supported findings'],
-    [getMeasurementRange(evidence), 'Recovered image measurements'],
-    [`${getMaxDifferenceMm(evidence)} mm`, 'Manual vs AI in draft'],
+    [String(measured.length), 'Measured — verifiable'],
+    [String(reported.length), 'Reported — narrative only'],
+    [getMeasurementRange(measured), 'Recovered image measurements'],
+    [maxDifference ? `${maxDifference} mm` : 'None', 'Largest image vs narrative gap'],
   ];
 
   const facts: [string, string][] = [
@@ -438,7 +456,9 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, anomalies
       'Coverage',
       `${payload.total_series_analyzed ?? 0} series  |  ${
         payload.total_frames_processed ?? 0
-      } frames  |  ${(payload.findings_summary || []).length} entries reviewed`,
+      } frames  |  ${(payload.findings_summary || []).length} entries reviewed  |  ${
+        totals.anomalies.length
+      } anomalies  |  ${grouped.length} after merging duplicates`,
     ],
   ];
 
@@ -465,11 +485,16 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, anomalies
       <span class="sev ${severityClass(worst)}">${escapeHtml(worst)}</span>
       <div>
         <div class="headline">Study result: ${
-          anomalies.length ? `${anomalies.length} anomalies reported` : 'No anomalies reported'
+          grouped.length ? `${grouped.length} distinct findings` : 'No anomalies reported'
         }</div>
         <div class="detail">
-          ${counts.critical} critical &middot; ${counts.high} high &middot; ${counts.medium} medium &middot; ${counts.low} low
-          &nbsp;|&nbsp; normal-structure entries are excluded from this report
+          <b>${measured.length}</b> measured &middot; <b>${reported.length}</b> narrative only &middot;
+          <b>${incidental.length}</b> incidental
+          &nbsp;|&nbsp; ${counts.critical} critical &middot; ${counts.high} high &middot; ${counts.medium} medium &middot; ${counts.low} low
+        </div>
+        <div class="detail">
+          ${excludedCount} normal-structure and negative entries excluded; repeat observations of the
+          same finding across slices merged.
         </div>
       </div>
     </div>
@@ -506,64 +531,214 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, anomalies
   `;
 }
 
-/** Anomaly-only replacement for the narrative's exhaustive findings table. */
-function renderAnomalyTableBody(
-  findings: AiFindingSummary[],
-  part: number,
-  partCount: number,
-  total: number,
-  excluded: number
-) {
-  const rows = findings
+/** Severity as a compact dot + word, so it stays visible without owning a column. */
+function severityTag(severity: string) {
+  const value = (severity || 'low').toLowerCase();
+  return `<span class="sevdot ${severityClass(value)}"></span><span class="sevword">${escapeHtml(
+    value
+  )}</span>`;
+}
+
+function occurrenceNote(finding: GroupedFinding) {
+  if (finding.occurrences < 2) {
+    return '';
+  }
+  return `<span class="occ">seen ${finding.occurrences}&times;</span>`;
+}
+
+/**
+ * Findings the radiologist can check against a picture: a recovered millimetre
+ * value, a bounding box and a frame. These are the only rows that also get
+ * evidence pages.
+ */
+function renderMeasuredTableBody(rows: GroupedFinding[], part: number, partCount: number) {
+  const body = rows
     .map(
       finding => `
       <tr>
-        <td class="id">${escapeHtml(finding.finding_id || '—')}</td>
+        <td>${severityTag(finding.severity)}</td>
+        <td class="id">${escapeHtml(finding.findingId || '—')}</td>
         <td>
-          <b>${escapeHtml(finding.name || 'Unnamed finding')}</b>
+          <b>${escapeHtml(finding.name)}</b> ${occurrenceNote(finding)}
           ${finding.description ? `<div class="sub">${escapeHtml(finding.description)}</div>` : ''}
         </td>
-        <td><span class="sev ${severityClass(finding.severity || 'low')}">${escapeHtml(
-        (finding.severity || 'low').toUpperCase()
-      )}</span></td>
-        <td>${escapeHtml(formatConfidence(finding.confidence))}</td>
-        <td>${escapeHtml(parseMeasurement(finding.size_estimate).display)}</td>
-        <td>${escapeHtml(finding.location || '—')}</td>
-        <td class="sub">${escapeHtml(finding.series || '—')}</td>
+        <td><b>${escapeHtml(finding.imageMeasurement.display)}</b></td>
+        <td>${escapeHtml(formatConfidence(finding.imageScore))}</td>
+        <td class="${finding.consistency === 'match' ? 'ok' : 'flag'}">${escapeHtml(
+        CONSISTENCY_LABELS[finding.consistency]
+      )}</td>
+        <td>${escapeHtml(finding.locations.join('; ') || '—')}</td>
       </tr>`
     )
     .join('');
 
   return `
-    ${sectionHeading(`Anomaly Findings${partCount > 1 ? ` (${part} of ${partCount})` : ''}`)}
+    ${sectionHeading(
+      `Measured Findings${partCount > 1 ? ` (${part} of ${partCount})` : ''}`
+    )}
     ${
       part === 1
         ? `<p class="note" style="margin-top:0;margin-bottom:3.5mm">
-             ${total} anomalies reported. ${excluded} normal-structure and negative entries
-             ("no skull fracture", "the left pons is visualized") are excluded from this table —
-             the analysis enumerates every structure it inspects, not only the abnormal ones.
+             Findings with a measurement recovered from the image itself, a locating box and a source
+             frame — the only ones that can be verified against a picture. Each has an evidence
+             section later in this report.
            </p>`
         : ''
     }
     <table class="grid">
       <thead>
         <tr>
+          <th style="width:10%">Severity</th>
           <th style="width:10%">ID</th>
-          <th style="width:31%">Finding</th>
-          <th style="width:8%">Severity</th>
-          <th style="width:8%">Conf.</th>
-          <th style="width:12%">Size</th>
-          <th style="width:15%">Location</th>
-          <th style="width:16%">Series</th>
+          <th style="width:30%">Finding</th>
+          <th style="width:13%">Image size</th>
+          <th style="width:8%">Score</th>
+          <th style="width:15%">Consistency</th>
+          <th style="width:14%">Location</th>
         </tr>
       </thead>
-      <tbody>${rows}</tbody>
+      <tbody>${body}</tbody>
+    </table>
+  `;
+}
+
+/** Reported by the narrative model with no measurable image evidence behind them. */
+function renderReportedTableBody(rows: GroupedFinding[], part: number, partCount: number) {
+  const body = rows
+    .map(
+      finding => `
+      <tr>
+        <td>${severityTag(finding.severity)}</td>
+        <td class="id">${escapeHtml(finding.findingId || '—')}</td>
+        <td>
+          <b>${escapeHtml(finding.name)}</b> ${occurrenceNote(finding)}
+          ${finding.description ? `<div class="sub">${escapeHtml(finding.description)}</div>` : ''}
+        </td>
+        <td>${escapeHtml(finding.narrativeMeasurement.display)}</td>
+        <td>${escapeHtml(finding.locations.join('; ') || '—')}</td>
+        <td class="sub">${escapeHtml(finding.seriesLabels.join('; ') || '—')}</td>
+      </tr>`
+    )
+    .join('');
+
+  return `
+    ${sectionHeading(
+      `Reported Findings — Narrative Only${partCount > 1 ? ` (${part} of ${partCount})` : ''}`
+    )}
+    ${
+      part === 1
+        ? `<p class="note" style="margin-top:0;margin-bottom:3.5mm">
+             Stated by the narrative model without a measurement recovered from the image, so there is
+             nothing to verify a caliper against. Sizes below are the model's own wording.
+           </p>`
+        : ''
+    }
+    <table class="grid">
+      <thead>
+        <tr>
+          <th style="width:10%">Severity</th>
+          <th style="width:10%">ID</th>
+          <th style="width:36%">Finding</th>
+          <th style="width:14%">Stated size</th>
+          <th style="width:16%">Location</th>
+          <th style="width:14%">Series</th>
+        </tr>
+      </thead>
+      <tbody>${body}</tbody>
+    </table>
+  `;
+}
+
+/**
+ * Background observations — physiologic calcification, age-related atrophy,
+ * chronic white-matter change, scanner artefact. Real, but listing them beside
+ * a brain mass at equal weight is what made the findings table unreadable.
+ */
+function renderIncidentalBody(rows: GroupedFinding[]) {
+  const items = rows
+    .map(
+      finding => `
+      <tr>
+        <td><b>${escapeHtml(finding.name)}</b> ${occurrenceNote(finding)}</td>
+        <td class="sub">${escapeHtml(finding.locations.join('; ') || '—')}</td>
+        <td class="sub">${escapeHtml(
+          finding.seriesLabels.length > 1
+            ? `${finding.seriesLabels.length} series`
+            : finding.seriesLabels[0] || '—'
+        )}</td>
+      </tr>`
+    )
+    .join('');
+
+  return `
+    ${sectionHeading('Incidental and Chronic Observations')}
+    <p class="note" style="margin-top:0;margin-bottom:3.5mm">
+      ${rows.length} background observations, listed for completeness. None carries a recovered image
+      measurement.
+    </p>
+    <table class="grid">
+      <thead>
+        <tr>
+          <th style="width:46%">Observation</th>
+          <th style="width:32%">Location</th>
+          <th style="width:22%">Seen in</th>
+        </tr>
+      </thead>
+      <tbody>${items}</tbody>
     </table>
   `;
 }
 
 const MEASUREMENT_ROWS_PER_SHEET = 14;
-const ANOMALY_ROWS_PER_SHEET = 10;
+/**
+ * Usable height for a table body on one sheet, after the header band, section
+ * heading, intro note, table head and footer band are taken out.
+ */
+const TABLE_BUDGET_MM = 188;
+
+/**
+ * Rough printed height of one findings row. A fixed rows-per-sheet count cannot
+ * work here: descriptions run from four words to three lines, so ten short rows
+ * fit comfortably while ten long ones overflow and strand the footer on a page
+ * of its own.
+ */
+function estimateRowMm(finding: GroupedFinding, descriptionColumnChars: number) {
+  const nameLines = Math.ceil((finding.name || '').length / (descriptionColumnChars * 0.7));
+  const descriptionLines = finding.description
+    ? Math.ceil(finding.description.length / descriptionColumnChars)
+    : 0;
+  const locationLines = Math.ceil((finding.locations.join('; ') || '-').length / 18);
+  const lines = Math.max(nameLines + descriptionLines, locationLines, 1);
+  return 4.5 + lines * 3.9;
+}
+
+/** Packs rows onto sheets by estimated height rather than by a fixed count. */
+function chunkByHeight(
+  rows: GroupedFinding[],
+  descriptionColumnChars: number,
+  budgetMm = TABLE_BUDGET_MM
+): GroupedFinding[][] {
+  const sheets: GroupedFinding[][] = [];
+  let current: GroupedFinding[] = [];
+  let used = 0;
+
+  rows.forEach(row => {
+    const height = estimateRowMm(row, descriptionColumnChars);
+    if (current.length && used + height > budgetMm) {
+      sheets.push(current);
+      current = [];
+      used = 0;
+    }
+    current.push(row);
+    used += height;
+  });
+
+  if (current.length) {
+    sheets.push(current);
+  }
+
+  return sheets.length ? sheets : [[]];
+}
 
 function renderMeasurementsBody(evidence: EvidenceFinding[], part: number, partCount: number) {
   const rows = evidence
@@ -800,7 +975,15 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
   const header = sheetHeader(logoUrl, draftId);
 
   const allFindings = payload.findings_summary || [];
-  const anomalies = sortFindingsSummary(getAnomalyFindings(allFindings));
+  const anomalies = getAnomalyFindings(allFindings);
+
+  // One row per distinct finding, sorted by what can actually be done with it.
+  // The analysis runs per frame, so the same lesion arrives once per slice it
+  // appears on; grouping is what stops a single calcification filling six rows.
+  const grouped = groupEvidenceFindings(buildAllFindingRecords(payload));
+  const measured = getTier(grouped, 'measured');
+  const reported = getTier(grouped, 'reported');
+  const incidental = getTier(grouped, 'incidental');
   const excludedCount = allFindings.length - anomalies.length;
 
   const sheets: string[] = [];
@@ -811,36 +994,56 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
   // Cover carries its own brand band instead of the running header.
   sheets.push(
     `<section class="sheet sheet-cover">
-      <div class="sheet-body">${renderCoverBody(options, draftId, anomalies)}</div>
+      <div class="sheet-body">${renderCoverBody(options, draftId, {
+        anomalies,
+        grouped,
+        measured,
+        reported,
+        incidental,
+        excludedCount,
+      })}</div>
       ${sheetFooter(draftId)}
     </section>`
   );
 
-  if (anomalies.length) {
-    const parts = chunk(anomalies, ANOMALY_ROWS_PER_SHEET);
+  if (measured.length) {
+    const parts = chunkByHeight(measured, 46);
     parts.forEach((part, index) => {
       addSheet(
-        renderAnomalyTableBody(
-          part,
-          index + 1,
-          parts.length,
-          anomalies.length,
-          excludedCount
-        ),
-        `Anomaly findings${parts.length > 1 ? ` ${index + 1}/${parts.length}` : ''}`
+        renderMeasuredTableBody(part, index + 1, parts.length),
+        `Measured findings${parts.length > 1 ? ` ${index + 1}/${parts.length}` : ''}`
       );
     });
   }
 
-  if (evidence.length) {
-    const parts = chunk(evidence, MEASUREMENT_ROWS_PER_SHEET);
+  if (reported.length) {
+    const parts = chunkByHeight(reported, 54);
+    parts.forEach((part, index) => {
+      addSheet(
+        renderReportedTableBody(part, index + 1, parts.length),
+        `Reported findings${parts.length > 1 ? ` ${index + 1}/${parts.length}` : ''}`
+      );
+    });
+  }
+
+  if (incidental.length) {
+    chunkByHeight(incidental, 70, TABLE_BUDGET_MM + 10).forEach(part => {
+      addSheet(renderIncidentalBody(part), 'Incidental observations');
+    });
+  }
+
+  // Evidence sections are reserved for findings there is something to verify.
+  // Printing two pages of "Pending / Not measured" for a narrative-only finding
+  // added length without adding anything a radiologist could check.
+  if (measured.length) {
+    const parts = chunk(measured, MEASUREMENT_ROWS_PER_SHEET);
     parts.forEach((part, index) => {
       addSheet(
         renderMeasurementsBody(part, index + 1, parts.length),
         `Image-level measurements${parts.length > 1 ? ` ${index + 1}/${parts.length}` : ''}`
       );
     });
-    evidence.forEach(finding =>
+    measured.forEach(finding =>
       addSheet(
         renderEvidenceBody(finding, study.studyInstanceUid),
         `Finding ${finding.findingId || finding.name}`
@@ -848,10 +1051,10 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
     );
   } else {
     addSheet(
-      `${sectionHeading('Recovered Image-Level AI Measurements')}
-       <p class="note">No finding in this study resolved to an image frame, so no image-supported
-       evidence pages could be produced. The narrative report follows.</p>`,
-      'Image-level measurements'
+      `${sectionHeading('Measured Findings')}
+       <p class="note">No finding in this study carried a measurement recoverable from the image, so
+       there is no evidence section to verify. The reported findings follow.</p>`,
+      'Measured findings'
     );
   }
 

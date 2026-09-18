@@ -37,21 +37,22 @@ import Tooltip from '@mui/material/Tooltip';
 
 import {
   AiCompletePayload,
-  AiFindingSummary,
   CONSISTENCY_LABELS,
   EvidenceFinding,
+  EvidenceTier,
+  GroupedFinding,
+  TIER_LABELS,
+  buildAllFindingRecords,
   buildEvidenceFindings,
   collectHeatmaps,
-  compareSeverity,
   formatConfidence,
   formatDicomDate,
   getAnomalyFindings,
   getImageSrc,
-  getImageSupportedFindings,
   getMaxDifferenceMm,
   getMeasurementRange,
-  parseMeasurement,
-  sortFindingsSummary,
+  getTier,
+  groupEvidenceFindings,
   summarizeSeverities,
 } from './aiReportModel';
 import { renderSafeReportMarkdown } from './reportMarkdown';
@@ -1004,21 +1005,36 @@ function EvidenceViewer({
   );
 }
 
-function FindingsTable({ findings }: { findings: AiFindingSummary[] }) {
-  const [severity, setSeverity] = useState('all');
-  const [query, setQuery] = useState('');
-  // The analysis enumerates every structure it inspects, so normal-structure
-  // entries are hidden by default rather than dropped.
-  const [showNormal, setShowNormal] = useState(false);
+const TIER_HINTS: Record<EvidenceTier, string> = {
+  measured: 'Has a measurement recovered from the image, a locating box and a source frame — these can be checked against a picture.',
+  reported: 'Stated by the narrative model with no measurable image evidence behind it.',
+  incidental: 'Background observations: physiologic calcification, age-related atrophy, chronic change, scanner artefact.',
+};
 
-  const anomalies = useMemo(() => getAnomalyFindings(findings), [findings]);
-  const scoped = showNormal ? findings : anomalies;
-  const normalCount = findings.length - anomalies.length;
+function FindingsTable({
+  findings,
+  onOpenEvidence,
+}: {
+  findings: GroupedFinding[];
+  onOpenEvidence: (finding: GroupedFinding) => void;
+}) {
+  const [tier, setTier] = useState<EvidenceTier | 'all'>('measured');
+  const [query, setQuery] = useState('');
+
+  const counts = useMemo(
+    () => ({
+      all: findings.length,
+      measured: getTier(findings, 'measured').length,
+      reported: getTier(findings, 'reported').length,
+      incidental: getTier(findings, 'incidental').length,
+    }),
+    [findings]
+  );
 
   const visible = useMemo(() => {
     const term = query.trim().toLowerCase();
-    return sortFindingsSummary(scoped).filter(finding => {
-      if (severity !== 'all' && (finding.severity || '').toLowerCase() !== severity) {
+    return findings.filter(finding => {
+      if (tier !== 'all' && finding.tier !== tier) {
         return false;
       }
 
@@ -1026,14 +1042,12 @@ function FindingsTable({ findings }: { findings: AiFindingSummary[] }) {
         return true;
       }
 
-      return [finding.finding_id, finding.name, finding.location, finding.series, finding.region]
+      return [finding.findingId, finding.name, finding.description, ...finding.locations]
         .join(' ')
         .toLowerCase()
         .includes(term);
     });
-  }, [scoped, severity, query]);
-
-  const counts = useMemo(() => summarizeSeverities(scoped), [scoped]);
+  }, [findings, tier, query]);
 
   return (
     <Box>
@@ -1041,13 +1055,13 @@ function FindingsTable({ findings }: { findings: AiFindingSummary[] }) {
         direction={{ xs: 'column', sm: 'row' }}
         spacing={1.5}
         alignItems={{ xs: 'stretch', sm: 'center' }}
-        sx={{ marginBottom: '12px' }}
+        sx={{ marginBottom: '10px' }}
       >
         <ToggleButtonGroup
           size="small"
           exclusive
-          value={severity}
-          onChange={(_event, value) => value && setSeverity(value)}
+          value={tier}
+          onChange={(_event, value) => value && setTier(value)}
           sx={{
             '& .MuiToggleButton-root': {
               color: '#bcdde7',
@@ -1055,22 +1069,22 @@ function FindingsTable({ findings }: { findings: AiFindingSummary[] }) {
               fontWeight: 800,
               fontSize: 11,
               padding: '4px 10px',
+              textTransform: 'none',
             },
             '& .Mui-selected': {
-              color: '#08131a !important',
-              backgroundColor: '#8be0f8 !important',
+              color: '#05221c !important',
+              backgroundColor: '#12a58c !important',
             },
           }}
         >
-          <ToggleButton value="all">All ({scoped.length})</ToggleButton>
-          <ToggleButton value="critical">Critical ({counts.critical})</ToggleButton>
-          <ToggleButton value="high">High ({counts.high})</ToggleButton>
-          <ToggleButton value="medium">Medium ({counts.medium})</ToggleButton>
-          <ToggleButton value="low">Low ({counts.low})</ToggleButton>
+          <ToggleButton value="measured">Measured ({counts.measured})</ToggleButton>
+          <ToggleButton value="reported">Narrative only ({counts.reported})</ToggleButton>
+          <ToggleButton value="incidental">Incidental ({counts.incidental})</ToggleButton>
+          <ToggleButton value="all">All ({counts.all})</ToggleButton>
         </ToggleButtonGroup>
         <TextField
           size="small"
-          placeholder="Search findings, location or series"
+          placeholder="Search findings or location"
           value={query}
           onChange={event => setQuery(event.target.value)}
           sx={{
@@ -1081,36 +1095,15 @@ function FindingsTable({ findings }: { findings: AiFindingSummary[] }) {
         />
       </Stack>
 
-      {!!normalCount && (
-        <Stack
-          direction="row"
-          spacing={1}
-          alignItems="center"
-          sx={{ marginBottom: '10px' }}
-        >
-          <FormControlLabel
-            control={
-              <Switch
-                size="small"
-                checked={showNormal}
-                onChange={event => setShowNormal(event.target.checked)}
-              />
-            }
-            label={
-              <Box sx={{ fontSize: 12, color: '#bcdde7' }}>
-                Include {normalCount} normal-structure entries
-              </Box>
-            }
-          />
-          <Tooltip title='Entries such as "No skull fracture" or "The left pons is visualized" report normal anatomy rather than an anomaly.'>
-            <Box sx={{ color: '#6f92a6', fontSize: 11, cursor: 'help' }}>What are these?</Box>
-          </Tooltip>
-        </Stack>
+      {tier !== 'all' && (
+        <Box sx={{ color: '#6f92a6', fontSize: 11.5, marginBottom: '10px', lineHeight: 1.5 }}>
+          {TIER_HINTS[tier]}
+        </Box>
       )}
 
       <Box
         sx={{
-          maxHeight: '48vh',
+          maxHeight: '46vh',
           overflow: 'auto',
           border: '1px solid rgba(255,255,255,0.1)',
           borderRadius: '6px',
@@ -1146,36 +1139,88 @@ function FindingsTable({ findings }: { findings: AiFindingSummary[] }) {
         >
           <thead>
             <tr>
+              <th>Severity</th>
               <th>ID</th>
               <th>Finding</th>
-              <th>Severity</th>
-              <th>Confidence</th>
               <th>Size</th>
+              <th>Evidence</th>
               <th>Location</th>
-              <th>Series</th>
             </tr>
           </thead>
           <tbody>
             {visible.map(finding => (
-              <tr key={`${finding.finding_id}-${finding.frame_key}-${finding.name}`}>
-                <td style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>{finding.finding_id}</td>
+              <tr key={`${finding.findingId}-${finding.frameKey}-${finding.name}`}>
                 <td>
-                  <Box sx={{ fontWeight: 700 }}>{finding.name}</Box>
+                  <SeverityChip severity={finding.severity} />
+                </td>
+                <td style={{ fontWeight: 800, whiteSpace: 'nowrap' }}>
+                  {finding.tier === 'measured' ? (
+                    <Box
+                      component="button"
+                      type="button"
+                      onClick={() => onOpenEvidence(finding)}
+                      sx={{
+                        background: 'none',
+                        border: 0,
+                        padding: 0,
+                        color: '#4fd8bd',
+                        fontWeight: 800,
+                        fontSize: 12,
+                        cursor: 'pointer',
+                      }}
+                    >
+                      {finding.findingId}
+                    </Box>
+                  ) : (
+                    finding.findingId
+                  )}
+                </td>
+                <td>
+                  <Stack
+                    direction="row"
+                    spacing={0.75}
+                    alignItems="center"
+                  >
+                    <Box sx={{ fontWeight: 700 }}>{finding.name}</Box>
+                    {finding.occurrences > 1 && (
+                      <Box
+                        sx={{
+                          fontSize: 10,
+                          fontWeight: 800,
+                          color: '#8faec0',
+                          border: '1px solid rgba(255,255,255,0.16)',
+                          borderRadius: '3px',
+                          padding: '0 4px',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >
+                        seen {finding.occurrences}&times;
+                      </Box>
+                    )}
+                  </Stack>
                   <Box sx={{ color: '#8fb4c0', fontSize: 11 }}>{finding.description}</Box>
                 </td>
-                <td>
-                  <SeverityChip severity={finding.severity || 'low'} />
+                <td style={{ whiteSpace: 'nowrap' }}>
+                  {finding.tier === 'measured'
+                    ? finding.imageMeasurement.display
+                    : finding.narrativeMeasurement.display}
                 </td>
-                <td>{formatConfidence(finding.confidence)}</td>
-                <td>{parseMeasurement(finding.size_estimate).display}</td>
-                <td>{finding.location || '—'}</td>
-                <td style={{ color: '#8fb4c0' }}>{finding.series || '—'}</td>
+                <td
+                  style={{
+                    whiteSpace: 'nowrap',
+                    color: finding.tier === 'measured' ? '#5fd3a5' : '#8fb4c0',
+                    fontWeight: 700,
+                  }}
+                >
+                  {TIER_LABELS[finding.tier]}
+                </td>
+                <td style={{ color: '#8fb4c0' }}>{finding.locations.join('; ') || '—'}</td>
               </tr>
             ))}
             {!visible.length && (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={6}
                   style={{ textAlign: 'center', color: '#8fb4c0', padding: '24px' }}
                 >
                   No findings match the current filter.
@@ -1236,21 +1281,30 @@ export default function AiAnalysisDialog({
   const anomalyFindings = useMemo(() => getAnomalyFindings(findingsSummary), [findingsSummary]);
   const evidence = useMemo(() => buildEvidenceFindings(completePayload), [completePayload]);
   const heatmaps = useMemo(() => collectHeatmaps(completePayload), [completePayload]);
-  const severityCounts = useMemo(() => summarizeSeverities(anomalyFindings), [anomalyFindings]);
-  const imageSupported = useMemo(() => getImageSupportedFindings(evidence), [evidence]);
+
+  // One row per distinct finding, sorted by what can be done with it. The
+  // analysis runs per frame, so the same lesion arrives once per slice it
+  // appears on; grouping is what keeps a single calcification from filling six
+  // rows, and the tier is what separates a measurable mass from background.
+  const grouped = useMemo(
+    () => groupEvidenceFindings(buildAllFindingRecords(completePayload)),
+    [completePayload]
+  );
+  const measuredFindings = useMemo(() => getTier(grouped, 'measured'), [grouped]);
+  const reportedFindings = useMemo(() => getTier(grouped, 'reported'), [grouped]);
+  const incidentalFindings = useMemo(() => getTier(grouped, 'incidental'), [grouped]);
+
+  const severityCounts = useMemo(() => summarizeSeverities(grouped), [grouped]);
   const mismatchCount = useMemo(
-    () => evidence.filter(finding => finding.consistency !== 'match').length,
-    [evidence]
+    () => measuredFindings.filter(finding => finding.consistency !== 'match').length,
+    [measuredFindings]
   );
 
   // The report format devotes a full section to every finding it includes, so
   // the default scope keeps the routine "normal structures" findings out.
   const reportEvidence = useMemo(
-    () =>
-      reportScope === 'all'
-        ? evidence
-        : evidence.filter(finding => compareSeverity(finding.severity, 'low') < 0),
-    [evidence, reportScope]
+    () => (reportScope === 'all' ? evidence : measuredFindings),
+    [evidence, measuredFindings, reportScope]
   );
 
   const processingErrors = completePayload?.processing_errors || [];
@@ -1795,7 +1849,7 @@ export default function AiAnalysisDialog({
                 }}
               >
                 <Tab label="Overview" />
-                <Tab label={`Findings (${anomalyFindings.length})`} />
+                <Tab label={`Findings (${grouped.length})`} />
                 <Tab label={`Image evidence (${evidence.length})`} />
                 <Tab label="Narrative report" />
               </Tabs>
@@ -1811,33 +1865,34 @@ export default function AiAnalysisDialog({
                     }}
                   >
                     <StatCard
-                      label="Anomalies"
-                      value={anomalyFindings.length}
-                      hint={`of ${findingsSummary.length} entries reviewed`}
+                      label="Measured"
+                      value={measuredFindings.length}
+                      hint="Verifiable against a picture"
                     />
                     <StatCard
-                      label="Image-supported"
-                      value={imageSupported.length}
-                      hint="Findings with a recovered measurement"
+                      label="Narrative only"
+                      value={reportedFindings.length}
+                      hint="No measurable image evidence"
+                    />
+                    <StatCard
+                      label="Incidental"
+                      value={incidentalFindings.length}
+                      hint="Background observations"
                     />
                     <StatCard
                       label="Measurements"
-                      value={getMeasurementRange(evidence)}
+                      value={getMeasurementRange(measuredFindings)}
                       hint="Image-level range"
-                    />
-                    <StatCard
-                      label="Max difference"
-                      value={`${getMaxDifferenceMm(evidence)} mm`}
-                      hint="Image vs narrative"
                     />
                     <StatCard
                       label="Mismatches"
                       value={mismatchCount}
-                      hint="Flagged for verification"
+                      hint={`Largest gap ${getMaxDifferenceMm(measuredFindings)} mm`}
                     />
                     <StatCard
-                      label="Heatmaps"
-                      value={heatmaps.length}
+                      label="Reviewed"
+                      value={findingsSummary.length}
+                      hint={`${anomalyFindings.length} anomalies, ${grouped.length} after merging`}
                     />
                     <StatCard
                       label="Elapsed"
@@ -1870,8 +1925,12 @@ export default function AiAnalysisDialog({
                     ))}
                   </Stack>
 
-                  <Box sx={{ fontSize: 14, fontWeight: 900, marginBottom: '8px' }}>
+                  <Box sx={{ fontSize: 14, fontWeight: 900, marginBottom: '2px' }}>
                     Recovered image-level AI measurements
+                  </Box>
+                  <Box sx={{ color: '#6f92a6', fontSize: 11.5, marginBottom: '8px' }}>
+                    The findings a radiologist can verify against a picture. Click an ID to open its
+                    evidence.
                   </Box>
                   <Box
                     sx={{
@@ -1918,7 +1977,7 @@ export default function AiAnalysisDialog({
                         </tr>
                       </thead>
                       <tbody>
-                        {evidence.map((finding, index) => (
+                        {measuredFindings.map((finding, index) => (
                           <tr key={`${finding.findingId}-${finding.frameKey}`}>
                             <td>
                               <Box
@@ -1963,13 +2022,13 @@ export default function AiAnalysisDialog({
                             </td>
                           </tr>
                         ))}
-                        {!evidence.length && (
+                        {!measuredFindings.length && (
                           <tr>
                             <td
                               colSpan={5}
                               style={{ textAlign: 'center', color: '#8fb4c0', padding: '24px' }}
                             >
-                              No finding resolved to an image frame.
+                              No finding carried a measurement recoverable from the image.
                             </td>
                           </tr>
                         )}
@@ -1979,7 +2038,21 @@ export default function AiAnalysisDialog({
                 </Box>
               )}
 
-              {activeTab === 1 && <FindingsTable findings={findingsSummary} />}
+              {activeTab === 1 && (
+                <FindingsTable
+                  findings={grouped}
+                  onOpenEvidence={finding => {
+                    const index = evidence.findIndex(
+                      item =>
+                        item.findingId === finding.findingId && item.frameKey === finding.frameKey
+                    );
+                    if (index >= 0) {
+                      setEvidenceIndex(index);
+                      setActiveTab(2);
+                    }
+                  }}
+                />
+              )}
 
               {activeTab === 2 && (
                 <EvidenceViewer

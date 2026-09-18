@@ -15,10 +15,12 @@ import {
   AiCompletePayload,
   CONSISTENCY_LABELS,
   EvidenceFinding,
+  GroupedFinding,
   formatConfidence,
   formatDicomDate,
   getAnomalyFindings,
   getImageSrc,
+  groupEvidenceFindings,
   summarizeSeverities,
 } from './aiReportModel';
 import { escapeHtml } from './reportMarkdown';
@@ -54,6 +56,8 @@ type ViewerFinding = {
   consistencyOk: boolean;
   difference: string;
   isAnomaly: boolean;
+  tier: string;
+  occurrences: number;
   bbox: number[] | null;
   original: string;
   annotated: string;
@@ -76,7 +80,7 @@ function extractSection(reportText: string, title: RegExp) {
     .map(line => line.replace(/\*\*(.*?)\*\*/g, '$1'));
 }
 
-function toViewerFinding(finding: EvidenceFinding): ViewerFinding {
+function toViewerFinding(finding: GroupedFinding): ViewerFinding {
   return {
     id: finding.findingId || finding.name,
     name: finding.name,
@@ -96,6 +100,8 @@ function toViewerFinding(finding: EvidenceFinding): ViewerFinding {
     difference:
       finding.differenceMm === null ? 'Pending radiologist measurement' : `${finding.differenceMm} mm`,
     isAnomaly: finding.isAnomaly,
+    tier: finding.tier,
+    occurrences: finding.occurrences,
     bbox: finding.bbox,
     original: getImageSrc(finding.originalImage),
     annotated: getImageSrc(finding.annotatedImage || finding.heatmapImage),
@@ -208,6 +214,9 @@ const VIEWER_CSS = `
   .sev-high { background: #cc6a11; }
   .sev-medium { background: #97780a; }
   .sev-low { background: #4a6076; }
+  .tier { display: inline-block; margin-left: 5px; padding: 1px 5px; border-radius: 3px; font-size: 9px;
+          font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+          color: #6ee7d0; background: rgba(18,165,140,0.16); border: 1px solid rgba(18,165,140,0.35); }
 
   /* ---------- centre stage ---------- */
   .stage { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; background: var(--bg); }
@@ -291,12 +300,13 @@ const VIEWER_CSS = `
 
 export function buildReportViewerHtml(options: ReportViewerOptions) {
   const { payload, evidence, study, logoUrl } = options;
-  const findings = evidence.map(toViewerFinding);
+  // De-duplicate before building tiles: the same lesion arrives once per slice
+  // it appears on, which filled the rail with repeats of one calcification.
+  const grouped = groupEvidenceFindings(evidence);
+  const findings = grouped.map(toViewerFinding);
   const withEvidence = findings.filter(finding => finding.isAnomaly);
-  // Most anomalies never resolve to a frame, so the study total and the subset
-  // that carries image evidence are reported as separate numbers.
   const studyAnomalies = getAnomalyFindings(payload.findings_summary || []);
-  const counts = summarizeSeverities(studyAnomalies);
+  const counts = summarizeSeverities(grouped);
   const patient = payload.patient_info || {};
   const studyInfo = payload.study_info || {};
   const reportText = payload.report?.report_text || '';
@@ -489,9 +499,11 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
                 (active && active.id === f.id) + '">' +
                 (f.annotated ? '<img src="' + f.annotated + '" alt="" loading="lazy" />' : '') +
                 '<span class="meta">' +
-                  '<span class="tid">' + esc(f.id) + '</span>' +
+                  '<span class="tid">' + esc(f.id) +
+                    (f.occurrences > 1 ? ' &middot; seen ' + f.occurrences + '\u00d7' : '') + '</span>' +
                   '<span class="tname">' + esc(f.name) + '</span>' +
                   '<span class="sev sev-' + esc(f.severity) + '">' + esc(f.severity) + '</span>' +
+                  (f.tier === 'measured' ? '<span class="tier">measured</span>' : '') +
                 '</span></button>';
             }).join('') + '</div>';
         }).join('');

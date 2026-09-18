@@ -256,7 +256,8 @@ const NEGATIVE_BODY = new RegExp(
     /no\s+acute/,
     /no\s+focal/,
     /not\s+identified/,
-    /showing\s+normal\s+structures/,
+    /showing\s+(?:a\s+)?normal\s+\w+/,
+    /^\s*(?:no|normal)\b/,
     /^the\s+image\s+shows\s+a\s+ct\s+scan/,
   ]
     .map(pattern => pattern.source)
@@ -270,7 +271,7 @@ const NEGATIVE_BODY = new RegExp(
  * "Multiple calcifications are present, likely incidental." stays a finding.
  */
 const NORMAL_STATEMENT =
-  /^\s*(the\s+)?[^.]{0,70}?\s+(?:is|are|appears?|appear)\s+(?:to\s+be\s+)?(?:present|visualized|visualised|patent|unremarkable|intact(?:\s+and\s+well[-\s]defined)?|within\s+normal\s+limits|normal(?:\s+in\s+[a-z\s,]+)?)\s*\.?\s*$/i;
+  /^\s*(the\s+)?[^.]{0,70}?\s+(?:is|are|appears?|appear|remains?|remain)\s+(?:to\s+be\s+)?(?:present|visible|visualized|visualised|seen|identified|patent|preserved|unremarkable|intact(?:\s+and\s+well[-\s]defined)?|within\s+normal\s+limits|normal(?:\s+in\s+[a-z\s,]+)?)\s*\.?\s*$/i;
 
 /** True when a finding reports something abnormal rather than a normal structure. */
 export function isAnomalyFinding(finding: {
@@ -300,6 +301,186 @@ export function getAnomalyFindings<T extends { severity?: string; name?: string;
   findings: T[]
 ): T[] {
   return findings.filter(isAnomalyFinding);
+}
+
+/**
+ * Findings the models emit as background context rather than as something to
+ * act on: physiologic calcifications, age-related atrophy, chronic white-matter
+ * change, scanner artefact. They are real observations and belong in the
+ * report, but listing them beside a brain mass at equal weight is what made the
+ * findings table unreadable.
+ */
+const INCIDENTAL = new RegExp(
+  [
+    /calcification/,
+    /atrophy/,
+    /artifact|artefact/,
+    /sinusitis|opacification/,
+    /white\s+matter\s+change/,
+    /ventriculomegaly|ventricular\s+enlargement/,
+    /prominence|prominent/,
+    /age[-\s]related/,
+    /incidental/,
+  ]
+    .map(pattern => pattern.source)
+    .join('|'),
+  'i'
+);
+
+export type EvidenceTier = 'measured' | 'reported' | 'incidental';
+
+export const TIER_LABELS: Record<EvidenceTier, string> = {
+  measured: 'Measured',
+  reported: 'Narrative only',
+  incidental: 'Incidental',
+};
+
+/**
+ * Sorts a finding by what a radiologist can actually do with it.
+ *
+ * `measured` is the only tier that can be verified against a picture — it has a
+ * recovered millimetre value, a bounding box and a frame. `reported` is the
+ * narrative model asserting something with no measurable evidence. `incidental`
+ * is background. Severity does not decide this: the models rate almost
+ * everything 95% confident, and two thirds of a study's findings land in "low".
+ */
+export function getEvidenceTier(finding: {
+  imageMeasurement: Measurement;
+  bbox: number[] | null;
+  originalImage: string;
+  name: string;
+  description: string;
+  severity: string;
+}): EvidenceTier {
+  if (finding.imageMeasurement.measurable && finding.bbox && finding.originalImage) {
+    return 'measured';
+  }
+
+  const isMinor = ['low', 'medium'].includes((finding.severity || 'low').toLowerCase());
+  if (isMinor && INCIDENTAL.test(`${finding.name} ${finding.description}`)) {
+    return 'incidental';
+  }
+
+  return 'reported';
+}
+
+/** Words that carry no distinguishing meaning when matching two finding names. */
+const NAME_NOISE = new Set([
+  'the', 'a', 'an', 'of', 'in', 'and', 'with',
+  'gland', 'region', 'area', 'areas', 'lobe',
+  'image', 'imaging', 'scan', 'ct',
+]);
+
+/**
+ * Collapses a finding name to a comparable key. "Pineal calcification" and
+ * "Pineal gland calcification" reduce to the same key; so do "Artifact",
+ * "Imaging Artifact" and "Image artifact".
+ */
+export function normalizeFindingKey(name?: string) {
+  return (name || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .split(/\s+/)
+    .filter(Boolean)
+    .map(word => word.replace(/(ies|s)$/, ''))
+    .filter(word => word && !NAME_NOISE.has(word))
+    .sort()
+    .join(' ');
+}
+
+export type GroupedFinding = EvidenceFinding & {
+  tier: EvidenceTier;
+  /** How many raw entries collapsed into this one. */
+  occurrences: number;
+  /** Every frame the same finding was reported on. */
+  frameKeys: string[];
+  seriesLabels: string[];
+  locations: string[];
+};
+
+function tierRank(tier: EvidenceTier) {
+  return ['measured', 'reported', 'incidental'].indexOf(tier);
+}
+
+/**
+ * Merges the same finding reported on different slices and series into one row.
+ *
+ * The analysis runs per frame, so a single lesion surfaces once per slice it
+ * appears on — a printed report carried the same pineal calcification four
+ * times and the same brain mass twice off one frame. Entries merge when their
+ * names reduce to the same key and they share either a frame or a region; the
+ * best-evidenced instance is kept and the rest become an occurrence count.
+ */
+export function groupEvidenceFindings(evidence: EvidenceFinding[]): GroupedFinding[] {
+  const groups = new Map<string, GroupedFinding>();
+
+  evidence.forEach(finding => {
+    const tier = getEvidenceTier(finding);
+    const nameKey = normalizeFindingKey(finding.name);
+    // Region keeps genuinely different sites apart; the frame catches the case
+    // where one frame yields two names for the same thing.
+    const key = `${nameKey}::${(finding.region || finding.frameKey || '').toLowerCase()}`;
+    const existing = groups.get(key);
+
+    if (!existing) {
+      groups.set(key, {
+        ...finding,
+        tier,
+        occurrences: 1,
+        frameKeys: finding.frameKey ? [finding.frameKey] : [],
+        seriesLabels: finding.seriesLabel ? [finding.seriesLabel] : [],
+        locations: finding.location ? [finding.location] : [],
+      });
+      return;
+    }
+
+    existing.occurrences += 1;
+    if (finding.frameKey && !existing.frameKeys.includes(finding.frameKey)) {
+      existing.frameKeys.push(finding.frameKey);
+    }
+    if (finding.seriesLabel && !existing.seriesLabels.includes(finding.seriesLabel)) {
+      existing.seriesLabels.push(finding.seriesLabel);
+    }
+    if (finding.location && !existing.locations.includes(finding.location)) {
+      existing.locations.push(finding.location);
+    }
+
+    // Promote the better-evidenced instance to be the one shown.
+    const betterTier = tierRank(tier) < tierRank(existing.tier);
+    const sameTierMoreSevere =
+      tierRank(tier) === tierRank(existing.tier) &&
+      compareSeverity(finding.severity, existing.severity) < 0;
+
+    if (betterTier || sameTierMoreSevere) {
+      const { occurrences, frameKeys, seriesLabels, locations } = existing;
+      groups.set(key, { ...finding, tier, occurrences, frameKeys, seriesLabels, locations });
+    }
+  });
+
+  return Array.from(groups.values()).sort((left, right) => {
+    const byTier = tierRank(left.tier) - tierRank(right.tier);
+    if (byTier !== 0) {
+      return byTier;
+    }
+
+    const bySeverity = compareSeverity(left.severity, right.severity);
+    if (bySeverity !== 0) {
+      return bySeverity;
+    }
+
+    return left.findingId.localeCompare(right.findingId);
+  });
+}
+
+/** Every reported anomaly, with image evidence attached wherever a frame resolved. */
+export function buildAllFindingRecords(payload: AiCompletePayload | null) {
+  return buildEvidenceFindings(payload, { requireEvidence: false }).filter(
+    finding => finding.isAnomaly
+  );
+}
+
+export function getTier(findings: GroupedFinding[], tier: EvidenceTier) {
+  return findings.filter(finding => finding.tier === tier);
 }
 
 export function formatConfidence(confidence?: number | null) {
@@ -391,14 +572,41 @@ function compareSeverity(left: string, right: string) {
     (rightIndex < 0 ? SEVERITY_ORDER.length : rightIndex);
 }
 
+/** Midpoint of a measurement's interval — the value the two layers are compared on. */
+function representativeMm(measurement: Measurement) {
+  return ((measurement.mm as number) + (measurement.mmMax as number)) / 2;
+}
+
+/**
+ * How far apart the two layers are, in mm, or null when only one of them
+ * measured anything.
+ *
+ * Comparing interval midpoints rather than testing for overlap is what keeps
+ * the verdict and the number in step. The previous rule called intervals that
+ * merely touched — 35–50 mm against 50–70 mm — an agreement, so a finding could
+ * report "Consistent" and "15 mm difference" in the same panel.
+ */
+export function getDifferenceMm(image: Measurement, narrative: Measurement) {
+  if (!image.measurable || !narrative.measurable) {
+    return null;
+  }
+
+  return roundTo(Math.abs(representativeMm(image) - representativeMm(narrative)));
+}
+
+/**
+ * Tolerance scales with the size of the thing being measured: 2 mm of
+ * disagreement is noise on a 5 cm mass and a doubling on a 2 mm calcification.
+ */
+function agreementToleranceMm(image: Measurement, narrative: Measurement) {
+  const larger = Math.max(representativeMm(image), representativeMm(narrative));
+  return Math.max(2, roundTo(larger * 0.15));
+}
+
 function classifyConsistency(image: Measurement, narrative: Measurement): Consistency {
   if (image.measurable && narrative.measurable) {
-    // Ranges overlap far more often than they agree exactly; treat an overlap
-    // of the stated intervals as agreement.
-    const overlaps =
-      (image.mm as number) <= (narrative.mmMax as number) &&
-      (narrative.mm as number) <= (image.mmMax as number);
-    return overlaps ? 'match' : 'mismatch';
+    const difference = getDifferenceMm(image, narrative) as number;
+    return difference <= agreementToleranceMm(image, narrative) ? 'match' : 'mismatch';
   }
 
   if (image.measurable) {
@@ -427,7 +635,10 @@ export const CONSISTENCY_LABELS: Record<Consistency, string> = {
  * the report format requires the original diagnostic image for every finding it
  * renders.
  */
-export function buildEvidenceFindings(payload: AiCompletePayload | null): EvidenceFinding[] {
+export function buildEvidenceFindings(
+  payload: AiCompletePayload | null,
+  { requireEvidence = true }: { requireEvidence?: boolean } = {}
+): EvidenceFinding[] {
   if (!payload) {
     return [];
   }
@@ -445,11 +656,15 @@ export function buildEvidenceFindings(payload: AiCompletePayload | null): Eviden
 
   summaries.forEach(finding => {
     const heatmap = finding.frame_key ? heatmapsByFrame.get(finding.frame_key) : undefined;
-    if (!heatmap) {
+
+    // The findings table has to account for every reported anomaly, including
+    // the majority that never resolve to a frame; the evidence pages and the
+    // viewer only want the ones there is a picture for.
+    if (!heatmap && requireEvidence) {
       return;
     }
 
-    const regions = heatmap.anomaly_regions || [];
+    const regions = heatmap?.anomaly_regions || [];
     const bestRegion = regions.reduce<{ region?: AiAnomalyRegion; score: number }>(
       (best, region) => {
         const score = nameSimilarity(region.name, finding.name);
@@ -466,19 +681,16 @@ export function buildEvidenceFindings(payload: AiCompletePayload | null): Eviden
     const imageMeasurement = parseMeasurement(region?.size_estimate);
     const narrativeMeasurement = parseMeasurement(finding.size_estimate);
     const consistency = classifyConsistency(imageMeasurement, narrativeMeasurement);
-    const differenceMm =
-      imageMeasurement.measurable && narrativeMeasurement.measurable
-        ? roundTo(Math.abs((imageMeasurement.mm as number) - (narrativeMeasurement.mm as number)))
-        : null;
+    const differenceMm = getDifferenceMm(imageMeasurement, narrativeMeasurement);
 
     evidence.push({
       findingId: finding.finding_id || '',
       name: finding.name || 'Unnamed finding',
       region: finding.region || '',
       severity: (finding.severity || 'low').toLowerCase(),
-      modality: finding.modality || heatmap.modality || '',
-      seriesLabel: finding.series || heatmap.seriesLabel || '',
-      seriesId: heatmap.seriesId || '',
+      modality: finding.modality || heatmap?.modality || '',
+      seriesLabel: finding.series || heatmap?.seriesLabel || '',
+      seriesId: heatmap?.seriesId || '',
       location: finding.location || '',
       description: finding.description || region?.description || '',
       frameKey: finding.frame_key || '',
@@ -490,10 +702,10 @@ export function buildEvidenceFindings(payload: AiCompletePayload | null): Eviden
       consistency,
       differenceMm,
       bbox: Array.isArray(region?.bbox) && region?.bbox.length === 4 ? region.bbox : null,
-      originalImage: heatmap.original_image_b64 || '',
-      heatmapImage: heatmap.heatmap_image_b64 || '',
-      annotatedImage: heatmap.gemini_annotated_image_b64 || '',
-      summary: heatmap.summary || '',
+      originalImage: heatmap?.original_image_b64 || '',
+      heatmapImage: heatmap?.heatmap_image_b64 || '',
+      annotatedImage: heatmap?.gemini_annotated_image_b64 || '',
+      summary: heatmap?.summary || '',
       isAnomaly: isAnomalyFinding(finding),
     });
   });
