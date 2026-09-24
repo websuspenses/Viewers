@@ -134,7 +134,8 @@
 }
 
 .vw .mobile-logo img {
-  max-height: 30px;
+  height: 40px;
+  max-height: none;
 }
 
 .vw .mobile-logo .ml-3 {

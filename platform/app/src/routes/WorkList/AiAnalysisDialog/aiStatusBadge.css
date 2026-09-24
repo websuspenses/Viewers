@@ -1,0 +1,237 @@
+/*
+ * AI status badge — neon purple and deep cyan only, kept light.
+ *
+ * Cyan is the image-analysis phase, purple the report phase, and the finished
+ * AI report blends the two. Each stage sets a pair (--ai-a → --ai-b) and a
+ * reading ink. The pill is a whisper of tint with a soft gradient hairline;
+ * the label stays a clear mid-tone so it reads without the pill feeling heavy.
+ * Failures keep a soft rose: an error must read as one at a glance.
+ */
+
+.ai-badge {
+  --ai-a: #06b6d4;
+  --ai-b: #bb87ec;
+  /* Light-theme label ink, shared by every stage; the stage colour lives in
+     the edge, tint, dot and "AI" mark. */
+  --ai-ink: #656565;
+  --ai-ink-dark: #a5f3fc;
+  --ai-wash: 6%;
+  --ai-edge: 55%;
+  --ai-glow: 0 0 0 transparent;
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+  padding: 4px 10px 4px 9px;
+  overflow: hidden;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  /* faint wash on the padding box, softened gradient hairline on the border box */
+  background:
+    linear-gradient(
+        120deg,
+        color-mix(in srgb, var(--ai-a) var(--ai-wash), #ffffff),
+        color-mix(in srgb, var(--ai-b) var(--ai-wash), #ffffff)
+      )
+      padding-box,
+    linear-gradient(
+        120deg,
+        color-mix(in srgb, var(--ai-a) var(--ai-edge), #ffffff),
+        color-mix(in srgb, var(--ai-b) var(--ai-edge), #ffffff)
+      )
+      border-box;
+  box-shadow: var(--ai-glow);
+  color: var(--ai-ink);
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  text-align: left;
+}
+
+.ai-badge--dark {
+  --ai-wash: 12%;
+  --ai-edge: 60%;
+  background:
+    linear-gradient(
+        120deg,
+        color-mix(in srgb, var(--ai-a) var(--ai-wash), #0d1b26),
+        color-mix(in srgb, var(--ai-b) var(--ai-wash), #0d1b26)
+      )
+      padding-box,
+    linear-gradient(
+        120deg,
+        color-mix(in srgb, var(--ai-a) var(--ai-edge), #0d1b26),
+        color-mix(in srgb, var(--ai-b) var(--ai-edge), #0d1b26)
+      )
+      border-box;
+  color: var(--ai-ink-dark);
+}
+
+/* ---- stages ---- */
+
+/* Deep cyan: the model is reading the images … */
+.ai-badge[data-stage='analyzing'],
+.ai-badge[data-stage='analyzed'] {
+  --ai-a: #06b6d4;
+  --ai-b: #22d3ee;
+  --ai-ink-dark: #a5f3fc;
+}
+
+/* … neon purple: the report is being written … */
+.ai-badge[data-stage='queued'],
+.ai-badge[data-stage='generating'] {
+  --ai-a: #a855f7;
+  --ai-b: #c084fc;
+  --ai-ink-dark: #e9d5ff;
+}
+
+/* … and the finished report carries both, with a soft lift. */
+.ai-badge[data-stage='ready'] {
+  --ai-a: #06b6d4;
+  --ai-b: #a855f7;
+  --ai-ink-dark: #e9d5ff;
+  --ai-edge: 70%;
+  --ai-glow: 0 2px 8px -3px rgba(168, 85, 247, 0.35);
+}
+
+.ai-badge--dark[data-stage='ready'] {
+  --ai-glow: 0 0 10px -4px rgba(168, 85, 247, 0.6);
+}
+
+/* Soft rose: something failed. */
+.ai-badge[data-stage='analysisFailed'],
+.ai-badge[data-stage='reportFailed'] {
+  --ai-a: #fb7185;
+  --ai-b: #f9a8d4;
+  --ai-ink-dark: #fecdd3;
+}
+
+/* Pale lavender-grey: nothing from the AI yet. */
+.ai-badge[data-stage='none'] {
+  --ai-a: #94a3b8;
+  --ai-b: #c4b5fd;
+  --ai-ink-dark: #cbd5e1;
+  --ai-wash: 4%;
+  --ai-edge: 40%;
+}
+
+/* ---- parts ---- */
+
+.ai-badge__mark {
+  flex: 0 0 auto;
+  background: linear-gradient(120deg, var(--ai-a), var(--ai-b));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-size: 9.5px;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+}
+
+.ai-badge__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ai-badge__dot {
+  flex: 0 0 auto;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ai-a), var(--ai-b));
+}
+
+.ai-badge__spinner {
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  /* a conic sweep in the stage's own gradient */
+  background: conic-gradient(from 0deg, transparent 0 25%, var(--ai-a), var(--ai-b));
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 1.5px));
+  animation: ai-badge-spin 0.9s linear infinite;
+}
+
+.ai-badge__progress {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  height: 2px;
+  border-radius: 0 2px 2px 0;
+  background: linear-gradient(90deg, var(--ai-a), var(--ai-b));
+  transition: width 0.4s ease;
+}
+
+/* A slow sheen while the AI is working. */
+.ai-badge--moving::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.6) 50%,
+    transparent 70%
+  );
+  transform: translateX(-100%);
+  animation: ai-badge-sheen 2.4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.ai-badge--dark.ai-badge--moving::after {
+  background: linear-gradient(
+    100deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.08) 50%,
+    transparent 70%
+  );
+}
+
+/* ---- interaction ---- */
+
+.ai-badge--interactive {
+  cursor: pointer;
+  transition: transform 0.12s ease, box-shadow 0.15s ease, filter 0.15s ease;
+}
+
+.ai-badge--interactive:hover {
+  box-shadow: var(--ai-glow), 0 2px 8px -3px color-mix(in srgb, var(--ai-b) 40%, transparent);
+}
+
+.ai-badge--interactive:active {
+  transform: scale(0.98);
+}
+
+.ai-badge--interactive:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--ai-a) 40%, transparent);
+}
+
+@keyframes ai-badge-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes ai-badge-sheen {
+  0%,
+  35% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ai-badge__spinner,
+  .ai-badge--moving::after {
+    animation: none;
+  }
+}

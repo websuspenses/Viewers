@@ -10,7 +10,13 @@ import { Toolbar } from '../Toolbar/Toolbar';
 
 const { availableLanguages, defaultLanguage, currentLanguage } = i18n;
 
-function ViewerHeader({ hotkeysManager, extensionManager, servicesManager, appConfig }) {
+function ViewerHeader({
+  hotkeysManager,
+  extensionManager,
+  servicesManager,
+  appConfig,
+  isActive = false,
+}) {
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -51,7 +57,7 @@ function ViewerHeader({ hotkeysManager, extensionManager, servicesManager, appCo
       onClick: () =>
         show({
           content: AboutModal,
-          title: t('AboutModal:About OHIF Viewer'),
+          title: t('AboutModal:About Teleradiology'),
           contentProps: { versionNumber, commitHash },
           containerDimensions: 'max-w-4xl max-h-4xl',
         }),
@@ -111,6 +117,7 @@ function ViewerHeader({ hotkeysManager, extensionManager, servicesManager, appCo
       showPatientInfo={appConfig.showPatientInfo}
       servicesManager={servicesManager}
       handleRedirectPage={handleRedirectPage}
+      isActive={isActive}
       Secondary={
         <>
           <Toolbar

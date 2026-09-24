@@ -336,6 +336,7 @@ function ViewerLayout({
     <div className={`vw${isActive ? ' vw--dark' : ''}`}>
       <div className="vw-top">
         <ViewerHeader
+          isActive={isActive}
           hotkeysManager={hotkeysManager}
           extensionManager={extensionManager}
           servicesManager={servicesManager}

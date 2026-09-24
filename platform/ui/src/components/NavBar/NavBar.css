@@ -1,0 +1,70 @@
+/*
+ * App header surface, both themes. Light: white with a hairline; dark: the
+ * same navy panel as the worklist, viewer and beta report.
+ *
+ * Legacy styles.css paints the header olive with `!important`
+ * (`.bg-black-on .image-viewer`, `.navbarAlignCls` → #1c1c14), which is why the
+ * light theme used to show a black bar. The doubled `.ciai-header` class
+ * outranks both even though styles.css loads later.
+ */
+.ciai-header {
+  --hdr-bg: #ffffff;
+  --hdr-line: #e1e8ec;
+  --hdr-ink: #163a5f;
+  --hdr-hover: rgba(10, 143, 122, 0.1);
+}
+
+.ciai-header.ciai-header--dark {
+  --hdr-bg: #0d1b26;
+  --hdr-line: rgba(255, 255, 255, 0.08);
+  --hdr-ink: #e4eef4;
+  --hdr-hover: rgba(18, 165, 140, 0.16);
+}
+
+.ciai-header.ciai-header.image-viewer {
+  background: var(--hdr-bg) !important;
+  border-bottom-color: var(--hdr-line) !important;
+  box-shadow: 0 1px 2px rgba(15, 33, 44, 0.04);
+}
+
+.ciai-header.ciai-header .navbarAlignCls {
+  background: transparent !important;
+}
+
+/* Logo: 48px tall — the artwork is trimmed, so this is all mark and wordmark. */
+.ciai-header .ciai-header-logo {
+  height: 48px;
+  max-height: none;
+}
+
+/* Back to worklist */
+.ciai-header .mobile-logo a[aria-label] {
+  color: var(--hdr-ink);
+}
+
+.ciai-header .mobile-logo a[aria-label]:hover {
+  background: var(--hdr-hover);
+}
+
+.ciai-header .mobile-logo a[aria-label] svg {
+  color: var(--hdr-ink) !important;
+}
+
+/* Settings menu trigger */
+.ciai-header #options-settings-icon {
+  color: var(--hdr-ink) !important;
+}
+
+.ciai-header #options-settings-icon:hover {
+  background: var(--hdr-hover);
+}
+
+.ciai-header #options-settings-icon svg path {
+  fill: currentColor !important;
+}
+
+@media (max-width: 767px) {
+  .ciai-header .ciai-header-logo {
+    height: 36px;
+  }
+}

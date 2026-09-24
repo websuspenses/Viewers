@@ -2,6 +2,8 @@ import React from 'react';
 import PropTypes from 'prop-types';
 import classnames from 'classnames';
 
+import './NavBar.css';
+
 const stickyClasses = 'sticky top-0';
 const notStickyClasses = 'relative';
 
@@ -23,13 +25,13 @@ const NavBar = ({ className, children, isSticky, isActive, screen }) => {
       className={
         isActive
           ? classnames(
-            'bg-surface-overlayDark image-viewer border-black_login-darkMode px-AlignCls z-20 flex flex-row items-center border-b shadow-sm',
+            'ciai-header ciai-header--dark image-viewer border-black_login-darkMode px-AlignCls z-20 flex flex-row items-center border-b',
             isSticky && stickyClasses,
             !isSticky && notStickyClasses,
             className
           )
           : classnames(
-            'bg-surface-overlayDark image-viewer z-20 flex flex-row items-center border-b border-black/40 px-3 shadow-sm',
+            'ciai-header image-viewer z-20 flex flex-row items-center border-b px-3',
             isSticky && stickyClasses,
             !isSticky && notStickyClasses,
             className

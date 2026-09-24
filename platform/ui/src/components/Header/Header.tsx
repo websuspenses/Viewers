@@ -109,21 +109,19 @@ function Header({
               {/* {WhiteLabeling?.createLogoComponentFn?.(React, props) || } */}
               {isActive ? (
                 <img
-                  width="180"
-                  height="101"
-                  // src="./ohif-logo.svg"
-                  src="/ohif-logo.svg"
+                  // Transparent, whitespace-trimmed artwork with light ink; the
+                  // old ohif-logo.svg carried its own olive background box.
+                  src="/ciai-logo-dark.svg"
+                  alt="CIAI Teleradiology"
                   id="imgsource"
-                  className="max-h-10 w-auto object-contain"
+                  className="ciai-header-logo w-auto object-contain"
                 />
               ) : (
                 <img
-                  width="180"
-                  height="101"
+                  src="/ciai-logo.svg"
+                  alt="CIAI Teleradiology"
                   id="imgsource_dark"
-                  // src="./ohif-whitebg-logo.svg"
-                  src="/ohif-whitebg-logo.svg"
-                  className="max-h-10 w-auto object-contain"
+                  className="ciai-header-logo w-auto object-contain"
                 />
               )}
             </div>

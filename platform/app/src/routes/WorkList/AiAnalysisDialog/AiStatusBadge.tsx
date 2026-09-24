@@ -2,7 +2,6 @@ import React from 'react';
 import classnames from 'classnames';
 
 import {
-  AiStage,
   AiStudyState,
   STAGE_LABELS,
   describeAnalysis,
@@ -11,52 +10,7 @@ import {
   getReportPercent,
 } from './aiPipeline';
 
-type Tone = 'info' | 'success' | 'warning' | 'danger' | 'neutral';
-
-// Same tokens as the study StatusBadge so the two pills read as one system.
-const TONE_CLASSES: Record<Tone, { light: string; dark: string; dot: string; bar: string }> = {
-  info: {
-    light: 'bg-statusBg-info text-statusText-info ring-statusRing-info',
-    dark: 'bg-statusBg-infoDark text-statusText-infoDark ring-statusRing-infoDark',
-    dot: 'bg-statusDot-info',
-    bar: 'bg-statusDot-info',
-  },
-  success: {
-    light: 'bg-statusBg-success text-statusText-success ring-statusRing-success',
-    dark: 'bg-statusBg-successDark text-statusText-successDark ring-statusRing-successDark',
-    dot: 'bg-statusDot-success',
-    bar: 'bg-statusDot-success',
-  },
-  warning: {
-    light: 'bg-statusBg-warning text-statusText-warning ring-statusRing-warning',
-    dark: 'bg-statusBg-warningDark text-statusText-warningDark ring-statusRing-warningDark',
-    dot: 'bg-statusDot-warning',
-    bar: 'bg-statusDot-warning',
-  },
-  danger: {
-    light: 'bg-statusBg-danger text-statusText-danger ring-statusRing-danger',
-    dark: 'bg-statusBg-dangerDark text-statusText-dangerDark ring-statusRing-dangerDark',
-    dot: 'bg-statusDot-danger',
-    bar: 'bg-statusDot-danger',
-  },
-  neutral: {
-    light: 'bg-statusBg-neutral text-statusText-neutral ring-statusRing-neutral',
-    dark: 'bg-statusBg-neutralDark text-statusText-neutralDark ring-statusRing-neutralDark',
-    dot: 'bg-statusDot-neutral',
-    bar: 'bg-statusDot-neutral',
-  },
-};
-
-const STAGE_TONES: Record<AiStage, Tone> = {
-  none: 'neutral',
-  analyzing: 'info',
-  analysisFailed: 'danger',
-  analyzed: 'info',
-  queued: 'warning',
-  generating: 'warning',
-  reportFailed: 'danger',
-  ready: 'success',
-};
+import './aiStatusBadge.css';
 
 function getBadgeContent(state: AiStudyState) {
   switch (state.stage) {
@@ -101,25 +55,22 @@ type Props = {
 };
 
 /**
- * Worklist pill for the automated AI pipeline. Moving stages swap the status
- * dot for a spinner and carry a hairline progress bar, so a column of
- * finished and running studies can be told apart without reading the text.
+ * Worklist pill for the automated AI pipeline. It carries the AI palette —
+ * indigo, neon purple, deep cyan, hot pink, amber — as a gradient edge, tint
+ * and "AI" mark (aiStatusBadge.css), so AI state reads as AI next to the
+ * pastel study-status pill. Moving stages swap the dot for a spinner and carry
+ * a gradient progress line, so running and finished studies differ at a glance.
  */
 export default function AiStatusBadge({ state, isActive = false, onClick }: Props) {
-  const tone = TONE_CLASSES[STAGE_TONES[state.stage]];
   const { label, detail, percent } = getBadgeContent(state);
   const isMoving = ['analyzing', 'queued', 'generating'].includes(state.stage);
   const isInteractive = state.stage !== 'none' && Boolean(onClick);
 
   const className = classnames(
-    'relative inline-flex max-w-full items-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full px-2.5 py-1',
-    // `leading-[1]`, not `leading-none`: legacy styles.css paints
-    // `button.leading-none` teal, which would override each status's own ink.
-    'text-[11.5px] font-semibold leading-[1] ring-1 ring-inset',
-    tone[isActive ? 'dark' : 'light'],
-    state.stage === 'none' && 'opacity-70',
-    isInteractive &&
-      'cursor-pointer transition-[filter] hover:brightness-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-statusDot-info'
+    'ai-badge',
+    isActive && 'ai-badge--dark',
+    isMoving && 'ai-badge--moving',
+    isInteractive && 'ai-badge--interactive'
   );
 
   const content = (
@@ -127,17 +78,20 @@ export default function AiStatusBadge({ state, isActive = false, onClick }: Prop
       {isMoving ? (
         <span
           aria-hidden="true"
-          className="h-2.5 w-2.5 shrink-0 animate-spin rounded-full border-[1.5px] border-current border-t-transparent"
+          className="ai-badge__spinner"
         />
       ) : (
-        <span className={classnames('h-1.5 w-1.5 shrink-0 rounded-full', tone.dot)} />
+        <span
+          aria-hidden="true"
+          className="ai-badge__dot"
+        />
       )}
-      <span className="text-[9.5px] font-extrabold tracking-wide opacity-80">AI</span>
-      <span className="truncate">{label}</span>
+      <span className="ai-badge__mark">AI</span>
+      <span className="ai-badge__label">{label}</span>
       {typeof percent === 'number' && percent > 0 && (
         <span
           aria-hidden="true"
-          className={classnames('absolute bottom-0 left-0 h-[2px] transition-[width]', tone.bar)}
+          className="ai-badge__progress"
           style={{ width: `${percent}%` }}
         />
       )}
@@ -148,6 +102,7 @@ export default function AiStatusBadge({ state, isActive = false, onClick }: Prop
     return (
       <span
         className={className}
+        data-stage={state.stage}
         title={detail}
       >
         {content}
@@ -159,6 +114,7 @@ export default function AiStatusBadge({ state, isActive = false, onClick }: Prop
     <button
       type="button"
       className={className}
+      data-stage={state.stage}
       title={detail}
       aria-label={`${label}. ${detail}`}
       onClick={event => {

@@ -76,7 +76,7 @@ const InvestigationalUseDialog = ({ dialogConfiguration }) => {
     //             // onClick={() => window.open('https://ohif.org/', '_blank')}
     //             onClick={() => window.open('#', '_blank')}
     //           >
-    //             Learn more about OHIF Viewer
+    //             Learn more About Teleradiology
     //           </span>
     //         </div>
     //       </div>
@@ -90,7 +90,7 @@ const InvestigationalUseDialog = ({ dialogConfiguration }) => {
     //     </Button>
     //   </div>
     // </div>
-	<div></div>
+    <div></div>
   );
 };
 
