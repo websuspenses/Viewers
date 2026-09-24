@@ -34,6 +34,11 @@ const variantClasses = {
     dark: 'bg-statusBg-emergencyDark text-statusText-emergencyDark ring-statusRing-emergencyDark',
     dot: 'bg-statusDot-emergency',
   },
+  violet: {
+    light: 'bg-statusBg-violet text-statusText-violet ring-statusRing-violet',
+    dark: 'bg-statusBg-violetDark text-statusText-violetDark ring-statusRing-violetDark',
+    dot: 'bg-statusDot-violet',
+  },
   neutral: {
     light: 'bg-statusBg-neutral text-statusText-neutral ring-statusRing-neutral',
     dark: 'bg-statusBg-neutralDark text-statusText-neutralDark ring-statusRing-neutralDark',
@@ -68,7 +73,7 @@ const StatusBadge = ({ label, variant, isActive, dot, className, ...rest }) => {
 
 StatusBadge.propTypes = {
   label: PropTypes.node.isRequired,
-  variant: PropTypes.oneOf(['info', 'success', 'warning', 'danger', 'emergency', 'neutral']),
+  variant: PropTypes.oneOf(['info', 'success', 'warning', 'danger', 'emergency', 'violet', 'neutral']),
   isActive: PropTypes.bool,
   dot: PropTypes.bool,
   className: PropTypes.string,

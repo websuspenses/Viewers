@@ -245,11 +245,12 @@ const REPORT_CSS = `
   .finding-meta { font-size: 8.5pt; color: var(--ink); margin-bottom: 4mm; }
   .finding-meta b { color: var(--navy); }
 
-  .sev { display: inline-block; padding: 0.5mm 2mm; border-radius: 1mm; font-size: 7pt; font-weight: bold; letter-spacing: 0.05em; text-transform: uppercase; color: #ffffff; }
-  .sev-critical { background: #b3261e; }
-  .sev-high { background: #c2610a; }
-  .sev-medium { background: #8a6d00; }
-  .sev-low { background: #4a6076; }
+  .sev { display: inline-block; padding: 0.5mm 2mm; border-radius: 1mm; font-size: 7pt; font-weight: bold; letter-spacing: 0.05em; text-transform: uppercase; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  /* Pastel severity with deep same-hue text; stays legible in print. */
+  .sev-critical { background: #ffd9d3; color: #8e2414; }
+  .sev-high { background: #ffe3c7; color: #8a4510; }
+  .sev-medium { background: #fbf0bf; color: #6b5500; }
+  .sev-low { background: #e3e9ef; color: #3b4f60; }
   .ident-draft { color: #b3261e !important; font-weight: bold; }
   .ident-verified { color: #157f68 !important; font-weight: bold; }
 
@@ -277,6 +278,12 @@ const REPORT_CSS = `
   .stage-step.is-pending .stage-label { color: var(--muted); }
 
   .sevdot { display: inline-block; width: 2mm; height: 2mm; border-radius: 50%; vertical-align: middle; margin-right: 1.5mm; }
+  /* A 2 mm dot needs the palette's mid-tone; the pastel fill would vanish. */
+  .sevdot { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .sevdot.sev-critical { background: #ef6b54; }
+  .sevdot.sev-high { background: #f0a060; }
+  .sevdot.sev-medium { background: #e3c04a; }
+  .sevdot.sev-low { background: #94a3b8; }
   .sevword { font-size: 7.5pt; text-transform: capitalize; color: var(--muted); vertical-align: middle; }
   .occ { display: inline-block; margin-left: 1.5mm; padding: 0.3mm 1.6mm; border-radius: 1mm; background: var(--panel); border: 1px solid var(--line); color: var(--muted); font-size: 6.5pt; font-weight: bold; white-space: nowrap; }
 

@@ -15,6 +15,8 @@ import CircularProgress from '@mui/material/CircularProgress';
 import Box from '@mui/material/Box';
 
 import { useSearchParams } from '@hooks';
+import './viewer.css';
+import { SERIES_SELECTED_EVENT } from './viewerEvents';
 
 function ViewerLayout({
   // From Extension Module Params
@@ -72,6 +74,40 @@ function ViewerLayout({
   const open = Boolean(anchorEl);
 
   const [isActive, setIsActive] = useState(false);
+  const [leftPanelCloseRequest, setLeftPanelCloseRequest] = useState(0);
+
+  // Phone: a series picked from the study browser closes the panel once it is
+  // in the viewport, so the image is not left hidden behind the list. A short
+  // fallback covers re-picking the series already shown (no data change).
+  useEffect(() => {
+    if (!isMobile) {
+      return undefined;
+    }
+    const viewportService = servicesManager.services.cornerstoneViewportService;
+    let pending: { unsubscribe: () => void } | null = null;
+    let fallback: number | undefined;
+
+    const finish = () => {
+      pending?.unsubscribe();
+      pending = null;
+      window.clearTimeout(fallback);
+      setLeftPanelCloseRequest(id => id + 1);
+    };
+
+    const onSeriesSelected = () => {
+      pending?.unsubscribe();
+      window.clearTimeout(fallback);
+      pending = viewportService?.subscribe(viewportService.EVENTS.VIEWPORT_DATA_CHANGED, finish);
+      fallback = window.setTimeout(finish, 2500);
+    };
+
+    window.addEventListener(SERIES_SELECTED_EVENT, onSeriesSelected);
+    return () => {
+      window.removeEventListener(SERIES_SELECTED_EVENT, onSeriesSelected);
+      pending?.unsubscribe();
+      window.clearTimeout(fallback);
+    };
+  }, [isMobile, servicesManager]);
 
   const [drEnableFlag, setDrEnableFlag] = useState(false);
   const [drCloseFlag, setDrCloseFlag] = useState(false);
@@ -297,8 +333,8 @@ function ViewerLayout({
   };
 
   return (
-    <div>
-      <div style={{ display: 'flex' }}>
+    <div className={`vw${isActive ? ' vw--dark' : ''}`}>
+      <div className="vw-top">
         <ViewerHeader
           hotkeysManager={hotkeysManager}
           extensionManager={extensionManager}
@@ -318,15 +354,9 @@ function ViewerLayout({
         )}
       </div>
 
-      <div style={{ display: 'flex' }}>
+      <div className="vw-main">
         <div
-          className={
-            isActive
-              ? `relative flex w-full flex-row flex-nowrap items-stretch overflow-hidden bg-black ${iframeImageflag} `
-              : `relative flex w-full flex-row flex-nowrap items-stretch overflow-hidden bg-black ${iframeImageflag} `
-          }
-          //className="relative flex w-full flex-row flex-nowrap items-stretch overflow-hidden bg-black"
-          style={{ height: 'calc(100vh - 52px' }}
+          className={`vw-body relative flex w-full flex-row flex-nowrap items-stretch overflow-hidden ${iframeImageflag}`}
         >
           <React.Fragment>
             {showLoadingIndicator && (
@@ -335,18 +365,22 @@ function ViewerLayout({
             {/* LEFT SIDEPANELS */}
             {hasLeftPanels ? (
               <ErrorBoundary context="Left Panel">
+                <div className="vw-side vw-side--left">
                 <SidePanelWithServices
                   side="left"
                   activeTabIndex={
                     (isMobile ? rightPanelClosedState : leftPanelClosedState) ? null : 0
                   }
                   servicesManager={servicesManager}
+                  expandedWidth={248}
+                  closeRequestId={leftPanelCloseRequest}
                 />
+                </div>
               </ErrorBoundary>
             ) : null}
             {/* TOOLBAR + GRID */}
-            <div className="flex h-full flex-1 flex-col">
-              <div className="relative flex h-full flex-1 items-center justify-center overflow-hidden bg-black">
+            <div className="vw-stage flex h-full min-w-0 flex-1 flex-col">
+              <div className="vw-grid relative flex h-full flex-1 items-center justify-center overflow-hidden bg-black">
                 <ErrorBoundary context="Grid">
                   <ViewportGridComp
                     servicesManager={servicesManager}
@@ -356,13 +390,18 @@ function ViewerLayout({
                 </ErrorBoundary>
               </div>
             </div>
-            {hasRightPanels ? (
+            {/* Phones get the full width for the image; the right panel's tools
+                (measurements) are not usable at that size. */}
+            {hasRightPanels && !isMobile ? (
               <ErrorBoundary context="Right Panel">
-                <SidePanelWithServices
-                  side="right"
-                  activeTabIndex={rightPanelClosedState ? null : 0}
-                  servicesManager={servicesManager}
-                />
+                <div className="vw-side vw-side--right">
+                  <SidePanelWithServices
+                    side="right"
+                    activeTabIndex={rightPanelClosedState ? null : 0}
+                    servicesManager={servicesManager}
+                    expandedWidth={280}
+                  />
+                </div>
               </ErrorBoundary>
             ) : null}
           </React.Fragment>

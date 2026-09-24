@@ -166,6 +166,7 @@ const SidePanel = ({
   onOpen,
   expandedWidth = 200,
   onActiveTabIndexChange,
+  closeRequestId,
 }) => {
   const { t } = useTranslation('SidePanel');
 
@@ -209,6 +210,16 @@ const SidePanel = ({
   useEffect(() => {
     updateActiveTabIndex(activeTabIndexProp);
   }, [activeTabIndexProp, updateActiveTabIndex]);
+
+  // Closes the panel from outside whenever the id changes. `activeTabIndex`
+  // cannot do this reliably: the panel's own open/close controls do not report
+  // back, so the prop can already read "closed" while the panel is open.
+  useEffect(() => {
+    if (closeRequestId) {
+      updatePanelOpen(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [closeRequestId]);
 
   const getCloseStateComponent = () => {
     const _childComponents = Array.isArray(tabs) ? tabs : [tabs];
@@ -409,6 +420,8 @@ SidePanel.propTypes = {
   side: PropTypes.oneOf(['left', 'right']).isRequired,
   className: PropTypes.string,
   activeTabIndex: PropTypes.number,
+  /** Changing this number closes the panel. */
+  closeRequestId: PropTypes.number,
   tabs: PropTypes.oneOfType([
     PropTypes.arrayOf(
       PropTypes.shape({

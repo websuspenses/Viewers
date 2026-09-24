@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { StudyBrowser, useImageViewer, useViewportGrid } from '@ohif/ui';
 import { utils } from '@ohif/core';
 import { useNavigate } from 'react-router-dom';
+import { SERIES_SELECTED_EVENT } from '../ViewerLayout/viewerEvents';
 
 const { sortStudyInstances, formatDate } = utils;
 
@@ -55,6 +56,20 @@ function PanelStudyBrowser({
     }
 
     viewportGridService.setDisplaySetsForViewports(updatedViewports);
+  };
+
+  // On a phone a double-tap to load a series is undiscoverable, so one tap
+  // loads it. The layout listens for the event to close this panel once the
+  // series is in the viewport.
+  const isSmallScreen = window.matchMedia?.('(max-width: 767px)').matches;
+  const onClickThumbnailHandler = displaySetInstanceUID => {
+    if (!isSmallScreen) {
+      return;
+    }
+    onDoubleClickThumbnailHandler(displaySetInstanceUID);
+    window.dispatchEvent(
+      new CustomEvent(SERIES_SELECTED_EVENT, { detail: { displaySetInstanceUID } })
+    );
   };
 
   // ~~ studyDisplayList
@@ -231,6 +246,7 @@ function PanelStudyBrowser({
       tabs={tabs}
       servicesManager={servicesManager}
       activeTabName={activeTabName}
+      onClickThumbnail={onClickThumbnailHandler}
       onDoubleClickThumbnail={onDoubleClickThumbnailHandler}
       activeDisplaySetInstanceUIDs={activeDisplaySetInstanceUIDs}
       expandedStudyInstanceUIDs={expandedStudyInstanceUIDs}

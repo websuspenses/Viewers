@@ -210,11 +210,12 @@ const VIEWER_CSS = `
   }
   .empty { color: var(--muted-2); font-size: 12px; text-align: center; padding: 28px 12px; line-height: 1.6; }
 
-  .sev { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 9px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: #fff; }
-  .sev-critical { background: #c5372c; }
-  .sev-high { background: #cc6a11; }
-  .sev-medium { background: #97780a; }
-  .sev-low { background: #4a6076; }
+  .sev { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 9px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+  /* Pastel severity: soft fill, deep same-hue text — matches the worklist and dialog. */
+  .sev-critical { background: #ffd9d3; color: #8e2414; }
+  .sev-high { background: #ffe3c7; color: #8a4510; }
+  .sev-medium { background: #fbf0bf; color: #6b5500; }
+  .sev-low { background: #e3e9ef; color: #3b4f60; }
   .tier { display: inline-block; margin-left: 5px; padding: 1px 5px; border-radius: 3px; font-size: 9px;
           font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
           color: #6ee7d0; background: rgba(18,165,140,0.16); border: 1px solid rgba(18,165,140,0.35); }

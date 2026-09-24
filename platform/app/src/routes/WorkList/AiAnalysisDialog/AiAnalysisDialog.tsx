@@ -145,21 +145,23 @@ const STATUS_LABELS: Record<AiDialogStatus, string> = {
   failed: 'Failed',
 };
 
-const STATUS_COLORS: Record<AiDialogStatus, 'default' | 'primary' | 'success' | 'warning' | 'error'> =
-  {
-    idle: 'default',
-    running: 'primary',
-    completed: 'success',
-    warning: 'warning',
-    unable: 'error',
-    failed: 'error',
-  };
+type Pastel = { bg: string; fg: string };
 
-const SEVERITY_COLORS: Record<string, string> = {
-  critical: '#b3261e',
-  high: '#c2610a',
-  medium: '#8a6d00',
-  low: '#4a6076',
+/** Pastel fills with deep same-hue text; urgency still reads coral → peach → butter → slate. */
+const SEVERITY_PASTELS: Record<string, Pastel> = {
+  critical: { bg: '#ffd9d3', fg: '#8e2414' },
+  high: { bg: '#ffe3c7', fg: '#8a4510' },
+  medium: { bg: '#fbf0bf', fg: '#6b5500' },
+  low: { bg: '#e3e9ef', fg: '#3b4f60' },
+};
+
+const STATUS_PASTELS: Record<AiDialogStatus, Pastel> = {
+  idle: { bg: '#e3e9ef', fg: '#3b4f60' },
+  running: { bg: '#d9ecfb', fg: '#1b5a88' },
+  completed: { bg: '#d6f2e5', fg: '#1b6a4e' },
+  warning: { bg: '#ffe7d1', fg: '#8a4a12' },
+  unable: { bg: '#fcdde3', fg: '#962a41' },
+  failed: { bg: '#fcdde3', fg: '#962a41' },
 };
 
 const GPU_DOWN_MESSAGE =
@@ -288,8 +290,8 @@ function SeverityChip({ severity, size = 'small' }: { severity: string; size?: '
       size={size}
       label={value.toUpperCase()}
       sx={{
-        backgroundColor: SEVERITY_COLORS[value] || SEVERITY_COLORS.low,
-        color: '#ffffff',
+        backgroundColor: (SEVERITY_PASTELS[value] || SEVERITY_PASTELS.low).bg,
+        color: (SEVERITY_PASTELS[value] || SEVERITY_PASTELS.low).fg,
         fontWeight: 900,
         fontSize: 10,
         letterSpacing: 0.4,
@@ -1351,11 +1353,12 @@ export default function AiAnalysisDialog({
           </Box>
           <Chip
             size="small"
-            color={STATUS_COLORS[displayStatus]}
             icon={<StatusGlyph status={displayStatus} />}
             label={displayLabel}
             sx={{
               fontWeight: 800,
+              backgroundColor: STATUS_PASTELS[displayStatus].bg,
+              color: STATUS_PASTELS[displayStatus].fg,
               '& .MuiChip-icon': { color: 'inherit' },
             }}
           />
@@ -1646,8 +1649,8 @@ export default function AiAnalysisDialog({
                         size="small"
                         label={`${severity.toUpperCase()} ${severityCounts[severity]}`}
                         sx={{
-                          backgroundColor: SEVERITY_COLORS[severity],
-                          color: '#ffffff',
+                          backgroundColor: SEVERITY_PASTELS[severity].bg,
+                          color: SEVERITY_PASTELS[severity].fg,
                           fontWeight: 900,
                           fontSize: 11,
                         }}

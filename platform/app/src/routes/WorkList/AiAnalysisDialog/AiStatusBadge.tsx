@@ -113,7 +113,9 @@ export default function AiStatusBadge({ state, isActive = false, onClick }: Prop
 
   const className = classnames(
     'relative inline-flex max-w-full items-center gap-1.5 overflow-hidden whitespace-nowrap rounded-full px-2.5 py-1',
-    'text-[11.5px] font-semibold leading-none ring-1 ring-inset',
+    // `leading-[1]`, not `leading-none`: legacy styles.css paints
+    // `button.leading-none` teal, which would override each status's own ink.
+    'text-[11.5px] font-semibold leading-[1] ring-1 ring-inset',
     tone[isActive ? 'dark' : 'light'],
     state.stage === 'none' && 'opacity-70',
     isInteractive &&

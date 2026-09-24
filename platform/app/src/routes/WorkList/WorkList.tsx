@@ -63,8 +63,9 @@ const getStatusBadgeVariant = (status: string) => {
   if (status.startsWith('In-Progress')) {
     return 'neutral';
   }
+  // Lavender: a referral is waiting on another reader, distinct from "Ready" (sky).
   if (status.startsWith('Referral')) {
-    return 'info';
+    return 'violet';
   }
   if (status.startsWith('Report')) {
     return 'success';
