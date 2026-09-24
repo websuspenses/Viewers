@@ -3,158 +3,58 @@ import PropTypes from 'prop-types';
 import detect from 'browser-detect';
 import { useTranslation } from 'react-i18next';
 
-import Typography from '../Typography';
 import Icon from '../Icon';
 
-const Link = ({ href, children, showIcon = false, isActive }) => {
-  return (
-    <a
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-    >
-      <Typography
-        variant="subtitle"
-        component="p"
-        className={isActive ? "flex items-center text-white-aboutCls" : "flex items-center"}
-      >
-        {children}
-        {!!showIcon && (
-          <Icon
-            name="external-link"
-            className={isActive ? "ml-2 w-5 text-white-aboutCls" : "ml-2 w-5 text-white"}
-          />
-        )}
-      </Typography>
-    </a>
-  );
-};
-
-const Row = ({ title, value, link, isActive }) => {
-  return (
-    <div className="mb-4 flex">
-      <Typography
-        variant="subtitle"
-        component="p"
-        className={isActive ? "w-48 text-white-aboutCls" : "w-48 text-white"}
-      >
-        {title}
-      </Typography>
-
-      {link ? (
-        <Link href={link} isActive={isActive}>{value}</Link>
-
-      ) : (
-        <Typography
-          variant="subtitle"
-          component="p"
-          className={isActive ? "w-48 text-white-aboutCls" : "w-48 text-white"}
-        >
-          {value}
-        </Typography>
-      )}
-    </div>
-  );
-};
+/** External link rendered as a pill (styles: Modal/ciai-dialog.css). */
+const Link = ({ href, children }) => (
+  <a
+    className="ciai-link"
+    href={href}
+    target="_blank"
+    rel="noopener noreferrer"
+  >
+    {children}
+    <Icon name="external-link" />
+  </a>
+);
 
 const AboutModal = ({ buildNumber, versionNumber, commitHash, isActive }) => {
   const { os, version, name } = detect();
   const browser = `${name[0].toUpperCase()}${name.substr(1)} ${version}`;
   const { t } = useTranslation('AboutModal');
 
-  const renderRowTitle = title => (
-    <div className="mb-3 border-b-2 border-black pb-3">
-      <Typography
-        variant="inherit"
-        color={isActive ? 'primaryLight_darkMode' : 'primaryLight'}
-        className="text-[16px] font-semibold !leading-[1.2]"
-      >
-        {title}
-      </Typography>
-    </div>
-  );
+  const rows = [
+    [t('Repository URL'), <a key="repo" href="#" target="_blank" rel="noopener noreferrer">#</a>],
+    [t('Data citation'), <a key="cite" href="#" target="_blank" rel="noopener noreferrer">#</a>],
+    [t('Version number'), versionNumber || '—'],
+    ...(buildNumber ? [[t('Build number'), buildNumber]] : []),
+    ...(commitHash ? [[t('Commit hash'), commitHash]] : []),
+    [t('Browser'), browser],
+    [t('OS'), os],
+  ];
+
   return (
     <div>
-      {renderRowTitle(t('Important links'))}
-      <div className="mb-8 flex">
-        <Link
-          href="https://cyberintellectus.com/products-telehealth/"
-          showIcon={true}
-          isActive={isActive}
-        >
-          {'Visit the forum'}
-        </Link>
-        <span className="ml-4">
-          <Link
-            href="#"
-            showIcon={true}
-            isActive={isActive}
+      <section className="ciai-section">
+        <p className="ciai-section-title">{t('Important links')}</p>
+        <div className="ciai-links">
+          <Link href="https://cyberintellectus.com/products-telehealth/">Visit the forum</Link>
+          <Link href="#">{t('Report an issue')}</Link>
+          <Link href="#">{t('More details')}</Link>
+        </div>
+      </section>
 
-          >
-            {t('Report an issue')}
-          </Link>
-        </span>
-        <span className="ml-4">
-          <Link
-            href="#"
-            showIcon={true}
-            isActive={isActive}
-          >
-            {t('More details')}
-          </Link>
-        </span>
-      </div>
-
-      {renderRowTitle(t('Version information'))}
-      <div className="flex flex-col">
-        <Row
-          title={t('Repository URL')}
-          value="#"
-          link="#"
-          isActive={isActive}
-        />
-        <Row
-          title={t('Data citation')}
-          value="#"
-          link="#"
-          isActive={isActive}
-        />
-        {/* */}
-        <Row
-          title={t('Version number')}
-          value={versionNumber}
-          isActive={isActive}
-
-        />
-        {buildNumber && (
-          <Row
-            title={t('Build number')}
-            value={buildNumber}
-            isActive={isActive}
-
-          />
-        )}
-        {commitHash && (
-          <Row
-            title={t('Commit hash')}
-            value={commitHash}
-            isActive={isActive}
-
-          />
-        )}
-        <Row
-          title={t('Browser')}
-          value={browser}
-          isActive={isActive}
-
-        />
-        <Row
-          title={t('OS')}
-          value={os}
-          isActive={isActive}
-
-        />
-      </div>
+      <section className="ciai-section">
+        <p className="ciai-section-title">{t('Version information')}</p>
+        <dl className="ciai-dl">
+          {rows.map(([title, value]) => (
+            <React.Fragment key={String(title)}>
+              <dt>{title}</dt>
+              <dd>{value}</dd>
+            </React.Fragment>
+          ))}
+        </dl>
+      </section>
     </div>
   );
 };

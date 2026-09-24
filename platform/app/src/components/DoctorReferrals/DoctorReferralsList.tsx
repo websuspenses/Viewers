@@ -440,6 +440,7 @@ function DoctorReferralsList() {
           screen="EditScreen"
           editData={editItem}
           sendUpdateMessage={sendUpdateMessage}
+          isActive={isActive}
         />
       )}
       {showconfirm && (
@@ -447,6 +448,7 @@ function DoctorReferralsList() {
           open={showconfirm}
           handleClose={handleCloseConfirmation}
           screen="DoctorReferralsList"
+          isActive={isActive}
         />
       )}
       {referralPopup && (
@@ -456,6 +458,7 @@ function DoctorReferralsList() {
           screen="CreateScreen"
           setReferralPopup={setReferralPopup}
           sendUpdateMessage={sendUpdateMessage}
+          isActive={isActive}
         />
       )}
     </div>

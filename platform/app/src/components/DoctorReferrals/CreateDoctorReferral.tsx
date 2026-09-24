@@ -1,13 +1,9 @@
 import React, { useEffect, useState } from 'react';
-import { styled } from '@mui/material/styles';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import IconButton from '@mui/material/IconButton';
+import Dialog from '@mui/material/Dialog';
 import CloseIcon from '@mui/icons-material/Close';
-import Button from '@mui/material/Button';
-import Stack from '@mui/material/Stack';
-import Dialog, { DialogProps } from '@mui/material/Dialog';
+import PersonAddAlt1OutlinedIcon from '@mui/icons-material/PersonAddAlt1Outlined';
+import ManageAccountsOutlinedIcon from '@mui/icons-material/ManageAccountsOutlined';
+import isDarkTheme from '../../utils/isDarkTheme';
 import { useNavigate } from 'react-router-dom';
 import { Dispatch, SetStateAction } from 'react';
 import { useAppConfig } from '@state';
@@ -45,22 +41,47 @@ interface Props {
   editData?: EditData;
   setReferralPopup?: Dispatch<SetStateAction<boolean>>;
   sendUpdateMessage: (message: { message: string; status: string }) => void;
+  isActive?: boolean;
 }
 
-const BootstrapDialog = styled(Dialog)<DialogProps>(() => ({
-  '& .MuiDialogContent-root': {
-    padding: '16px',
-  },
-  '& .MuiDialogActions-root': {
-    padding: '8px',
-  },
-  '& .MuiPaper-root': {
-    width: '550px !important',
-  },
-})) as typeof Dialog;
+/** One labelled input; styles in ui Modal/ciai-dialog.css. */
+function Field({
+  label,
+  error,
+  hint,
+  full = false,
+  ...input
+}: React.InputHTMLAttributes<HTMLInputElement> & {
+  label: string;
+  error?: string;
+  hint?: string;
+  full?: boolean;
+}) {
+  return (
+    <label
+      className={`ciai-field${error ? ' ciai-field--error' : ''}${full ? ' ciai-field--full' : ''}`}
+    >
+      <span>
+        {label} <em>*</em>
+      </span>
+      <input
+        autoComplete="off"
+        aria-invalid={!!error}
+        {...input}
+      />
+      {error ? (
+        <span className="ciai-field__error">{error}</span>
+      ) : hint ? (
+        <span className="ciai-field__hint">{hint}</span>
+      ) : null}
+    </label>
+  );
+}
 
 function CreateDoctorReferral(props: Props) {
   const { open, handleClose, screen, editData, sendUpdateMessage } = props;
+  const isDark = props.isActive ?? isDarkTheme();
+  const isEdit = screen === 'EditScreen';
   const navigate = useNavigate();
   const [appConfig] = useAppConfig();
 
@@ -131,7 +152,7 @@ function CreateDoctorReferral(props: Props) {
     }
   }, [editData]);
 
-  const handleSubmit = async (event: React.MouseEvent<HTMLButtonElement>) => {
+  const handleSubmit = async (event: React.SyntheticEvent) => {
     event.preventDefault();
 
     if (!validateForm()) {
@@ -226,135 +247,117 @@ function CreateDoctorReferral(props: Props) {
   };
 
   return (
-    <BootstrapDialog
-      aria-labelledby="customized-dialog-title"
+    <Dialog
       open={open}
+      onClose={handleClose}
+      aria-labelledby="doctor-dialog-title"
+      PaperProps={{ className: `ciai-dialog${isDark ? ' ciai-dialog--dark' : ''}` }}
     >
-      <DialogTitle
-        sx={{ m: 0, p: 2 }}
-        id="customized-dialog-title"
+      <div className="ciai-dialog__head">
+        <div className="ciai-dialog__icon">
+          {isEdit ? <ManageAccountsOutlinedIcon /> : <PersonAddAlt1OutlinedIcon />}
+        </div>
+        <div className="ciai-dialog__titles">
+          <h2
+            id="doctor-dialog-title"
+            className="ciai-dialog__title"
+          >
+            {isEdit ? 'Update Doctor Details' : 'Add Doctor Details'}
+          </h2>
+          <p className="ciai-dialog__subtitle">
+            {isEdit
+              ? 'Changes apply to future referrals to this specialist.'
+              : 'Add a study review specialist you can refer studies to.'}
+          </p>
+        </div>
+        <button
+          type="button"
+          className="ciai-dialog__close"
+          aria-label="Close"
+          onClick={handleClose}
+        >
+          <CloseIcon />
+        </button>
+      </div>
+      <form
+        noValidate
+        onSubmit={handleSubmit}
       >
-        {screen === 'EditScreen' ? 'Update Doctor Details' : 'Add Doctor Details'}
-      </DialogTitle>
-      <IconButton
-        aria-label="close"
-        onClick={handleClose}
-        sx={{
-          position: 'absolute',
-          right: 8,
-          top: 8,
-          color: theme => theme.palette.grey[500],
-        }}
-      >
-        <CloseIcon className="closeIconCls" />
-      </IconButton>
-      <DialogContent>
-        <div className="user-view _add-view">
-          <div className="box">
-            <div className="row doctor-name">
-              <div className="col-sm-12 col-md-6">
-                <p className="doctor-name-p">
-                  <span>Doctor Name</span>
-                  <input
-                    type="text"
-                    className={`form-control ${errors.doctorName ? 'is-invalid' : ''}`}
-                    placeholder="Enter Doctor Name"
-                    name="doctorName"
-                    value={initialValues.doctorName}
-                    onChange={handelChangeInput}
-                  />
-                  {errors.doctorName && <div className="invalid-feedback">{errors.doctorName}</div>}
-                </p>
-              </div>
-              <div className="col-sm-12 col-md-6">
-                <p>
-                  <span>Specialization</span>
-                  <input
-                    type="text"
-                    className={`form-control ${errors.specialization ? 'is-invalid' : ''}`}
-                    name="specialization"
-                    placeholder="Enter Specialization"
-                    value={initialValues.specialization}
-                    onChange={handelChangeInput}
-                  />
-                  {errors.specialization && (
-                    <div className="invalid-feedback">{errors.specialization}</div>
-                  )}
-                </p>
-              </div>
-              <div className="col-sm-12 col-md-6">
-                <p>
-                  <span>Clinic</span>
-                  <input
-                    type="text"
-                    className={`form-control ${errors.clinic ? 'is-invalid' : ''}`}
-                    name="clinic"
-                    placeholder="Enter Clinic"
-                    value={initialValues.clinic}
-                    onChange={handelChangeInput}
-                  />
-                  {errors.clinic && <div className="invalid-feedback">{errors.clinic}</div>}
-                </p>
-              </div>
-              <div className="col-sm-12 col-md-6">
-                <p>
-                  <span>Phone Number</span>
-                  <input
-                    type="text"
-                    className={`form-control ${errors.phoneNumber ? 'is-invalid' : ''}`}
-                    name="phoneNumber"
-                    placeholder="Enter Phone Number"
-                    value={initialValues.phoneNumber}
-                    onChange={handelChangeInput}
-                  />
-                  {errors.phoneNumber && (
-                    <div className="invalid-feedback">{errors.phoneNumber}</div>
-                  )}
-                </p>
-              </div>
-              <div className="col-sm-12 col-md-6">
-                <p>
-                  <span>Email ID</span>
-                  <input
-                    type="text"
-                    name="email"
-                    className={`form-control ${errors.email ? 'is-invalid' : ''}`}
-                    placeholder="Enter Email ID"
-                    value={initialValues.email}
-                    onChange={handelChangeInput}
-                  />
-                  {errors.email && <div className="invalid-feedback">{errors.email}</div>}
-                </p>
-              </div>
-            </div>
+        <div className="ciai-dialog__body">
+          <div className="ciai-form">
+            <Field
+              label="Doctor name"
+              name="doctorName"
+              placeholder="Dr. Anitha Reddy"
+              value={initialValues.doctorName}
+              onChange={handelChangeInput}
+              error={errors.doctorName}
+            />
+            <Field
+              label="Specialization"
+              name="specialization"
+              placeholder="e.g. Neuroradiology"
+              value={initialValues.specialization}
+              onChange={handelChangeInput}
+              error={errors.specialization}
+            />
+            <Field
+              label="Clinic"
+              name="clinic"
+              placeholder="Hospital or diagnostic centre"
+              value={initialValues.clinic}
+              onChange={handelChangeInput}
+              error={errors.clinic}
+            />
+            <Field
+              label="Phone number"
+              name="phoneNumber"
+              type="tel"
+              inputMode="numeric"
+              placeholder="10-digit mobile number"
+              value={initialValues.phoneNumber}
+              onChange={handelChangeInput}
+              error={errors.phoneNumber}
+              hint="10 digits, no spaces"
+            />
+            <Field
+              label="Email"
+              name="email"
+              type="email"
+              placeholder="name@hospital.com"
+              value={initialValues.email}
+              onChange={handelChangeInput}
+              error={errors.email}
+              full
+            />
           </div>
         </div>
-      </DialogContent>
-      <DialogActions>
-        <Stack
-          direction="row"
-          spacing={2}
-        >
-          <Button
-            variant="contained"
-            color="error"
-            className="borderRadiusCls"
+        <div className="ciai-dialog__foot">
+          <button
+            type="button"
+            className="ciai-btn ciai-btn--ghost"
             onClick={handleResetForm}
-            disabled={screen === 'EditScreen'}
+            disabled={isEdit}
           >
             Clear
-          </Button>
-          <Button
-            variant="contained"
-            color="success"
-            className="submitBtnMuiCls borderRadiusCls"
-            onClick={handleSubmit}
+          </button>
+          <span className="ciai-spacer" />
+          <button
+            type="button"
+            className="ciai-btn"
+            onClick={handleClose}
           >
-            {screen === 'EditScreen' ? 'Update' : 'Submit'}
-          </Button>
-        </Stack>
-      </DialogActions>
-    </BootstrapDialog>
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="ciai-btn ciai-btn--primary"
+          >
+            {isEdit ? 'Update' : 'Submit'}
+          </button>
+        </div>
+      </form>
+    </Dialog>
   );
 }
 

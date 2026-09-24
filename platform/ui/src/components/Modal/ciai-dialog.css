@@ -1,0 +1,607 @@
+/*
+ * Dialog & modal design layer — the worklist/report palette for every popup:
+ * MUI dialogs in the app (`PaperProps.className="ciai-dialog"`) and the OHIF
+ * <Modal> used by About and User Preferences (`.ciai-modal`).
+ *
+ * Loaded once through Modal.tsx, which the ModalProvider mounts at the app
+ * root, so the classes are available on every page.
+ *
+ * Legacy styles.css repaints dialog paper olive with `!important`
+ * (`.bg-black-on .css-…-MuiDialog-paper`), hence the doubled class below.
+ */
+
+.ciai-dialog,
+.ciai-modal {
+  --dlg-bg: #ffffff;
+  --dlg-panel-2: #f7fafb;
+  --dlg-line: #e3eaee;
+  --dlg-line-strong: #cfd9df;
+  --dlg-text: #0f212c;
+  --dlg-text-2: #3c5260;
+  --dlg-muted: #647c8b;
+  --dlg-muted-2: #8aa0ad;
+  --dlg-input: #ffffff;
+  --dlg-teal: #0a8f7a;
+  --dlg-teal-strong: #077061;
+  --dlg-teal-dim: rgba(10, 143, 122, 0.1);
+  --dlg-teal-ring: rgba(10, 143, 122, 0.32);
+  --dlg-on-teal: #ffffff;
+  --dlg-danger: #d4382c;
+  --dlg-danger-dim: rgba(212, 56, 44, 0.1);
+  --dlg-danger-solid: #d4382c;
+  --dlg-shadow: 0 24px 60px -18px rgba(15, 33, 44, 0.35), 0 2px 8px rgba(15, 33, 44, 0.08);
+  color-scheme: light;
+}
+
+.ciai-dialog.ciai-dialog--dark,
+.ciai-modal.ciai-modal--dark {
+  --dlg-bg: #0d1b26;
+  --dlg-panel-2: #102330;
+  --dlg-line: rgba(255, 255, 255, 0.09);
+  --dlg-line-strong: rgba(255, 255, 255, 0.16);
+  --dlg-text: #e8f4f8;
+  --dlg-text-2: #c3d7e1;
+  --dlg-muted: #8faec0;
+  --dlg-muted-2: #6f92a6;
+  --dlg-input: #070f16;
+  --dlg-teal: #12a58c;
+  --dlg-teal-strong: #6ee7d0;
+  --dlg-teal-dim: rgba(18, 165, 140, 0.15);
+  --dlg-teal-ring: rgba(18, 165, 140, 0.42);
+  --dlg-on-teal: #04211c;
+  --dlg-danger: #ff7a6b;
+  --dlg-danger-dim: rgba(255, 122, 107, 0.14);
+  --dlg-shadow: 0 28px 70px -16px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  color-scheme: dark;
+}
+
+/* ------------------------------------------------------------------ MUI paper */
+
+.MuiPaper-root.ciai-dialog.ciai-dialog {
+  width: 560px;
+  max-width: calc(100vw - 32px);
+  margin: 16px;
+  border: 1px solid var(--dlg-line);
+  border-radius: 14px;
+  background: var(--dlg-bg) !important;
+  background-image: none;
+  box-shadow: var(--dlg-shadow);
+  color: var(--dlg-text) !important;
+  font-size: 13.5px;
+  overflow: hidden;
+}
+
+.MuiPaper-root.ciai-dialog.ciai-dialog--sm {
+  width: 440px;
+}
+
+.MuiPaper-root.ciai-dialog.ciai-dialog--lg {
+  width: 680px;
+}
+
+/* ------------------------------------------------------------------ structure */
+
+.ciai-dialog__head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 18px 18px 14px 20px;
+  border-bottom: 1px solid var(--dlg-line);
+}
+
+.ciai-dialog__icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--dlg-teal-dim);
+  color: var(--dlg-teal-strong);
+}
+
+.ciai-dialog__icon svg {
+  font-size: 20px;
+}
+
+.ciai-dialog__icon--danger {
+  background: var(--dlg-danger-dim);
+  color: var(--dlg-danger);
+}
+
+.ciai-dialog__titles {
+  flex: 1;
+  min-width: 0;
+  padding-top: 1px;
+}
+
+.ciai-dialog__title {
+  margin: 0;
+  color: var(--dlg-text);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.ciai-dialog__subtitle {
+  margin: 3px 0 0;
+  color: var(--dlg-muted);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.ciai-dialog__close {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: -4px -4px 0 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dlg-muted);
+  cursor: pointer;
+  transition: background-color 0.12s, color 0.12s;
+}
+
+.ciai-dialog__close:hover {
+  background: var(--dlg-teal-dim);
+  color: var(--dlg-text);
+}
+
+.ciai-dialog__close svg {
+  font-size: 20px;
+}
+
+.ciai-dialog__body {
+  padding: 18px 20px 20px;
+  max-height: calc(100vh - 220px);
+  overflow-y: auto;
+}
+
+.ciai-dialog__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--dlg-line);
+  background: var(--dlg-panel-2);
+}
+
+.ciai-dialog__foot .ciai-spacer {
+  flex: 1;
+}
+
+/* ------------------------------------------------------------------ buttons */
+
+/* Selectors are doubled (`.ciai-btn.ciai-btn`, `.ciai-btn.ciai-btn--primary`):
+   this file can land before Tailwind's preflight in the bundle, and preflight's
+   `button { background-color: transparent }` would otherwise erase the fills —
+   leaving the primary button's text invisible on the panel. */
+
+.ciai-btn.ciai-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--dlg-line-strong);
+  border-radius: 9px;
+  background: var(--dlg-bg);
+  color: var(--dlg-text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background-color 0.12s, border-color 0.12s, color 0.12s;
+}
+
+.ciai-btn.ciai-btn svg {
+  font-size: 18px;
+}
+
+.ciai-btn.ciai-btn:hover:not(:disabled) {
+  border-color: var(--dlg-teal);
+  color: var(--dlg-teal-strong);
+}
+
+.ciai-btn.ciai-btn--primary {
+  border-color: var(--dlg-teal);
+  background: var(--dlg-teal);
+  color: var(--dlg-on-teal);
+}
+
+.ciai-btn.ciai-btn--primary:hover:not(:disabled) {
+  border-color: var(--dlg-teal-strong);
+  background: var(--dlg-teal-strong);
+  color: var(--dlg-on-teal);
+}
+
+.ciai-dialog--dark .ciai-btn.ciai-btn--primary:hover:not(:disabled),
+.ciai-modal--dark .ciai-btn.ciai-btn--primary:hover:not(:disabled) {
+  background: #5fd9c2;
+  border-color: #5fd9c2;
+}
+
+.ciai-btn.ciai-btn--danger {
+  border-color: var(--dlg-danger-solid);
+  background: var(--dlg-danger-solid);
+  color: #ffffff;
+}
+
+.ciai-btn.ciai-btn--danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+  border-color: var(--dlg-danger-solid);
+  color: #ffffff;
+}
+
+.ciai-btn.ciai-btn--ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--dlg-muted);
+}
+
+.ciai-btn.ciai-btn--ghost:hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--dlg-teal-dim);
+  color: var(--dlg-text);
+}
+
+.ciai-btn.ciai-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ciai-btn.ciai-btn:focus-visible,
+.ciai-dialog__close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--dlg-teal-ring);
+}
+
+/* ------------------------------------------------------------------ form */
+
+.ciai-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px 14px;
+}
+
+.ciai-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.ciai-field--full {
+  grid-column: 1 / -1;
+}
+
+.ciai-field > span:first-child {
+  color: var(--dlg-text-2);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.ciai-field > span:first-child em {
+  color: var(--dlg-danger);
+  font-style: normal;
+}
+
+.ciai-field input,
+.ciai-field select {
+  height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--dlg-line-strong) !important;
+  border-radius: 9px !important;
+  background: var(--dlg-input) !important;
+  color: var(--dlg-text) !important;
+  font: inherit;
+  font-size: 13.5px;
+  box-shadow: none !important;
+  outline: none;
+  transition: border-color 0.12s, box-shadow 0.12s;
+}
+
+.ciai-field input::placeholder {
+  color: var(--dlg-muted-2);
+  opacity: 1;
+}
+
+.ciai-field input:hover,
+.ciai-field select:hover {
+  border-color: var(--dlg-muted-2) !important;
+}
+
+.ciai-field input:focus,
+.ciai-field select:focus {
+  border-color: var(--dlg-teal) !important;
+  box-shadow: 0 0 0 3px var(--dlg-teal-ring) !important;
+}
+
+.ciai-field input:disabled,
+.ciai-field select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ciai-field--error input,
+.ciai-field--error input:hover,
+.ciai-field--error input:focus {
+  border-color: var(--dlg-danger) !important;
+}
+
+.ciai-field--error input:focus {
+  box-shadow: 0 0 0 3px var(--dlg-danger-dim) !important;
+}
+
+.ciai-field > .ciai-field__error {
+  color: var(--dlg-danger);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.ciai-field > .ciai-field__hint {
+  color: var(--dlg-muted);
+  font-size: 11.5px;
+}
+
+/* ------------------------------------------------------------------ content bits */
+
+.ciai-section-title {
+  margin: 0 0 10px;
+  color: var(--dlg-muted);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.ciai-section + .ciai-section {
+  margin-top: 20px;
+}
+
+.ciai-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.ciai-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 26px;
+  padding: 0 10px 0 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.ciai-chip svg {
+  font-size: 14px;
+}
+
+.ciai-chip--mint { background: #e3f6ee; color: #1d6b50; box-shadow: inset 0 0 0 1px #b9e5d2; }
+.ciai-chip--lavender { background: #efeafd; color: #5a3fa0; box-shadow: inset 0 0 0 1px #d8ccf6; }
+.ciai-dialog--dark .ciai-chip--mint,
+.ciai-modal--dark .ciai-chip--mint { background: #0f2c24; color: #93dfc0; box-shadow: inset 0 0 0 1px #1d5242; }
+.ciai-dialog--dark .ciai-chip--lavender,
+.ciai-modal--dark .ciai-chip--lavender { background: #221a3d; color: #c7b6f5; box-shadow: inset 0 0 0 1px #3d3170; }
+
+.ciai-dl {
+  display: grid;
+  grid-template-columns: minmax(120px, 34%) 1fr;
+  margin: 0;
+  border: 1px solid var(--dlg-line);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ciai-dl dt,
+.ciai-dl dd {
+  margin: 0;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--dlg-line);
+  font-size: 13px;
+}
+
+.ciai-dl dt {
+  background: var(--dlg-panel-2);
+  color: var(--dlg-muted);
+  font-weight: 600;
+}
+
+.ciai-dl dd {
+  color: var(--dlg-text);
+  font-weight: 550;
+  overflow-wrap: anywhere;
+}
+
+.ciai-dl dt:nth-last-of-type(1),
+.ciai-dl dd:last-of-type {
+  border-bottom: 0;
+}
+
+.ciai-note {
+  margin: 12px 0 0;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: var(--dlg-teal-dim);
+  color: var(--dlg-text-2);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.ciai-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ciai-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--dlg-line-strong);
+  border-radius: 999px;
+  color: var(--dlg-text-2) !important;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-decoration: none !important;
+  transition: border-color 0.12s, color 0.12s, background-color 0.12s;
+}
+
+.ciai-link:hover {
+  border-color: var(--dlg-teal);
+  background: var(--dlg-teal-dim);
+  color: var(--dlg-teal-strong) !important;
+}
+
+.ciai-link svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ------------------------------------------------------------------ OHIF <Modal> */
+
+.ciai-modal {
+  border: 1px solid var(--dlg-line);
+  border-radius: 14px;
+  background: var(--dlg-bg);
+  box-shadow: var(--dlg-shadow);
+  color: var(--dlg-text) !important;
+  overflow: hidden;
+}
+
+.ciai-modal .ciai-modal__head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px 14px 20px;
+  border-bottom: 1px solid var(--dlg-line);
+  background: var(--dlg-bg) !important;
+}
+
+.ciai-modal .ciai-modal__head [data-cy='modal-header'] {
+  color: var(--dlg-text) !important;
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.ciai-modal .ciai-modal__head svg {
+  width: 20px;
+  height: 20px;
+  color: var(--dlg-muted);
+}
+
+.ciai-modal .ciai-modal__close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  color: var(--dlg-muted);
+  cursor: pointer;
+}
+
+.ciai-modal .ciai-modal__close:hover {
+  background: var(--dlg-teal-dim);
+  color: var(--dlg-text);
+}
+
+.ciai-modal .ciai-modal__body {
+  padding: 18px 20px 20px !important;
+  background: var(--dlg-bg) !important;
+  color: var(--dlg-text);
+}
+
+/* User Preferences: language select and hotkey editor (OHIF markup) */
+.ciai-modal .ciai-pref-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.ciai-modal .ciai-pref-row > span {
+  width: 96px;
+  flex: 0 0 auto;
+  color: var(--dlg-text-2);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ciai-modal .ciai-hotkeys .text-primary-light {
+  color: var(--dlg-muted) !important;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.ciai-modal .ciai-hotkeys p,
+.ciai-modal .ciai-hotkeys span {
+  color: var(--dlg-text-2);
+  font-size: 13px;
+}
+
+.ciai-modal .ciai-hotkeys input {
+  height: 32px !important;
+  padding: 0 10px;
+  border: 1px solid var(--dlg-line-strong) !important;
+  border-radius: 8px !important;
+  background: var(--dlg-input) !important;
+  color: var(--dlg-text) !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12.5px !important;
+  box-shadow: none !important;
+}
+
+.ciai-modal .ciai-hotkeys input:focus {
+  border-color: var(--dlg-teal) !important;
+  box-shadow: 0 0 0 3px var(--dlg-teal-ring) !important;
+  outline: none;
+}
+
+.ciai-modal .ciai-hotkeys .text-red-600 {
+  color: var(--dlg-danger) !important;
+  font-size: 11.5px;
+}
+
+.ciai-modal .ciai-modal__foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 20px -20px -20px;
+  padding: 12px 20px;
+  border-top: 1px solid var(--dlg-line);
+  background: var(--dlg-panel-2);
+}
+
+.ciai-modal .ciai-modal__foot .ciai-spacer {
+  flex: 1;
+}
+
+@media (max-width: 560px) {
+  .ciai-form {
+    grid-template-columns: 1fr;
+  }
+
+  .ciai-dl {
+    grid-template-columns: 1fr;
+  }
+
+  .ciai-dl dt {
+    border-bottom: 0;
+    padding-bottom: 2px;
+  }
+
+  .ciai-dialog__foot {
+    flex-wrap: wrap;
+  }
+}

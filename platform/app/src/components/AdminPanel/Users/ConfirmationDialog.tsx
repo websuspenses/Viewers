@@ -1,77 +1,75 @@
 import * as React from 'react';
-import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
-import DialogActions from '@mui/material/DialogActions';
-import DialogContent from '@mui/material/DialogContent';
-import DialogContentText from '@mui/material/DialogContentText';
-import DialogTitle from '@mui/material/DialogTitle';
-import { Divider } from '@mui/material';
-import IconButton from '@mui/material/IconButton';
 import CloseIcon from '@mui/icons-material/Close';
-import { styled } from '@mui/material/styles';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import isDarkTheme from '../../../utils/isDarkTheme';
 
+const MESSAGES = {
+  ReportTemplatesList: 'Are you sure you want to delete this report template?',
+  DoctorReferralsList: 'Are you sure you want to delete this specialist?',
+};
+
+/** Delete confirmation, themed like the rest of the app (ui Modal/ciai-dialog.css). */
 export default function ConfirmationDialog(props) {
-  const { open, handleClose, screen } = props;
-
-  const BootstrapDialog = styled(Dialog)(({ theme }) => ({
-    '& .MuiDialogContent-root': {
-      padding: theme.spacing(2),
-    },
-    '& .MuiDialogActions-root': {
-      padding: theme.spacing(1),
-    },
-    '& .MuiPaper-root': {
-      width: '495px !important',
-    },
-  }));
+  const { open, handleClose, screen, isActive } = props;
+  const isDark = isActive ?? isDarkTheme();
 
   return (
-    <BootstrapDialog
+    <Dialog
       open={open}
-      aria-labelledby="alert-dialog-title"
-      aria-describedby="alert-dialog-description"
+      onClose={handleClose}
+      aria-labelledby="confirm-dialog-title"
+      aria-describedby="confirm-dialog-description"
+      PaperProps={{
+        className: `ciai-dialog ciai-dialog--sm${isDark ? ' ciai-dialog--dark' : ''}`,
+      }}
     >
-      <DialogTitle id="alert-dialog-title">{'Delete Confirmation'}</DialogTitle>
-      <IconButton
-        aria-label="close"
-        onClick={handleClose}
-        sx={{
-          position: 'absolute',
-          right: 8,
-          top: 8,
-          color: theme => theme.palette.grey[500],
-        }}
-      >
-        <CloseIcon className="closeIconCls" />
-      </IconButton>
-      <Divider className="dividerCls" />
-      <DialogContent>
-        <DialogContentText
-          id="alert-dialog-description"
-          className="dialogContentCls"
-        >
-          {screen === 'ReportTemplatesList'
-            ? 'Are you sure you want to delete this report template ? '
-            : screen === 'DoctorReferralsList'
-              ? 'Are you sure you want to delete this record ?'
-              : 'Are you sure you want to delete this user ? '}
-        </DialogContentText>
-      </DialogContent>
-      <DialogActions>
-        <Button
-          className="noBtnDialogCls"
+      <div className="ciai-dialog__head">
+        <div className="ciai-dialog__icon ciai-dialog__icon--danger">
+          <DeleteOutlineIcon />
+        </div>
+        <div className="ciai-dialog__titles">
+          <h2
+            id="confirm-dialog-title"
+            className="ciai-dialog__title"
+          >
+            Delete confirmation
+          </h2>
+          <p
+            id="confirm-dialog-description"
+            className="ciai-dialog__subtitle"
+          >
+            {MESSAGES[screen] || 'Are you sure you want to delete this user?'} This cannot be
+            undone.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="ciai-dialog__close"
+          aria-label="Close"
           onClick={handleClose}
         >
-          No
-        </Button>
-        <Button
-          className="okBtnDialogCls"
+          <CloseIcon />
+        </button>
+      </div>
+      <div className="ciai-dialog__foot">
+        <span className="ciai-spacer" />
+        <button
+          type="button"
+          className="ciai-btn"
           onClick={handleClose}
           autoFocus
         >
-          Yes
-        </Button>
-      </DialogActions>
-    </BootstrapDialog>
+          Cancel
+        </button>
+        <button
+          type="button"
+          className="ciai-btn ciai-btn--danger"
+          onClick={handleClose}
+        >
+          Delete
+        </button>
+      </div>
+    </Dialog>
   );
 }

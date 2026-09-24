@@ -333,6 +333,7 @@ function ReportTemplatesList() {
           open={showconfirm}
           handleClose={handleCloseConfirmation}
           screen="ReportTemplatesList"
+          isActive={isActive}
         />
       )}
     </div>

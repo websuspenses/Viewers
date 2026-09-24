@@ -2,12 +2,8 @@ import React, { useState } from 'react';
 import PropTypes from 'prop-types';
 import { useTranslation } from 'react-i18next';
 
-import classnames from 'classnames';
 import Select from '../Select';
-import Typography from '../Typography';
-import Button from '../Button';
 import HotkeysPreferences from '../HotkeysPreferences';
-import { ButtonEnums } from '../Button';
 
 const UserPreferences = ({
   availableLanguages,
@@ -66,83 +62,65 @@ const UserPreferences = ({
     }));
   };
 
+  // Styles: Modal/ciai-dialog.css (the modal shell carries the theme).
   const Section = ({ title, children }) => (
-    <div className="mb-8 last:mb-0">
-      <div
-        className={classnames(
-          'mb-4 flex items-baseline justify-between border-b pb-2',
-          isActive ? 'border-border-subtleDark' : 'border-border-subtle'
-        )}
-      >
-        <Typography
-          variant="inherit"
-          color={isActive ? 'primaryLight_darkMode' : 'primaryLight'}
-          className="flex text-[15px] font-semibold uppercase tracking-wide !leading-[1.2]"
-        >
-          {title}
-        </Typography>
-      </div>
-      <div className={isActive ? 'text-white-aboutCls' : ''}>{children}</div>
-    </div>
+    <section className="ciai-section">
+      <p className="ciai-section-title">{title}</p>
+      {children}
+    </section>
   );
 
   return (
     <>
       <Section title={t('General')}>
-        <div className="flex flex-row items-center gap-4">
-          <Typography
-            variant="subtitle"
-            className={classnames('w-24 shrink-0', isActive ? 'text-white-aboutCls' : '')}
-          >
-            {t('Language')}
-          </Typography>
+        <div className="ciai-pref-row">
+          <span>{t('Language')}</span>
           <Select
             isClearable={false}
             onChange={onLanguageChangeHandler}
             options={availableLanguages}
             value={state.language}
             className="SelectCls w-56"
+            isActive={!!isActive}
           />
         </div>
       </Section>
       <Section title={t('Hotkeys')}>
-        <HotkeysPreferences
-          disabled={disabled}
-          hotkeyDefinitions={state.hotkeyDefinitions}
-          onChange={onHotkeysChangeHandler}
-          errors={state.hotkeyErrors}
-          hotkeysModule={hotkeysModule}
-        />
+        <div className="ciai-hotkeys">
+          <HotkeysPreferences
+            disabled={disabled}
+            hotkeyDefinitions={state.hotkeyDefinitions}
+            onChange={onHotkeysChangeHandler}
+            errors={state.hotkeyErrors}
+            hotkeysModule={hotkeysModule}
+          />
+        </div>
       </Section>
-      <div
-        className={classnames(
-          'mt-6 flex flex-row items-center justify-between border-t pt-4',
-          isActive ? 'border-border-subtleDark' : 'border-border-subtle'
-        )}
-      >
-        <Button
-          type={ButtonEnums.type.secondary}
+      <div className="ciai-modal__foot">
+        <button
+          type="button"
+          className="ciai-btn ciai-btn--ghost"
           onClick={onResetHandler}
           disabled={disabled}
-          className={isActive ? "bg-customblue-50_prefernceModal" : ""}
         >
           {t('Reset to Defaults')}
-        </Button>
-        <div className="flex flex-row gap-2">
-          <Button
-            type={ButtonEnums.type.secondary}
-            onClick={onCancelHandler}
-            className={isActive ? "bg-customblue-50_prefernceModal" : ""}
-          >
-            {t('Cancel')}
-          </Button>
-          <Button
-            disabled={state.isDisabled}
-            onClick={onSubmitHandler}
-          >
-            {t('Save')}
-          </Button>
-        </div>
+        </button>
+        <span className="ciai-spacer" />
+        <button
+          type="button"
+          className="ciai-btn"
+          onClick={onCancelHandler}
+        >
+          {t('Cancel')}
+        </button>
+        <button
+          type="button"
+          className="ciai-btn ciai-btn--primary"
+          disabled={state.isDisabled}
+          onClick={onSubmitHandler}
+        >
+          {t('Save')}
+        </button>
       </div>
     </>
   );

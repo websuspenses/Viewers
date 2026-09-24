@@ -397,3 +397,129 @@
     margin-left: 0;
   }
 }
+
+/* ---------- editor page (Create / Update template) ---------- */
+
+.cat-editor .wl-toolbar {
+  align-items: center;
+}
+
+.cat-back {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--wl-line-strong);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--wl-text-2);
+  cursor: pointer;
+  transition: border-color 0.12s, color 0.12s, background-color 0.12s;
+}
+
+.cat-back:hover {
+  border-color: var(--wl-teal);
+  background: var(--wl-teal-dim);
+  color: var(--wl-teal-strong);
+}
+
+.cat-back svg {
+  font-size: 20px;
+}
+
+.cat-editor-sub {
+  margin: 3px 0 0;
+  color: var(--wl-muted);
+  font-size: 12.5px;
+}
+
+.cat-editor-fields {
+  display: grid;
+  grid-template-columns: minmax(200px, 320px) minmax(220px, 420px);
+  gap: 14px;
+  padding: 18px 18px 0;
+}
+
+.cat-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cat-field > span {
+  color: var(--wl-text-2);
+  font-size: 12px;
+  font-weight: 650;
+}
+
+.cat-field input,
+.cat-field select {
+  height: 38px;
+  padding: 0 11px;
+  border: 1px solid var(--wl-line-strong) !important;
+  border-radius: 9px !important;
+  background-color: var(--wl-input) !important;
+  color: var(--wl-text) !important;
+  font: inherit;
+  font-size: 13.5px;
+  box-shadow: none !important;
+  outline: none;
+}
+
+.cat-field input::placeholder {
+  color: var(--wl-muted-2);
+}
+
+.cat-field input:focus,
+.cat-field select:focus {
+  border-color: var(--wl-teal) !important;
+  box-shadow: 0 0 0 3px var(--wl-teal-ring) !important;
+}
+
+.cat-field select:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.cat-editor-surface {
+  padding: 18px;
+}
+
+/* SunEditor: rounded frame and themed toolbar; the page stays white, like paper. */
+.cat-editor-surface .sun-editor {
+  width: 100% !important;
+  border: 1px solid var(--wl-line-strong);
+  border-radius: 10px;
+  overflow: hidden;
+  font-family: inherit;
+}
+
+.cat-editor-surface .sun-editor .se-toolbar {
+  background: var(--wl-panel-2);
+  outline: 0;
+  border-bottom: 1px solid var(--wl-line);
+}
+
+.wl--dark .cat-editor-surface .sun-editor .se-toolbar .se-btn {
+  color: #e4eef4;
+}
+
+.wl--dark .cat-editor-surface .sun-editor .se-toolbar .se-btn:hover,
+.wl--dark .cat-editor-surface .sun-editor .se-toolbar .se-btn.active {
+  background-color: rgba(18, 165, 140, 0.18);
+}
+
+.wl--dark .cat-editor-surface .sun-editor .se-btn-module-border {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.cat-editor-surface .sun-editor .se-resizing-bar {
+  background: var(--wl-panel-2);
+  border-top: 1px solid var(--wl-line);
+}
+
+@media (max-width: 640px) {
+  .cat-editor-fields {
+    grid-template-columns: 1fr;
+  }
+}

@@ -3,7 +3,14 @@ import { useParams, Link } from 'react-router-dom';
 import SunEditor from 'suneditor-react';
 import 'suneditor/dist/css/suneditor.min.css';
 import '../ReportTemplates/report.css';
-import { Header } from '@ohif/ui';
+import { Header, AccessDenied } from '@ohif/ui';
+import { useTranslation } from 'react-i18next';
+import classnames from 'classnames';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
+import getHeaderMenuOptions from '../../utils/getHeaderMenuOptions';
+import '../../routes/WorkList/components/worklist.css';
+import '../Catalog/catalog.css';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useAppConfig } from '@state';
@@ -54,7 +61,7 @@ let addOnPlugins1 = {
 };
 const editorOptions = {
   showPathLabel: false,
-  maxWidth: '1070px',
+  maxWidth: '100%',
   minHeight: '50vh',
   maxHeight: '50vh',
   placeholder: 'Enter your text here!!!',
@@ -109,6 +116,7 @@ const editorOptions = {
 };
 const CreateTemplate = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   let labName = 'Test CT Scan Center';
   //const nodeAppHost = process.env.REACT_APP_HOST_NAME;
@@ -384,11 +392,21 @@ const CreateTemplate = () => {
     navigate('/report-templates');
   };
 
+  const isEdit = Boolean(modalityValue);
+  const menuOptions = getHeaderMenuOptions({
+    t,
+    isActive,
+    handleChangeSwitch,
+    navigate,
+    appConfig,
+    currentPath: '/create-template',
+  });
+
   return (
     <div>
       <Header
         isSticky
-        menuOptions={[]}
+        menuOptions={menuOptions}
         isReturnEnabled={false}
         WhiteLabeling={{}}
         isActive={isActive}
@@ -397,23 +415,57 @@ const CreateTemplate = () => {
         screen="ReportTemplateList"
       />
 
-      {isShowFeature('add_report_template') && (
-        <div className="templateForm">
-          <h1 className="doctors-list-title">
-            {modalityValue ? 'Update Template' : 'Create Template'}
-          </h1>
-          <form onSubmit={handleSubmit}>
-            <div style={{ display: 'grid', justifyContent: 'center' }}>
-              <div className="modalityDropdown">
-                <label htmlFor="dropdown">Modality</label>
+      <main className={classnames('wl', 'cat', isActive && 'wl--dark')}>
+        {isShowFeature('add_report_template') ? (
+          <form
+            className="wl-card cat-editor"
+            onSubmit={handleSubmit}
+          >
+            <div className="wl-toolbar">
+              <button
+                type="button"
+                className="cat-back"
+                aria-label="Back to Template Library"
+                onClick={handleRedirectPage}
+              >
+                <ArrowBackIcon />
+              </button>
+              <div>
+                <h1 className="wl-title">{isEdit ? 'Update template' : 'Create template'}</h1>
+                <p className="cat-editor-sub">
+                  {isEdit
+                    ? 'Edit the report layout used for this modality.'
+                    : 'Build a reusable report layout for a modality.'}
+                </p>
+              </div>
+              <span className="wl-spacer" />
+              <button
+                type="button"
+                className="wl-btn"
+                onClick={handleRedirectPage}
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="wl-btn wl-btn--primary"
+              >
+                <SaveOutlinedIcon aria-hidden="true" />
+                {isEdit ? 'Save changes' : 'Save template'}
+              </button>
+            </div>
+
+            <div className="cat-editor-fields">
+              <label className="cat-field">
+                <span>Modality</span>
                 <select
                   name="selectedOption"
-                  disabled={modalityValue && modalityValue !== '' ? true : false}
+                  disabled={isEdit}
                   id="dropdown"
                   value={selectedOption}
                   onChange={handleSelectChange}
                 >
-                  <option value="">Select</option>
+                  <option value="">Select modality</option>
                   {modalityOptionsList.map((option, index) => (
                     <option
                       key={index}
@@ -423,20 +475,20 @@ const CreateTemplate = () => {
                     </option>
                   ))}
                 </select>
-              </div>
-              <div className="subModality">
-                <p>
-                  <span>Sub Modality</span>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Enter Sub Modality"
-                    name="sub_Modality"
-                    value={subModality}
-                    onChange={handelChangeSubModality}
-                  />
-                </p>
-              </div>
+              </label>
+              <label className="cat-field">
+                <span>Sub modality</span>
+                <input
+                  type="text"
+                  placeholder="e.g. Brain plain (adult)"
+                  name="sub_Modality"
+                  value={subModality}
+                  onChange={handelChangeSubModality}
+                />
+              </label>
+            </div>
+
+            <div className="cat-editor-surface">
               <SunEditor
                 autoFocus={true}
                 lang="en"
@@ -445,31 +497,20 @@ const CreateTemplate = () => {
                 ref={editorRef}
                 setContents={modalityValue ? updateTemplateInfo : modalityInfo}
               />
-
-              <button
-                className="submitButton"
-                type="submit"
-              >
-                Submit
-              </button>
             </div>
           </form>
-        </div>
-      )}
-      {!isShowFeature('add_report_template') && (
-        <div className="noAccessCls">
-          <h1>Access Denied</h1>
-          <p>Sorry, you do not have the necessary permissions to view this page.</p>
-          <p>If you believe this is a mistake, please contact the administrator.</p>
-          <p>
-            <Link to="/workList">
-              <li>
-                <span>Go Back to Home</span>
-              </li>
-            </Link>
-          </p>
-        </div>
-      )}
+        ) : (
+          <div className="wl-card">
+            <AccessDenied
+              isActive={isActive}
+              message="Sorry, you do not have the necessary permissions to view this page. If you believe this is a mistake, please contact the administrator."
+            />
+            <p style={{ textAlign: 'center', paddingBottom: 20 }}>
+              <Link to="/workList">Go Back to Home</Link>
+            </p>
+          </div>
+        )}
+      </main>
     </div>
   );
 };
