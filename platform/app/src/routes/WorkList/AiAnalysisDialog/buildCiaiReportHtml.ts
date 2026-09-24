@@ -26,6 +26,7 @@ import {
   getReportableFindings,
   getTier,
   groupEvidenceFindings,
+  TIER_LABELS,
   summarizeSeverities,
 } from './aiReportModel';
 import {
@@ -48,6 +49,12 @@ export type ReportBuildOptions = {
   logoUrl: string;
   /** Include the full narrative report after the evidence sheets. */
   includeNarrative?: boolean;
+  /**
+   * Verification state of the report. Everything this pipeline produces is a
+   * draft until a radiologist signs it, and the team asked for that to be
+   * unmissable rather than implied by a "TEAM DRAFT" label.
+   */
+  reportStatus?: 'draft' | 'verified';
   /**
    * Append the team-facing workflow specification and approval block.
    *
@@ -175,7 +182,7 @@ const REPORT_CSS = `
   }
 
   /* ---- cover ---- */
-  .cover-brand { display: flex; align-items: center; justify-content: space-between; padding: 8mm 0 6mm; }
+  .cover-brand { display: flex; align-items: center; justify-content: space-between; padding: 6mm 0 5mm; }
   .cover-brand img { height: 13mm; width: auto; }
   .cover-brand .stamp { text-align: right; font-size: 7.5pt; color: var(--muted); line-height: 1.5; }
   .cover-brand .stamp b { display: block; color: var(--navy); font-size: 8pt; letter-spacing: 0.06em; }
@@ -183,8 +190,8 @@ const REPORT_CSS = `
   .hero {
     background: linear-gradient(135deg, var(--navy) 0%, #0d3c66 100%);
     color: #ffffff;
-    padding: 11mm 12mm;
-    margin-bottom: 6mm;
+    padding: 10mm 12mm;
+    margin-bottom: 5mm;
     border-left: 3mm solid var(--teal);
   }
   .hero h1 { margin: 0; font-size: 26pt; line-height: 1.12; letter-spacing: -0.015em; }
@@ -197,7 +204,7 @@ const REPORT_CSS = `
     padding-top: 4mm;
   }
   .cover-tagline { color: var(--navy); font-size: 16pt; font-weight: bold; margin: 0 0 2.5mm; }
-  .cover-lede { margin: 0 0 5mm; font-size: 9pt; color: #3d4c5a; }
+  .cover-lede { margin: 0 0 4mm; font-size: 9pt; color: #3d4c5a; }
 
   .verdict {
     display: flex;
@@ -243,6 +250,32 @@ const REPORT_CSS = `
   .sev-high { background: #c2610a; }
   .sev-medium { background: #8a6d00; }
   .sev-low { background: #4a6076; }
+  .ident-draft { color: #b3261e !important; font-weight: bold; }
+  .ident-verified { color: #157f68 !important; font-weight: bold; }
+
+  .statusbar {
+    border: 1px solid #f0b5c0;
+    background: #fbeaee;
+    color: #ad2d45;
+    font-size: 9pt;
+    font-weight: bold;
+    letter-spacing: 0.08em;
+    text-align: center;
+    padding: 2.2mm;
+    margin-bottom: 3.5mm;
+  }
+  .statusbar.is-verified { border-color: #a5e2d3; background: #e6f7f2; color: #157f68; }
+
+  .trace { color: var(--muted); font-size: 6.5pt; font-weight: normal; margin-top: 0.8mm; word-break: break-all; }
+
+  .stages { display: flex; gap: 2mm; margin-bottom: 4mm; }
+  .stage-step { flex: 1 1 0; border: 1px solid var(--line); border-top: 1mm solid var(--line-strong); padding: 2mm; }
+  .stage-step.is-done { border-top-color: var(--teal); background: var(--panel); }
+  .stage-num { display: block; font-size: 7pt; font-weight: bold; color: var(--muted); }
+  .stage-label { display: block; font-size: 7.5pt; font-weight: bold; color: var(--navy); margin-top: 0.5mm; line-height: 1.25; }
+  .stage-note { display: block; font-size: 6.5pt; color: var(--muted); margin-top: 0.5mm; }
+  .stage-step.is-pending .stage-label { color: var(--muted); }
+
   .sevdot { display: inline-block; width: 2mm; height: 2mm; border-radius: 50%; vertical-align: middle; margin-right: 1.5mm; }
   .sevword { font-size: 7.5pt; text-transform: capitalize; color: var(--muted); vertical-align: middle; }
   .occ { display: inline-block; margin-left: 1.5mm; padding: 0.3mm 1.6mm; border-radius: 1mm; background: var(--panel); border: 1px solid var(--line); color: var(--muted); font-size: 6.5pt; font-weight: bold; white-space: nowrap; }
@@ -339,13 +372,20 @@ function renderFrame(image: string, alt: string) {
   return `<span class="frame"><img src="${getImageSrc(image)}" alt="${escapeHtml(alt)}" /></span>`;
 }
 
-function sheetHeader(logoUrl: string, draftId: string) {
+const STATUS_TEXT: Record<'draft' | 'verified', string> = {
+  draft: 'AI DRAFT — RADIOLOGIST VERIFICATION PENDING',
+  verified: 'RADIOLOGIST VERIFIED',
+};
+
+function sheetHeader(logoUrl: string, draftId: string, status: 'draft' | 'verified') {
+  const statusLabel = STATUS_TEXT[status];
+  const statusClass = status === 'draft' ? 'ident-draft' : 'ident-verified';
   return `
     <header class="sheet-header">
       <img src="${logoUrl}" alt="CIAI Teleradiology" />
       <div class="ident">
         <strong>AI ANALYSIS REPORT</strong>
-        <span>TEAM DRAFT | ${escapeHtml(draftId)}</span>
+        <span class="${statusClass}">${escapeHtml(statusLabel)} | ${escapeHtml(draftId)}</span>
       </div>
     </header>
   `;
@@ -431,7 +471,10 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
       <img src="${logoUrl}" alt="CIAI Teleradiology" />
       <div class="stamp">
         <b>AI ANALYSIS REPORT</b>
-        TEAM DRAFT | ${escapeHtml(draftId)}
+        <span class="${
+          options.reportStatus === 'verified' ? 'ident-verified' : 'ident-draft'
+        }">${escapeHtml(STATUS_TEXT[options.reportStatus || 'draft'])}</span><br />
+        ${escapeHtml(draftId)}
       </div>
     </div>
     <div class="hero">
@@ -446,6 +489,9 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
       decision-maker.
     </p>
 
+    <div class="statusbar ${options.reportStatus === 'verified' ? 'is-verified' : ''}">
+      ${escapeHtml(STATUS_TEXT[options.reportStatus || 'draft'])}
+    </div>
     <div class="verdict ${worst === 'critical' ? 'is-critical' : ''}">
       <span class="sev ${severityClass(worst)}">${escapeHtml(worst)}</span>
       <div>
@@ -503,6 +549,19 @@ function severityTag(severity: string) {
   )}</span>`;
 }
 
+/**
+ * Source frame beneath the finding id, so every row in every table traces back
+ * to the exact series and image it came from — not just the ones that earn a
+ * full evidence section.
+ */
+function traceNote(finding: GroupedFinding) {
+  if (!finding.frameKey) {
+    return '';
+  }
+  const extra = finding.frameKeys.length > 1 ? ` +${finding.frameKeys.length - 1}` : '';
+  return `<div class="trace">${escapeHtml(finding.frameKey)}${extra}</div>`;
+}
+
 function occurrenceNote(finding: GroupedFinding) {
   if (finding.occurrences < 2) {
     return '';
@@ -521,7 +580,7 @@ function renderMeasuredTableBody(rows: GroupedFinding[], part: number, partCount
       finding => `
       <tr>
         <td>${severityTag(finding.severity)}</td>
-        <td class="id">${escapeHtml(finding.findingId || '—')}</td>
+        <td class="id">${escapeHtml(finding.findingId || '—')}${traceNote(finding)}</td>
         <td>
           <b>${escapeHtml(finding.name)}</b> ${occurrenceNote(finding)}
           ${finding.description ? `<div class="sub">${escapeHtml(finding.description)}</div>` : ''}
@@ -573,7 +632,7 @@ function renderReportedTableBody(rows: GroupedFinding[], part: number, partCount
       finding => `
       <tr>
         <td>${severityTag(finding.severity)}</td>
-        <td class="id">${escapeHtml(finding.findingId || '—')}</td>
+        <td class="id">${escapeHtml(finding.findingId || '—')}${traceNote(finding)}</td>
         <td>
           <b>${escapeHtml(finding.name)}</b> ${occurrenceNote(finding)}
           ${finding.description ? `<div class="sub">${escapeHtml(finding.description)}</div>` : ''}
@@ -617,7 +676,59 @@ function renderReportedTableBody(rows: GroupedFinding[], part: number, partCount
  * Usable height for a table body on one sheet, after the header band, section
  * heading, intro note, table head and footer band are taken out.
  */
-const TABLE_BUDGET_MM = 188;
+const TABLE_BUDGET_MM = 168;
+
+/**
+ * The short summary the team asked for: the findings that decide what happens
+ * next, before any of the detail pages.
+ */
+function renderPriorityBody(priority: GroupedFinding[], remaining: number) {
+  return `
+    ${sectionHeading('Priority Findings')}
+    <p class="note" style="margin-top:0;margin-bottom:3.5mm">
+      The highest-severity findings in this study. ${
+        remaining ? `${remaining} further findings and` : 'Full'
+      } evidence for each finding follows.
+    </p>
+    <table class="grid">
+      <thead>
+        <tr>
+          <th style="width:12%">ID</th>
+          <th style="width:38%">Finding</th>
+          <th style="width:15%">Size</th>
+          <th style="width:20%">Location</th>
+          <th style="width:15%">Evidence</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${priority
+          .map(
+            finding => `<tr>
+              <td class="id">${escapeHtml(finding.findingId || '—')}${traceNote(finding)}</td>
+              <td><span class="sev ${severityClass(finding.severity)}">${escapeHtml(
+              finding.severity
+            )}</span> <b>${escapeHtml(finding.name)}</b>
+                ${
+                  finding.description
+                    ? `<div class="sub">${escapeHtml(finding.description)}</div>`
+                    : ''
+                }</td>
+              <td>${escapeHtml(
+                finding.tier === 'measured'
+                  ? finding.imageMeasurement.display
+                  : finding.narrativeMeasurement.display
+              )}</td>
+              <td>${escapeHtml(finding.locations.join('; ') || '—')}</td>
+              <td class="${finding.tier === 'measured' ? 'ok' : 'sub'}">${escapeHtml(
+              TIER_LABELS[finding.tier]
+            )}</td>
+            </tr>`
+          )
+          .join('')}
+      </tbody>
+    </table>
+  `;
+}
 
 /**
  * Rough printed height of one findings row. A fixed rows-per-sheet count cannot
@@ -632,7 +743,8 @@ function estimateRowMm(finding: GroupedFinding, descriptionColumnChars: number) 
     : 0;
   const locationLines = Math.ceil((finding.locations.join('; ') || '-').length / 18);
   const lines = Math.max(nameLines + descriptionLines, locationLines, 1);
-  return 4.5 + lines * 3.9;
+  // +3.5mm for the source-frame line that now sits under every finding id.
+  return 8 + lines * 3.9;
 }
 
 /** Packs rows onto sheets by estimated height rather than by a fixed count. */
@@ -715,6 +827,39 @@ function renderMeasurementsBody(evidence: EvidenceFinding[], part: number, partC
 }
 
 
+/**
+ * The verification workflow as a progress strip.
+ *
+ * The team asked for the full sequence — original, human/lab marking, CIAI AI,
+ * heatmap, radiologist verification — to stay visible. The human marking and
+ * the verification are shown as *pending stages*, not as pictures: the analysis
+ * service returns no manual measurement, so the only way to render that panel
+ * would be to draw the AI's own box and caption it as a person's work.
+ */
+function renderStageStrip(finding: EvidenceFinding) {
+  const stages: [string, boolean, string][] = [
+    ['Original', Boolean(finding.originalImage), 'shown'],
+    ['Human / lab marking', false, 'not supplied'],
+    ['CIAI AI marking', Boolean(finding.annotatedImage), finding.annotatedImage ? 'shown' : 'none'],
+    ['Heatmap', Boolean(finding.heatmapImage), finding.heatmapImage ? 'shown' : 'none'],
+    ['Radiologist verify', false, 'pending'],
+  ];
+
+  return `
+    <div class="stages">
+      ${stages
+        .map(
+          ([label, done, note], index) => `
+        <div class="stage-step ${done ? 'is-done' : 'is-pending'}">
+          <span class="stage-num">${index + 1}</span>
+          <span class="stage-label">${escapeHtml(label)}</span>
+          <span class="stage-note">${escapeHtml(note)}</span>
+        </div>`
+        )
+        .join('')}
+    </div>`;
+}
+
 function renderEvidenceBody(finding: EvidenceFinding, studyInstanceUid: string) {
   const consistencyClass = finding.consistency === 'match' ? 'ok' : 'flag';
   const differenceText =
@@ -778,6 +923,8 @@ function renderEvidenceBody(finding: EvidenceFinding, studyInstanceUid: string) 
       )}
       &nbsp;&nbsp;|&nbsp;&nbsp;<b>Location:</b> ${escapeHtml(finding.location || 'Not stated')}
     </div>
+
+    ${renderStageStrip(finding)}
 
     ${renderPanel(primary)}
     ${rest.length ? `<div class="panel-row">${rest.map(renderPanel).join('')}</div>` : ''}
@@ -870,10 +1017,11 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
     logoUrl,
     includeNarrative = true,
     includeSpecificationAppendix = false,
+    reportStatus = 'draft',
   } = options;
   const generatedAt = options.generatedAt || new Date();
   const draftId = buildDraftId(payload, study.studyInstanceUid);
-  const header = sheetHeader(logoUrl, draftId);
+  const header = sheetHeader(logoUrl, draftId, reportStatus);
 
   const allFindings = payload.findings_summary || [];
   const anomalies = getAnomalyFindings(allFindings);
@@ -887,6 +1035,13 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
   const grouped = getReportableFindings(groupEvidenceFindings(buildAllFindingRecords(payload)));
   const measured = getTier(grouped, 'measured');
   const reported = getTier(grouped, 'reported');
+  // A study can run to dozens of evidence pages, so the cover leads with the
+  // findings that decide what happens next.
+  const PRIORITY_LIMIT = 6;
+  const priority = grouped
+    .filter(finding => ['critical', 'high'].includes((finding.severity || '').toLowerCase()))
+    .slice(0, PRIORITY_LIMIT);
+  const priorityOverflow = Math.max(0, grouped.length - priority.length);
   const excludedCount = allFindings.length - anomalies.length;
   const lowSeverityCount = anomalies.filter(
     finding => (finding.severity || 'low').toLowerCase() === 'low'
@@ -911,6 +1066,10 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
       ${sheetFooter(draftId)}
     </section>`
   );
+
+  if (priority.length) {
+    addSheet(renderPriorityBody(priority, priorityOverflow), 'Priority findings');
+  }
 
   if (measured.length) {
     const parts = chunkByHeight(measured, 46);
