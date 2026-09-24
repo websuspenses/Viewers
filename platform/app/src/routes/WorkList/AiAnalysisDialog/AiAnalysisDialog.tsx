@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { styled } from '@mui/material/styles';
 import Dialog, { DialogProps } from '@mui/material/Dialog';
 import DialogTitle from '@mui/material/DialogTitle';
@@ -10,19 +10,19 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DescriptionIcon from '@mui/icons-material/Description';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import DataObjectIcon from '@mui/icons-material/DataObject';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import NavigateBeforeIcon from '@mui/icons-material/NavigateBefore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
 import Stack from '@mui/material/Stack';
 import Chip from '@mui/material/Chip';
 import Alert from '@mui/material/Alert';
-import LinearProgress from '@mui/material/LinearProgress';
 import CircularProgress from '@mui/material/CircularProgress';
 import Collapse from '@mui/material/Collapse';
 import Tabs from '@mui/material/Tabs';
@@ -40,25 +40,30 @@ import {
   CONSISTENCY_LABELS,
   EvidenceFinding,
   EvidenceTier,
+  FetchedFrameImages,
   GroupedFinding,
   TIER_LABELS,
   buildAllFindingRecords,
   buildEvidenceFindings,
-  collectHeatmaps,
   formatConfidence,
   formatDicomDate,
   getAnomalyFindings,
+  getFramesMissingImages,
   getImageSrc,
   getMaxDifferenceMm,
   getMeasurementRange,
   getReportableFindings,
   getTier,
   groupEvidenceFindings,
+  normalizeAiPayload,
   summarizeSeverities,
+  withFrameImages,
 } from './aiReportModel';
 import { renderSafeReportMarkdown, stripLowPriorityFindings } from './reportMarkdown';
 import { buildCiaiReportHtml } from './buildCiaiReportHtml';
 import { buildReportViewerHtml } from './buildReportViewerHtml';
+import { AiStage, AiStudyState, STAGE_LABELS, describeAnalysis } from './aiPipeline';
+import AiPipelineTracker from './AiPipelineTracker';
 
 /** Shared with the printed report and the beta viewer so branding stays in step. */
 const LOGO_PATH = '/ohif-whitebg-logo.svg';
@@ -68,7 +73,6 @@ type AiProgressEvent = {
   total_steps?: number;
   status?: string;
   message?: string;
-  _receivedAt?: number;
   [key: string]: any;
 };
 
@@ -87,16 +91,18 @@ type Props = {
     time?: string;
     modalities?: string;
   };
-  aiAnalysisHostURL?: string;
-  authHeaders?: string;
+  /** Pipeline state for this study, kept current by the worklist poller. */
+  aiState: AiStudyState;
+  onGenerateReport: () => void;
+  loadResult: (options?: { force?: boolean }) => Promise<AiCompletePayload>;
+  /** Original, heatmap and AI-marking images for a heatmap `frame_key`, as data URIs. */
+  loadFrameImages: (instanceId: string) => Promise<FetchedFrameImages>;
 };
 
-type ParsedSseEvent = {
-  event: string;
-  data?: any;
-  error?: Error;
-  raw?: string;
-};
+type FrameLoadState = 'loading' | 'failed';
+
+/** Enough to fill the evidence tab quickly without flooding the PACS. */
+const FRAME_FETCH_CONCURRENCY = 4;
 
 const BootstrapDialog = styled(Dialog)<DialogProps>(() => ({
   '& .MuiPaper-root': {
@@ -159,130 +165,6 @@ const SEVERITY_COLORS: Record<string, string> = {
 const GPU_DOWN_MESSAGE =
   'AI image analysis could not be completed because the model service was unavailable. A report was generated from limited processing information and should not be treated as diagnostic.';
 
-function parseSseEvents(bufferText: string): { events: ParsedSseEvent[]; remaining: string } {
-  const normalized = bufferText.replace(/\r\n/g, '\n');
-  const chunks = normalized.split('\n\n');
-  const remaining = chunks.pop() || '';
-  const events: ParsedSseEvent[] = [];
-
-  chunks.forEach(chunk => {
-    const lines = chunk.split('\n').filter(Boolean);
-    let event = 'message';
-    const dataLines: string[] = [];
-
-    lines.forEach(line => {
-      if (line.startsWith(':')) {
-        return;
-      }
-
-      if (line.startsWith('event:')) {
-        event = line.slice(6).trim();
-        return;
-      }
-
-      if (line.startsWith('data:')) {
-        dataLines.push(line.slice(5).trimStart());
-      }
-    });
-
-    if (!dataLines.length) {
-      return;
-    }
-
-    const raw = dataLines.join('\n');
-    try {
-      events.push({ event, data: JSON.parse(raw), raw });
-    } catch (error) {
-      events.push({
-        event: 'parse_error',
-        error: error instanceof Error ? error : new Error('Unable to parse stream payload'),
-        raw,
-      });
-    }
-  });
-
-  return { events, remaining };
-}
-
-async function startAiAnalysisStream({
-  studyInstanceUid,
-  aiAnalysisHostURL,
-  authHeaders,
-  signal,
-  onProgress,
-  onComplete,
-  onError,
-  onHeartbeat,
-}: {
-  studyInstanceUid: string;
-  aiAnalysisHostURL: string;
-  authHeaders?: string;
-  signal: AbortSignal;
-  onProgress: (event: AiProgressEvent) => void;
-  onComplete: (payload: AiCompletePayload) => void;
-  onError: (error: Error) => void;
-  onHeartbeat: () => void;
-}) {
-  const endpoint = `${aiAnalysisHostURL.replace(/\/$/, '')}/api/v1/analyze/${encodeURIComponent(
-    studyInstanceUid
-  )}/stream?generate_report=true`;
-
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      Accept: 'text/event-stream',
-      ...(authHeaders ? { Authorization: authHeaders } : {}),
-    },
-    signal,
-  });
-
-  if (!response.ok) {
-    throw new Error(`AI analysis request failed with HTTP ${response.status}`);
-  }
-
-  if (!response.body) {
-    throw new Error('AI analysis stream is unavailable in this browser.');
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  const dispatch = (event: ParsedSseEvent) => {
-    if (event.event === 'progress') {
-      onProgress(event.data);
-    } else if (event.event === 'complete') {
-      onComplete(event.data);
-    } else if (event.event === 'parse_error') {
-      onError(event.error || new Error('Unable to parse stream payload'));
-    }
-  };
-
-  while (true) {
-    const { done, value } = await reader.read();
-
-    if (done) {
-      break;
-    }
-
-    const chunk = decoder.decode(value, { stream: true });
-    if (chunk.includes(': ping')) {
-      onHeartbeat();
-    }
-
-    buffer += chunk;
-    const parsed = parseSseEvents(buffer);
-    buffer = parsed.remaining;
-    parsed.events.forEach(dispatch);
-  }
-
-  const finalText = decoder.decode();
-  const finalBuffer = `${buffer}${finalText}`;
-  if (finalBuffer.trim()) {
-    parseSseEvents(`${finalBuffer}\n\n`).events.forEach(dispatch);
-  }
-}
-
 function classifyAiAnalysisResult(
   payload: AiCompletePayload | null,
   progressEvents: AiProgressEvent[],
@@ -329,71 +211,6 @@ function classifyAiAnalysisResult(
   return 'completed';
 }
 
-function formatDuration(milliseconds?: number) {
-  if (!milliseconds || milliseconds < 0) {
-    return '0s';
-  }
-
-  const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
-  const minutes = Math.floor(totalSeconds / 60);
-  const seconds = totalSeconds % 60;
-
-  if (!minutes) {
-    return `${seconds}s`;
-  }
-
-  return `${minutes}m ${seconds.toString().padStart(2, '0')}s`;
-}
-
-function latestProgressByStep(events: AiProgressEvent[]) {
-  return events.reduce<Record<number, AiProgressEvent>>((acc, event) => {
-    if (event.step) {
-      acc[event.step] = event;
-    }
-    return acc;
-  }, {});
-}
-
-function getFirstProgressByStep(events: AiProgressEvent[]) {
-  return events.reduce<Record<number, AiProgressEvent>>((acc, event) => {
-    if (event.step && !acc[event.step]) {
-      acc[event.step] = event;
-    }
-    return acc;
-  }, {});
-}
-
-function getStageDuration({
-  step,
-  steps,
-  firstProgressByStep,
-  progressByStep,
-  now,
-  isRunning,
-}: {
-  step: number;
-  steps: number[];
-  firstProgressByStep: Record<number, AiProgressEvent>;
-  progressByStep: Record<number, AiProgressEvent>;
-  now: number;
-  isRunning: boolean;
-}) {
-  const firstEvent = firstProgressByStep[step];
-  const latestEvent = progressByStep[step];
-  const startedAt = firstEvent?._receivedAt;
-
-  if (!startedAt) {
-    return 0;
-  }
-
-  const nextStep = steps.find(candidate => candidate > step);
-  const nextStartedAt = nextStep ? firstProgressByStep[nextStep]?._receivedAt : undefined;
-  const isActiveStep = isRunning && steps[steps.length - 1] === step;
-  const endedAt = nextStartedAt || (isActiveStep ? now : latestEvent?._receivedAt || now);
-
-  return Math.max(0, endedAt - startedAt);
-}
-
 function StatusGlyph({ status, size = 18 }: { status: AiDialogStatus; size?: number }) {
   const iconSx = { fontSize: size };
 
@@ -422,32 +239,15 @@ function StatusGlyph({ status, size = 18 }: { status: AiDialogStatus; size?: num
   return <HourglassEmptyIcon sx={iconSx} />;
 }
 
-function StepStatusIcon({ event }: { event: AiProgressEvent }) {
-  if (event.status === 'done') {
-    return <CheckCircleIcon sx={{ color: '#36d7b7', fontSize: 20 }} />;
-  }
-
-  if (/error|fail/i.test(event.status || event.message || '')) {
-    return <WarningAmberIcon sx={{ color: '#f7b955', fontSize: 20 }} />;
-  }
-
-  if (/running|start|analyz|process/i.test(event.status || event.message || '')) {
-    return (
-      <CircularProgress
-        size={18}
-        thickness={5}
-        sx={{ color: '#8be0f8' }}
-      />
-    );
-  }
-
-  return <RadioButtonUncheckedIcon sx={{ color: '#7da8b6', fontSize: 18 }} />;
-}
-
 function MetricChip({ label, value }: { label: string; value?: string | number }) {
+  // A value that has not arrived yet is not a zero.
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+
   return (
     <Chip
-      label={`${label}: ${value ?? 0}`}
+      label={`${label}: ${value}`}
       size="small"
       sx={{
         height: 30,
@@ -631,11 +431,13 @@ function EvidenceViewer({
   index,
   onIndexChange,
   studyInstanceUid,
+  frameLoadState = {},
 }: {
   findings: EvidenceFinding[];
   index: number;
   onIndexChange: (next: number) => void;
   studyInstanceUid: string;
+  frameLoadState?: Record<string, FrameLoadState>;
 }) {
   const finding = findings[index];
 
@@ -741,7 +543,13 @@ function EvidenceViewer({
         <EvidencePanel
           label="1. Original diagnostic image"
           image={finding.originalImage}
-          emptyText="Original frame was not returned by the analysis service."
+          emptyText={
+            frameLoadState[finding.frameKey] === 'loading'
+              ? 'Loading frame from the PACS…'
+              : frameLoadState[finding.frameKey] === 'failed'
+              ? 'The frame could not be loaded from the PACS.'
+              : 'Original frame was not returned by the analysis service.'
+          }
           caption="Unmodified frame at the AI-detected location. No overlay applied."
         />
       </Box>
@@ -1084,46 +892,139 @@ function FindingsTable({
   );
 }
 
+const STAGE_DIALOG_STATUS: Record<AiStage, AiDialogStatus> = {
+  none: 'idle',
+  analyzing: 'running',
+  analysisFailed: 'failed',
+  analyzed: 'idle',
+  queued: 'running',
+  generating: 'running',
+  reportFailed: 'failed',
+  ready: 'completed',
+};
+
+const ACTION_BUTTON_SX = { color: '#dff6ff', borderColor: '#477889' };
+
 export default function AiAnalysisDialog({
   open,
   onClose,
   study,
-  aiAnalysisHostURL = 'https://ciaiteleradiology.com/ai-analysis',
-  authHeaders,
+  aiState,
+  onGenerateReport,
+  loadResult,
+  loadFrameImages,
 }: Props) {
-  const abortControllerRef = useRef<AbortController | null>(null);
-  const [progressEvents, setProgressEvents] = useState<AiProgressEvent[]>([]);
-  const [completePayload, setCompletePayload] = useState<AiCompletePayload | null>(null);
-  const [status, setStatus] = useState<AiDialogStatus>('idle');
-  const [streamError, setStreamError] = useState('');
-  const [lastHeartbeatAt, setLastHeartbeatAt] = useState<number | null>(null);
+  // The result as the server sent it; exported verbatim as JSON.
+  const [rawPayload, setRawPayload] = useState<AiCompletePayload | null>(null);
+  const [frameImages, setFrameImages] = useState<Record<string, FetchedFrameImages>>({});
+  const [frameLoadState, setFrameLoadState] = useState<Record<string, FrameLoadState>>({});
+  const [resultError, setResultError] = useState('');
+  const [isLoadingResult, setIsLoadingResult] = useState(false);
+  const [reloadCount, setReloadCount] = useState(0);
   const [showErrors, setShowErrors] = useState(false);
   const [evidenceIndex, setEvidenceIndex] = useState(0);
   const [activeTab, setActiveTab] = useState(0);
   const [reportScope, setReportScope] = useState<ReportScope>('significant');
-  const [analysisStartedAt, setAnalysisStartedAt] = useState<number | null>(null);
-  const [analysisFinishedAt, setAnalysisFinishedAt] = useState<number | null>(null);
-  const [timerNow, setTimerNow] = useState(Date.now());
+  const [betaView, setBetaView] = useState(false);
 
-  const latestProgress = progressEvents[progressEvents.length - 1];
-  const resultStatus = useMemo(
-    () => classifyAiAnalysisResult(completePayload, progressEvents, streamError),
-    [completePayload, progressEvents, streamError]
+  const isReady = aiState.stage === 'ready';
+
+  useEffect(() => {
+    setRawPayload(null);
+    setFrameImages({});
+    setFrameLoadState({});
+    setResultError('');
+    setReloadCount(0);
+    setShowErrors(false);
+    setEvidenceIndex(0);
+    setActiveTab(0);
+    setBetaView(false);
+  }, [study.studyInstanceUid]);
+
+  // The result only exists once the report is ready; the stage flips to ready
+  // while the dialog is open when polling sees the report finish.
+  useEffect(() => {
+    if (!open || !isReady) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    setIsLoadingResult(true);
+    setResultError('');
+
+    loadResult({ force: reloadCount > 0 })
+      .then(payload => {
+        if (!cancelled) {
+          setRawPayload(payload);
+        }
+      })
+      .catch(error => {
+        if (!cancelled) {
+          setResultError(error instanceof Error ? error.message : 'The AI report could not be loaded.');
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setIsLoadingResult(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, isReady, loadResult, reloadCount]);
+
+  // The stored report keeps findings per series and no images, so it is brought
+  // to the stream's shape and the original frames are filled in as they load.
+  const normalizedPayload = useMemo(() => normalizeAiPayload(rawPayload), [rawPayload]);
+  const completePayload = useMemo(
+    () => withFrameImages(normalizedPayload, frameImages),
+    [normalizedPayload, frameImages]
   );
-  const displayStatus = status === 'running' ? status : resultStatus;
-  const progressByStep = useMemo(() => latestProgressByStep(progressEvents), [progressEvents]);
-  const firstProgressByStep = useMemo(() => getFirstProgressByStep(progressEvents), [progressEvents]);
-  const steps = Object.keys(progressByStep)
-    .map(Number)
-    .sort((a, b) => a - b);
-  const progressValue =
-    latestProgress?.step && latestProgress?.total_steps
-      ? Math.min(100, Math.round((latestProgress.step / latestProgress.total_steps) * 100))
-      : status === 'running'
-      ? 8
-      : completePayload
-      ? 100
-      : 0;
+
+  useEffect(() => {
+    const pending = getFramesMissingImages(normalizedPayload);
+    if (!open || !pending.length) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    const queue = [...pending];
+    setFrameLoadState(Object.fromEntries(pending.map(key => [key, 'loading' as const])));
+
+    const worker = async () => {
+      while (!cancelled && queue.length) {
+        const key = queue.shift() as string;
+        try {
+          const images = await loadFrameImages(key);
+          if (!cancelled) {
+            setFrameImages(current => ({ ...current, [key]: images }));
+            setFrameLoadState(({ [key]: _done, ...rest }) => rest);
+          }
+        } catch {
+          if (!cancelled) {
+            setFrameLoadState(current => ({ ...current, [key]: 'failed' }));
+          }
+        }
+      }
+    };
+
+    Array.from({ length: Math.min(FRAME_FETCH_CONCURRENCY, queue.length) }, worker);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [open, normalizedPayload, loadFrameImages]);
+
+  const framesLoading = Object.values(frameLoadState).filter(state => state === 'loading').length;
+
+  const resultStatus = useMemo(
+    () => (completePayload ? classifyAiAnalysisResult(completePayload, []) : null),
+    [completePayload]
+  );
+  const displayStatus: AiDialogStatus =
+    resultStatus || (isReady && isLoadingResult ? 'running' : STAGE_DIALOG_STATUS[aiState.stage]);
+  const displayLabel = resultStatus ? STATUS_LABELS[resultStatus] : STAGE_LABELS[aiState.stage];
 
   const reportText = completePayload?.report?.report_text || '';
   const reportHtml = useMemo(
@@ -1133,7 +1034,6 @@ export default function AiAnalysisDialog({
   const findingsSummary = completePayload?.findings_summary || [];
   const anomalyFindings = useMemo(() => getAnomalyFindings(findingsSummary), [findingsSummary]);
   const evidence = useMemo(() => buildEvidenceFindings(completePayload), [completePayload]);
-  const heatmaps = useMemo(() => collectHeatmaps(completePayload), [completePayload]);
 
   // One row per distinct finding, sorted by what can be done with it. The
   // analysis runs per frame, so the same lesion arrives once per slice it
@@ -1161,124 +1061,28 @@ export default function AiAnalysisDialog({
     [evidence, measuredFindings, reportScope]
   );
 
+  const betaViewerHtml = useMemo(
+    () =>
+      completePayload && betaView && framesLoading === 0
+        ? buildReportViewerHtml({
+            payload: completePayload,
+            evidence,
+            study,
+            logoUrl: `${window.location.origin}${LOGO_PATH}`,
+          })
+        : '',
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [completePayload, evidence, betaView, framesLoading === 0, study.studyInstanceUid]
+  );
+
   const processingErrors = completePayload?.processing_errors || [];
-  const elapsedTime = analysisStartedAt
-    ? formatDuration((analysisFinishedAt || timerNow) - analysisStartedAt)
-    : '0s';
+  const framesAnalyzed = completePayload?.total_frames_processed ?? aiState.analysis?.analyzed;
   const warningMessage =
     displayStatus === 'unable'
       ? GPU_DOWN_MESSAGE
       : displayStatus === 'warning'
       ? 'AI analysis completed with warnings. Review the details before using this report.'
       : '';
-
-  const reset = () => {
-    abortControllerRef.current?.abort();
-    abortControllerRef.current = null;
-    setProgressEvents([]);
-    setCompletePayload(null);
-    setStatus('idle');
-    setStreamError('');
-    setLastHeartbeatAt(null);
-    setShowErrors(false);
-    setEvidenceIndex(0);
-    setActiveTab(0);
-    setAnalysisStartedAt(null);
-    setAnalysisFinishedAt(null);
-  };
-
-  const runAnalysis = () => {
-    abortControllerRef.current?.abort();
-    const controller = new AbortController();
-    abortControllerRef.current = controller;
-    setProgressEvents([]);
-    setCompletePayload(null);
-    setStreamError('');
-    setLastHeartbeatAt(null);
-    setShowErrors(false);
-    setEvidenceIndex(0);
-    setActiveTab(0);
-    const startedAt = Date.now();
-    setAnalysisStartedAt(startedAt);
-    setAnalysisFinishedAt(null);
-    setTimerNow(startedAt);
-    setStatus('running');
-
-    startAiAnalysisStream({
-      studyInstanceUid: study.studyInstanceUid,
-      aiAnalysisHostURL,
-      authHeaders,
-      signal: controller.signal,
-      onProgress: event =>
-        setProgressEvents(current => [...current, { ...event, _receivedAt: Date.now() }]),
-      onComplete: payload => {
-        setCompletePayload(payload);
-        setAnalysisFinishedAt(Date.now());
-        setStatus(classifyAiAnalysisResult(payload, progressEvents));
-      },
-      onError: error => {
-        setStreamError(error.message);
-      },
-      onHeartbeat: () => setLastHeartbeatAt(Date.now()),
-    }).catch(error => {
-      if (controller.signal.aborted) {
-        return;
-      }
-      setStreamError(error instanceof Error ? error.message : 'AI analysis failed.');
-      setAnalysisFinishedAt(Date.now());
-      setStatus('failed');
-    });
-  };
-
-  useEffect(() => {
-    if (open && study.studyInstanceUid) {
-      runAnalysis();
-    }
-
-    return () => {
-      abortControllerRef.current?.abort();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, study.studyInstanceUid]);
-
-  useEffect(() => {
-    if (completePayload) {
-      setStatus(classifyAiAnalysisResult(completePayload, progressEvents, streamError));
-    }
-  }, [completePayload, progressEvents, streamError]);
-
-  useEffect(() => {
-    setEvidenceIndex(0);
-  }, [completePayload?.study_id]);
-
-  useEffect(() => {
-    if (!open || status !== 'running') {
-      return undefined;
-    }
-
-    const intervalId = window.setInterval(() => setTimerNow(Date.now()), 1000);
-    return () => window.clearInterval(intervalId);
-  }, [open, status]);
-
-  const handleClose = () => {
-    reset();
-    onClose();
-  };
-
-  const handleDialogClose: DialogProps['onClose'] = (_event, reason) => {
-    if (status === 'running' && reason === 'backdropClick') {
-      return;
-    }
-
-    handleClose();
-  };
-
-  const handleCancel = () => {
-    abortControllerRef.current?.abort();
-    setAnalysisFinishedAt(Date.now());
-    setStatus('failed');
-    setStreamError('AI analysis was cancelled.');
-  };
 
   const handleCopyReport = async () => {
     if (!reportText) {
@@ -1306,12 +1110,14 @@ export default function AiAnalysisDialog({
       return;
     }
 
-    const html = buildReportViewerHtml({
-      payload: completePayload,
-      evidence,
-      study,
-      logoUrl: `${window.location.origin}${LOGO_PATH}`,
-    });
+    const html =
+      betaViewerHtml ||
+      buildReportViewerHtml({
+        payload: completePayload,
+        evidence,
+        study,
+        logoUrl: `${window.location.origin}${LOGO_PATH}`,
+      });
 
     const viewerWindow = window.open('', '_blank');
     if (!viewerWindow) {
@@ -1340,6 +1146,16 @@ export default function AiAnalysisDialog({
     }
     const blob = new Blob([html], { type: 'application/msword;charset=utf-8' });
     downloadBlob(blob, `ciai-ai-report-${study.studyInstanceUid}.doc`);
+  };
+
+  const handleDownloadJson = () => {
+    if (!rawPayload) {
+      return;
+    }
+    const blob = new Blob([JSON.stringify(rawPayload, null, 2)], {
+      type: 'application/json;charset=utf-8',
+    });
+    downloadBlob(blob, `ciai-ai-report-${study.studyInstanceUid}.json`);
   };
 
   const handleDownloadPdf = () => {
@@ -1390,12 +1206,109 @@ export default function AiAnalysisDialog({
   };
 
   const hasResults = Boolean(completePayload);
+  // Exports embed the frames, so they wait until every frame has settled.
+  const exportsReady = hasResults && framesLoading === 0;
+
+  const renderPipelineState = () => {
+    if (isReady && isLoadingResult) {
+      return (
+        <Stack
+          direction="row"
+          spacing={1.5}
+          alignItems="center"
+          role="status"
+          sx={{ padding: '28px 4px', color: '#9fc4ce', fontWeight: 700 }}
+        >
+          <CircularProgress
+            size={20}
+            thickness={5}
+          />
+          <Box>Loading AI report…</Box>
+        </Stack>
+      );
+    }
+
+    return (
+      <Stack spacing={2}>
+        <AiPipelineTracker state={aiState} />
+
+        {isReady && resultError && (
+          <Alert
+            severity="error"
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                onClick={() => setReloadCount(count => count + 1)}
+              >
+                Try again
+              </Button>
+            }
+          >
+            {resultError}
+          </Alert>
+        )}
+
+        {aiState.stage === 'analyzed' && (
+          <Alert
+            severity="info"
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                onClick={onGenerateReport}
+              >
+                Generate report
+              </Button>
+            }
+          >
+            Image analysis is complete. The report has not been generated yet.
+          </Alert>
+        )}
+
+        {aiState.stage === 'reportFailed' && (
+          <Alert
+            severity="error"
+            action={
+              <Button
+                color="inherit"
+                size="small"
+                onClick={onGenerateReport}
+              >
+                Try again
+              </Button>
+            }
+          >
+            {aiState.error || 'Report generation failed.'}
+          </Alert>
+        )}
+
+        {aiState.stage === 'analysisFailed' && (
+          <Alert severity="error">
+            {aiState.error || 'Image analysis failed.'} Re-upload the study to run it again.
+          </Alert>
+        )}
+
+        {aiState.stage === 'none' && (
+          <Alert severity="info">
+            This study has no AI analysis. Analysis runs automatically for newly uploaded studies.
+          </Alert>
+        )}
+
+        {['analyzing', 'queued', 'generating'].includes(aiState.stage) && (
+          <Box sx={{ color: '#7f9ea9', fontSize: 12 }}>
+            This runs on the server. You can close this window — the worklist keeps tracking it
+            and the report opens here when it is ready.
+          </Box>
+        )}
+      </Stack>
+    );
+  };
 
   return (
     <BootstrapDialog
       open={open}
-      onClose={handleDialogClose}
-      disableEscapeKeyDown={status === 'running'}
+      onClose={onClose}
       aria-labelledby="ai-analysis-dialog-title"
     >
       <DialogTitle
@@ -1433,34 +1346,23 @@ export default function AiAnalysisDialog({
           <Box>
             <Box sx={{ fontSize: 20, fontWeight: 800, lineHeight: 1.15 }}>AI Analysis</Box>
             <Box sx={{ color: '#91b7c2', fontSize: 12, marginTop: '3px' }}>
-              Original → CIAI AI marking → Heatmap → Radiologist verify
+              Automated on upload · Original → CIAI AI marking → Heatmap → Radiologist verify
             </Box>
           </Box>
           <Chip
             size="small"
             color={STATUS_COLORS[displayStatus]}
             icon={<StatusGlyph status={displayStatus} />}
-            label={STATUS_LABELS[displayStatus]}
+            label={displayLabel}
             sx={{
               fontWeight: 800,
               '& .MuiChip-icon': { color: 'inherit' },
             }}
           />
-          <Chip
-            size="small"
-            label={`Elapsed ${elapsedTime}`}
-            sx={{
-              color: '#dff6ff',
-              borderColor: 'rgba(105, 210, 232, 0.28)',
-              backgroundColor: 'rgba(105, 210, 232, 0.08)',
-              fontWeight: 800,
-            }}
-            variant="outlined"
-          />
         </Stack>
         <IconButton
           aria-label="close"
-          onClick={handleClose}
+          onClick={onClose}
           sx={{ color: '#d7edf4' }}
         >
           <CloseIcon />
@@ -1491,9 +1393,7 @@ export default function AiAnalysisDialog({
               />
               <FieldValue
                 label="Study Date"
-                value={formatDicomDate(
-                  completePayload?.study_info?.study_date || study.date
-                )}
+                value={formatDicomDate(completePayload?.study_info?.study_date || study.date)}
               />
               <FieldValue
                 label="Study"
@@ -1521,47 +1421,6 @@ export default function AiAnalysisDialog({
             </Box>
           </Box>
 
-          {status === 'running' && (
-            <Box
-              sx={{
-                marginBottom: '18px',
-                border: '1px solid rgba(33, 181, 155, 0.24)',
-                background: 'rgba(33, 181, 155, 0.08)',
-                borderRadius: '8px',
-                padding: '14px',
-              }}
-            >
-              <Stack
-                direction="row"
-                spacing={1}
-                alignItems="center"
-                sx={{ marginBottom: '12px' }}
-              >
-                <CircularProgress
-                  size={18}
-                  thickness={5}
-                />
-                <Box sx={{ fontWeight: 700 }}>
-                  {latestProgress?.message ||
-                    (lastHeartbeatAt ? 'Still processing...' : 'Starting AI analysis...')}
-                </Box>
-                <Box sx={{ marginLeft: 'auto', color: '#9fc4ce', fontSize: 12, fontWeight: 800 }}>
-                  {elapsedTime}
-                </Box>
-              </Stack>
-              <LinearProgress
-                variant="determinate"
-                value={progressValue}
-                sx={{
-                  height: 10,
-                  borderRadius: 5,
-                  backgroundColor: 'rgba(255,255,255,0.12)',
-                  '& .MuiLinearProgress-bar': { backgroundColor: '#21b59b' },
-                }}
-              />
-            </Box>
-          )}
-
           <Stack
             direction="row"
             spacing={1}
@@ -1571,19 +1430,25 @@ export default function AiAnalysisDialog({
           >
             <MetricChip
               label="Series"
-              value={completePayload?.total_series_analyzed || latestProgress?.total_series}
+              value={completePayload?.total_series_analyzed}
             />
             <MetricChip
               label="Frames"
-              value={latestProgress?.fetched || latestProgress?.total_frames}
+              value={aiState.analysis?.total}
             />
             <MetricChip
               label="Analyzed"
-              value={completePayload?.total_frames_processed || latestProgress?.analyzed}
+              value={framesAnalyzed}
             />
+            {!!aiState.analysis?.skipped && (
+              <MetricChip
+                label="Skipped"
+                value={aiState.analysis.skipped}
+              />
+            )}
             <MetricChip
               label="Findings"
-              value={completePayload?.total_anomalies_found || latestProgress?.total_anomalies}
+              value={completePayload?.total_anomalies_found}
             />
             {!!processingErrors.length && (
               <MetricChip
@@ -1593,14 +1458,7 @@ export default function AiAnalysisDialog({
             )}
           </Stack>
 
-          {streamError && displayStatus === 'failed' && (
-            <Alert
-              severity="error"
-              sx={{ marginBottom: '16px' }}
-            >
-              {streamError}
-            </Alert>
-          )}
+          {!hasResults && renderPipelineState()}
 
           {warningMessage && (
             <Alert
@@ -1611,103 +1469,125 @@ export default function AiAnalysisDialog({
             </Alert>
           )}
 
-          {status === 'running' && !!steps.length && (
-            <Box
-              sx={{
-                border: '1px solid rgba(255,255,255,0.1)',
-                borderRadius: '8px',
-                marginBottom: '18px',
-                overflow: 'hidden',
-                background: '#0b1720',
-              }}
-            >
-              {steps.map(step => {
-                const event = progressByStep[step];
-                const stageDuration = getStageDuration({
-                  step,
-                  steps,
-                  firstProgressByStep,
-                  progressByStep,
-                  now: timerNow,
-                  isRunning: status === 'running',
-                });
-                return (
-                  <Stack
-                    key={step}
-                    direction="row"
-                    spacing={1.5}
-                    alignItems="center"
-                    sx={{
-                      padding: '12px 14px',
-                      borderBottom: '1px solid rgba(255,255,255,0.07)',
-                      background:
-                        event.status === 'done'
-                          ? 'rgba(33, 181, 155, 0.08)'
-                          : 'rgba(255,255,255,0.03)',
-                    }}
-                  >
-                    <Chip
-                      size="small"
-                      label={`${step}/${event.total_steps || '?'}`}
-                      sx={{
-                        minWidth: 54,
-                        color: '#e8fbff',
-                        backgroundColor:
-                          event.status === 'done' ? 'rgba(33, 181, 155, 0.32)' : '#22313d',
-                        fontWeight: 800,
-                      }}
-                    />
-                    <StepStatusIcon event={event} />
-                    <Box sx={{ flex: 1 }}>
-                      <Box sx={{ fontSize: 13, fontWeight: 700 }}>
-                        {event.message || `Step ${step}`}
-                      </Box>
-                      <Box sx={{ color: '#91b7c2', fontSize: 12 }}>{event.status || 'started'}</Box>
-                    </Box>
-                    <Chip
-                      size="small"
-                      label={formatDuration(stageDuration)}
-                      sx={{
-                        color: '#dff6ff',
-                        backgroundColor: 'rgba(255,255,255,0.06)',
-                        fontWeight: 800,
-                        minWidth: 58,
-                      }}
-                    />
-                  </Stack>
-                );
-              })}
-            </Box>
-          )}
-
           {hasResults && (
             <Box>
-              <Tabs
-                value={activeTab}
-                onChange={(_event, value) => setActiveTab(value)}
-                variant="scrollable"
-                scrollButtons="auto"
+              <Stack
+                direction="row"
+                alignItems="center"
                 sx={{
                   borderBottom: '1px solid rgba(255,255,255,0.1)',
                   marginBottom: '16px',
-                  minHeight: 40,
-                  '& .MuiTab-root': {
-                    color: '#91b7c2',
-                    fontWeight: 800,
-                    fontSize: 13,
-                    textTransform: 'none',
-                    minHeight: 40,
-                  },
-                  '& .Mui-selected': { color: '#8be0f8 !important' },
-                  '& .MuiTabs-indicator': { backgroundColor: '#8be0f8' },
+                  gap: '8px',
                 }}
               >
-                <Tab label="Overview" />
-                <Tab label={`Findings (${grouped.length})`} />
-                <Tab label={`Image evidence (${evidence.length})`} />
-                <Tab label="Narrative report" />
-              </Tabs>
+                <Tabs
+                  value={betaView ? false : activeTab}
+                  onChange={(_event, value) => {
+                    setActiveTab(value);
+                    setBetaView(false);
+                  }}
+                  variant="scrollable"
+                  scrollButtons="auto"
+                  sx={{
+                    flex: 1,
+                    minWidth: 0,
+                    minHeight: 40,
+                    '& .MuiTab-root': {
+                      color: '#91b7c2',
+                      fontWeight: 800,
+                      fontSize: 13,
+                      textTransform: 'none',
+                      minHeight: 40,
+                    },
+                    '& .Mui-selected': { color: '#8be0f8 !important' },
+                    '& .MuiTabs-indicator': { backgroundColor: '#8be0f8' },
+                  }}
+                >
+                  <Tab label="Overview" />
+                  <Tab label={`Findings (${grouped.length})`} />
+                  <Tab label={`Image evidence (${evidence.length})`} />
+                  <Tab label="Narrative report" />
+                </Tabs>
+                <FormControlLabel
+                  control={
+                    <Switch
+                      size="small"
+                      checked={betaView}
+                      onChange={event => setBetaView(event.target.checked)}
+                      sx={{
+                        '& .MuiSwitch-switchBase.Mui-checked': { color: '#12a58c' },
+                        '& .MuiSwitch-switchBase.Mui-checked + .MuiSwitch-track': {
+                          backgroundColor: '#12a58c',
+                        },
+                      }}
+                    />
+                  }
+                  label={
+                    <Stack
+                      direction="row"
+                      spacing={0.75}
+                      alignItems="center"
+                    >
+                      <Box sx={{ fontSize: 12.5, fontWeight: 800, color: '#6ee7d0' }}>
+                        Beta view
+                      </Box>
+                      <Chip
+                        label="BETA"
+                        size="small"
+                        sx={{
+                          height: 16,
+                          fontSize: 9,
+                          fontWeight: 900,
+                          letterSpacing: 0.5,
+                          color: '#05221c',
+                          backgroundColor: '#12a58c',
+                          '& .MuiChip-label': { padding: '0 5px' },
+                        }}
+                      />
+                    </Stack>
+                  }
+                  sx={{ marginRight: 0, flexShrink: 0 }}
+                />
+              </Stack>
 
+              {!!framesLoading && (
+                <Stack
+                  direction="row"
+                  spacing={1}
+                  alignItems="center"
+                  role="status"
+                  sx={{ color: '#9fc4ce', fontSize: 12, marginBottom: '12px' }}
+                >
+                  <CircularProgress
+                    size={14}
+                    thickness={5}
+                  />
+                  <Box>
+                    Loading image frames from the PACS ({framesLoading} remaining) — exports and
+                    the beta view are available once they finish.
+                  </Box>
+                </Stack>
+              )}
+
+              {betaView && !betaViewerHtml ? null : betaView ? (
+                <Box
+                  component="iframe"
+                  title="AI report — beta view"
+                  srcDoc={betaViewerHtml}
+                  // Scripts only: the report is generated content, so it gets no
+                  // access to this origin's session or storage.
+                  sandbox="allow-scripts"
+                  sx={{
+                    display: 'block',
+                    width: '100%',
+                    height: '68vh',
+                    border: '1px solid rgba(255,255,255,0.12)',
+                    borderRadius: '8px',
+                    background: '#ffffff',
+                  }}
+                />
+              ) : (
+                <>
               {activeTab === 0 && (
                 <Box>
                   <Box
@@ -1744,8 +1624,9 @@ export default function AiAnalysisDialog({
                       hint={`${anomalyFindings.length} anomalies, ${grouped.length} after merging`}
                     />
                     <StatCard
-                      label="Elapsed"
-                      value={elapsedTime}
+                      label="Frames analyzed"
+                      value={framesAnalyzed ?? '—'}
+                      hint={describeAnalysis(aiState.analysis) || undefined}
                     />
                   </Box>
 
@@ -1909,6 +1790,7 @@ export default function AiAnalysisDialog({
                   index={Math.min(evidenceIndex, Math.max(evidence.length - 1, 0))}
                   onIndexChange={setEvidenceIndex}
                   studyInstanceUid={study.studyInstanceUid}
+                  frameLoadState={frameLoadState}
                 />
               )}
 
@@ -1998,29 +1880,26 @@ export default function AiAnalysisDialog({
                   </Collapse>
                 </Box>
               )}
+                </>
+              )}
             </Box>
           )}
         </Box>
       </DialogContent>
 
       <DialogActions>
-        {status === 'running' ? (
-          <Button
-            variant="outlined"
-            color="warning"
-            onClick={handleCancel}
-          >
-            Cancel Analysis
-          </Button>
-        ) : (
-          <Button
-            variant="outlined"
-            onClick={runAnalysis}
-            disabled={!study.studyInstanceUid}
-            sx={{ color: '#8be0f8', borderColor: '#2a8ca3' }}
-          >
-            Retry
-          </Button>
+        {hasResults && (
+          <Tooltip title="Reload the latest report from the server">
+            <Button
+              variant="outlined"
+              onClick={() => setReloadCount(count => count + 1)}
+              disabled={isLoadingResult}
+              startIcon={<RefreshIcon />}
+              sx={{ color: '#8be0f8', borderColor: '#2a8ca3' }}
+            >
+              Refresh
+            </Button>
+          </Tooltip>
         )}
 
         {hasResults && (
@@ -2037,7 +1916,7 @@ export default function AiAnalysisDialog({
             }}
           >
             <MenuItem value="significant">
-              Report: significant findings ({reportEvidence.length})
+              Report: significant findings ({measuredFindings.length})
             </MenuItem>
             <MenuItem value="all">Report: all image evidence ({evidence.length})</MenuItem>
           </TextField>
@@ -2047,7 +1926,7 @@ export default function AiAnalysisDialog({
         <Button
           variant="outlined"
           onClick={handleOpenReportViewer}
-          disabled={!hasResults}
+          disabled={!exportsReady}
           startIcon={<OpenInNewIcon />}
           endIcon={
             <Chip
@@ -2073,35 +1952,48 @@ export default function AiAnalysisDialog({
           onClick={handleCopyReport}
           disabled={!reportText}
           startIcon={<ContentCopyIcon />}
-          sx={{ color: '#dff6ff', borderColor: '#477889' }}
+          sx={ACTION_BUTTON_SX}
         >
           Copy Report
         </Button>
         <Button
           variant="outlined"
           onClick={handleDownloadDoc}
-          disabled={!hasResults}
+          disabled={!exportsReady}
           startIcon={<DescriptionIcon />}
-          sx={{ color: '#dff6ff', borderColor: '#477889' }}
+          sx={ACTION_BUTTON_SX}
         >
-          Download DOC
+          DOC
         </Button>
         <Tooltip title="Opens the print view — choose “Save as PDF”">
           <span>
             <Button
               variant="outlined"
               onClick={handleDownloadPdf}
-              disabled={!hasResults}
+              disabled={!exportsReady}
               startIcon={<PictureAsPdfIcon />}
-              sx={{ color: '#dff6ff', borderColor: '#477889' }}
+              sx={ACTION_BUTTON_SX}
             >
-              Download PDF
+              PDF
+            </Button>
+          </span>
+        </Tooltip>
+        <Tooltip title="Raw AI result, as returned by the server">
+          <span>
+            <Button
+              variant="outlined"
+              onClick={handleDownloadJson}
+              disabled={!hasResults}
+              startIcon={<DataObjectIcon />}
+              sx={ACTION_BUTTON_SX}
+            >
+              JSON
             </Button>
           </span>
         </Tooltip>
         <Button
           variant="contained"
-          onClick={handleClose}
+          onClick={onClose}
           sx={{ backgroundColor: '#0a7c6c' }}
         >
           Close
@@ -2111,4 +2003,4 @@ export default function AiAnalysisDialog({
   );
 }
 
-export { parseSseEvents, classifyAiAnalysisResult, renderSafeReportMarkdown };
+export { classifyAiAnalysisResult, renderSafeReportMarkdown };

@@ -491,7 +491,15 @@ export function getImageSrc(base64?: string) {
   return `data:${mime};base64,${base64}`;
 }
 
-export function collectHeatmaps(payload: AiCompletePayload | null): AiHeatmap[] {
+/**
+ * `requireImage: false` keeps heatmaps whose pictures were not embedded — the
+ * stored PACS result carries frame keys and regions but no base64 images, and
+ * the frame key is still what ties a finding to its slice.
+ */
+export function collectHeatmaps(
+  payload: AiCompletePayload | null,
+  { requireImage = true }: { requireImage?: boolean } = {}
+): AiHeatmap[] {
   if (!payload) {
     return [];
   }
@@ -515,10 +523,131 @@ export function collectHeatmaps(payload: AiCompletePayload | null): AiHeatmap[] 
 
   return [...direct, ...fromReport, ...fromSeries].filter(
     heatmap =>
+      (!requireImage && heatmap?.frame_key) ||
       heatmap?.original_image_b64 ||
       heatmap?.heatmap_image_b64 ||
       heatmap?.gemini_annotated_image_b64
   );
+}
+
+function getSeriesLabel(series: any) {
+  const info = series?.modality_info || {};
+  return [info.modality, info.series_description].filter(Boolean).join(' — ');
+}
+
+/** Shortest unambiguous series tag for finding IDs: `CT3` for CT series 3. */
+function getSeriesTag(series: any, index: number) {
+  const info = series?.modality_info || {};
+  return `${info.modality || 'S'}${info.series_number || index + 1}`;
+}
+
+/** Below this, two names share only incidental words ("right", "lung"). */
+const MIN_FRAME_MATCH = 0.6;
+
+/**
+ * Rebuilds the narrative layer for results that arrive without
+ * `findings_summary` — the report stored on the PACS keeps findings per series
+ * (`series_with_findings[].findings`) and no frame reference on them.
+ *
+ * Each series finding is tied to a frame through the heatmap regions of the
+ * same series: an exact or close name match wins, and a finding with no match
+ * stays in the list without a frame rather than being attached to a guess.
+ */
+export function deriveFindingsSummary(payload: AiCompletePayload | null): AiFindingSummary[] {
+  if (!payload) {
+    return [];
+  }
+
+  return (payload.series_with_findings || []).flatMap((series, seriesIndex) => {
+    const findings: any[] = Array.isArray(series?.findings) ? series.findings : [];
+    const heatmaps: AiHeatmap[] = Array.isArray(series?.heatmaps) ? series.heatmaps : [];
+    const seriesLabel = getSeriesLabel(series);
+    const tag = getSeriesTag(series, seriesIndex);
+
+    return findings.map((finding, findingIndex) => {
+      let best: { frameKey?: string; score: number } = { score: 0 };
+      heatmaps.forEach(heatmap => {
+        (heatmap.anomaly_regions || []).forEach(region => {
+          const score = nameSimilarity(region.name, finding.name);
+          if (score > best.score) {
+            best = { frameKey: heatmap.frame_key, score };
+          }
+        });
+      });
+
+      return {
+        finding_id: `${tag}-${String(findingIndex + 1).padStart(2, '0')}`,
+        region: finding.location || '',
+        series: seriesLabel,
+        modality: series?.modality_info?.modality || '',
+        name: finding.name,
+        severity: finding.severity,
+        confidence: finding.confidence,
+        location: finding.location,
+        size_estimate: finding.size_estimate,
+        description: finding.description,
+        frame_key: best.score >= MIN_FRAME_MATCH ? best.frameKey : undefined,
+      };
+    });
+  });
+}
+
+/**
+ * Brings every result shape to the one this module was written against. The
+ * live analysis stream sends `findings_summary`; the report stored on the
+ * PACS does not, so it is derived. The input is not mutated.
+ */
+export function normalizeAiPayload(payload: AiCompletePayload | null): AiCompletePayload | null {
+  if (!payload || payload.findings_summary?.length) {
+    return payload;
+  }
+
+  const derived = deriveFindingsSummary(payload);
+  return derived.length ? { ...payload, findings_summary: derived } : payload;
+}
+
+/** Heatmap frames that carry a frame key but no embedded original image. */
+export function getFramesMissingImages(payload: AiCompletePayload | null): string[] {
+  const keys = collectHeatmaps(payload, { requireImage: false })
+    .filter(heatmap => heatmap.frame_key && !heatmap.original_image_b64)
+    .map(heatmap => heatmap.frame_key as string);
+  return Array.from(new Set(keys));
+}
+
+export type FetchedFrameImages = { original?: string; heatmap?: string; annotated?: string };
+
+/**
+ * Copies fetched frame images into the heatmaps, so every consumer — tabs,
+ * printed report, beta viewer — sees one payload. Embedded images win.
+ */
+export function withFrameImages(
+  payload: AiCompletePayload | null,
+  images: Record<string, FetchedFrameImages>
+): AiCompletePayload | null {
+  if (!payload || !Object.keys(images).length) {
+    return payload;
+  }
+
+  const fill = (heatmap: AiHeatmap) => {
+    const fetched = heatmap?.frame_key ? images[heatmap.frame_key] : undefined;
+    if (!fetched) {
+      return heatmap;
+    }
+    return {
+      ...heatmap,
+      original_image_b64: heatmap.original_image_b64 || fetched.original || '',
+      heatmap_image_b64: heatmap.heatmap_image_b64 || fetched.heatmap || '',
+      gemini_annotated_image_b64: heatmap.gemini_annotated_image_b64 || fetched.annotated || '',
+    };
+  };
+
+  return {
+    ...payload,
+    heatmaps: Array.isArray(payload.heatmaps) ? payload.heatmaps.map(fill) : payload.heatmaps,
+    series_with_findings: (payload.series_with_findings || []).map(series =>
+      Array.isArray(series?.heatmaps) ? { ...series, heatmaps: series.heatmaps.map(fill) } : series
+    ),
+  };
 }
 
 function normalizeName(value?: string) {
@@ -627,7 +756,7 @@ export function buildEvidenceFindings(
     return [];
   }
 
-  const heatmaps = collectHeatmaps(payload);
+  const heatmaps = collectHeatmaps(payload, { requireImage: false });
   const heatmapsByFrame = new Map<string, AiHeatmap>();
   heatmaps.forEach(heatmap => {
     if (heatmap.frame_key && !heatmapsByFrame.has(heatmap.frame_key)) {

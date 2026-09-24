@@ -1,0 +1,1146 @@
+/*
+ * Worklist design layer.
+ *
+ * Every class is `wl-` prefixed and every colour comes from the tokens below,
+ * so the legacy global rules in @ohif/ui styles.css (which repaint `.text-white`,
+ * `.bg-black-on`, `.customSelect__*`, MUI menus…) have nothing to latch onto.
+ * The dark palette is the beta report viewer's, so the two read as one product.
+ *
+ * Popovers render in a portal outside `.wl`, so they carry `.wl-pop` and the
+ * same theme modifier to pick the tokens up.
+ */
+
+.wl,
+.wl-pop {
+  --wl-bg: #f3f6f8;
+  --wl-panel: #ffffff;
+  --wl-panel-2: #f7fafb;
+  --wl-head: #f7fafb;
+  --wl-row-hover: #f1f8f7;
+  --wl-row-emergency: #fff6f5;
+  --wl-line: #e3eaee;
+  --wl-line-strong: #cfd9df;
+  --wl-text: #0f212c;
+  --wl-text-2: #3c5260;
+  --wl-muted: #647c8b;
+  --wl-muted-2: #8aa0ad;
+  --wl-teal: #0a8f7a;
+  --wl-teal-strong: #077061;
+  --wl-teal-dim: rgba(10, 143, 122, 0.1);
+  --wl-teal-ring: rgba(10, 143, 122, 0.32);
+  --wl-danger: #d4382c;
+  --wl-danger-dim: rgba(212, 56, 44, 0.1);
+  --wl-input: #ffffff;
+  --wl-shadow: 0 1px 2px rgba(15, 33, 44, 0.04), 0 8px 24px rgba(15, 33, 44, 0.06);
+  --wl-pop-shadow: 0 12px 32px rgba(15, 33, 44, 0.16), 0 2px 6px rgba(15, 33, 44, 0.08);
+  --wl-radius: 10px;
+  color-scheme: light;
+}
+
+.wl.wl--dark,
+.wl-pop.wl--dark {
+  --wl-bg: #070f16;
+  --wl-panel: #0d1b26;
+  --wl-panel-2: #102330;
+  --wl-head: #0b1822;
+  --wl-row-hover: #11283a;
+  --wl-row-emergency: rgba(197, 55, 44, 0.08);
+  --wl-line: rgba(255, 255, 255, 0.08);
+  --wl-line-strong: rgba(255, 255, 255, 0.16);
+  --wl-text: #e8f4f8;
+  --wl-text-2: #c3d7e1;
+  --wl-muted: #8faec0;
+  --wl-muted-2: #6f92a6;
+  --wl-teal: #12a58c;
+  --wl-teal-strong: #6ee7d0;
+  --wl-teal-dim: rgba(18, 165, 140, 0.14);
+  --wl-teal-ring: rgba(18, 165, 140, 0.4);
+  --wl-danger: #ff7a6b;
+  --wl-danger-dim: rgba(255, 122, 107, 0.14);
+  --wl-input: #070f16;
+  --wl-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset, 0 12px 32px rgba(0, 0, 0, 0.35);
+  --wl-pop-shadow: 0 16px 40px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  color-scheme: dark;
+}
+
+.wl *,
+.wl-pop * {
+  box-sizing: border-box;
+}
+
+/* ---------- page ---------- */
+
+.wl {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--wl-bg);
+  color: var(--wl-text);
+  font-size: 13px;
+  padding: 20px 24px 24px;
+  overflow: auto;
+}
+
+.wl-card {
+  min-width: 1080px;
+  display: flex;
+  flex-direction: column;
+  background: var(--wl-panel);
+  border: 1px solid var(--wl-line);
+  border-radius: var(--wl-radius);
+  box-shadow: var(--wl-shadow);
+}
+
+/* ---------- toolbar ---------- */
+
+.wl-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 18px 14px;
+  flex-wrap: wrap;
+}
+
+.wl-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--wl-text);
+}
+
+.wl-count {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  background: var(--wl-teal-dim);
+  color: var(--wl-teal-strong);
+  font-size: 11.5px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.wl-spacer {
+  flex: 1;
+}
+
+.wl-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 0 18px 12px;
+}
+
+.wl-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  max-width: 100%;
+  height: 26px;
+  padding: 0 4px 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--wl-teal-ring);
+  background: var(--wl-teal-dim);
+  color: var(--wl-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.wl-chip b {
+  color: var(--wl-muted);
+  font-weight: 600;
+}
+
+.wl-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wl-chip button {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--wl-muted);
+  cursor: pointer;
+}
+
+.wl-chip button:hover {
+  background: var(--wl-teal-dim);
+  color: var(--wl-text);
+}
+
+/* ---------- buttons ---------- */
+
+.wl-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  border-radius: 8px;
+  border: 1px solid var(--wl-line-strong);
+  background: var(--wl-panel);
+  color: var(--wl-text-2);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s, background-color 0.15s;
+}
+
+.wl-btn svg {
+  font-size: 18px;
+}
+
+.wl-btn:hover:not(:disabled) {
+  border-color: var(--wl-teal);
+  color: var(--wl-teal-strong);
+}
+
+.wl-btn--primary {
+  border-color: var(--wl-teal);
+  background: var(--wl-teal);
+  color: #ffffff;
+}
+
+.wl--dark .wl-btn--primary {
+  color: #04211c;
+}
+
+.wl-btn--primary:hover:not(:disabled) {
+  background: var(--wl-teal-strong);
+  border-color: var(--wl-teal-strong);
+  color: #ffffff;
+}
+
+.wl--dark .wl-btn--primary:hover:not(:disabled) {
+  color: #04211c;
+}
+
+.wl-btn--ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--wl-teal-strong);
+}
+
+.wl-btn--ghost:hover:not(:disabled) {
+  background: var(--wl-teal-dim);
+  border-color: transparent;
+}
+
+.wl-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.wl-btn:focus-visible,
+.wl-icon-btn:focus-visible,
+.wl-sort:focus-visible,
+.wl-field:focus-within,
+.wl-select-btn:focus-visible,
+.wl-split > button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--wl-teal-ring);
+}
+
+/* ---------- table ---------- */
+
+.wl-table-wrap {
+  position: relative;
+  border-top: 1px solid var(--wl-line);
+}
+
+.wl-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.wl-table thead th {
+  position: sticky;
+  z-index: 2;
+  background: var(--wl-head);
+  text-align: left;
+  font-weight: 400;
+  padding: 0 12px;
+  vertical-align: middle;
+}
+
+.wl-table thead tr.wl-head-labels th {
+  top: 0;
+  height: 38px;
+  padding-top: 8px;
+}
+
+.wl-table thead tr.wl-head-filters th {
+  top: 38px;
+  height: 50px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--wl-line-strong);
+}
+
+.wl-table th:first-child,
+.wl-table td:first-child {
+  padding-left: 18px;
+}
+
+.wl-table th:last-child,
+.wl-table td:last-child {
+  padding-right: 18px;
+}
+
+.wl-label,
+.wl-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--wl-muted);
+  white-space: nowrap;
+}
+
+.wl-sort {
+  margin: 0 -6px;
+  padding: 4px 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-family: inherit;
+  cursor: pointer;
+  transition: color 0.15s, background-color 0.15s;
+}
+
+.wl-sort svg {
+  font-size: 14px;
+  opacity: 0.45;
+  transition: opacity 0.15s;
+}
+
+.wl-sort:hover {
+  color: var(--wl-text);
+  background: var(--wl-teal-dim);
+}
+
+.wl-sort:hover svg {
+  opacity: 0.9;
+}
+
+.wl-sort[data-sort='ascending'],
+.wl-sort[data-sort='descending'] {
+  color: var(--wl-teal-strong);
+}
+
+.wl-sort[data-sort='ascending'] svg,
+.wl-sort[data-sort='descending'] svg {
+  opacity: 1;
+}
+
+.wl-num {
+  text-align: right !important;
+}
+
+/* A right-aligned count would otherwise sit flush against the Status column. */
+.wl-table th.wl-num,
+.wl-table td.wl-num {
+  padding-right: 24px;
+}
+
+.wl-num .wl-label {
+  justify-content: flex-end;
+}
+
+/* rows */
+
+.wl-table tbody td {
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--wl-line);
+  vertical-align: middle;
+  color: var(--wl-text-2);
+  font-size: 13px;
+  line-height: 1.35;
+  overflow: hidden;
+}
+
+.wl-table tbody tr {
+  transition: background-color 0.12s;
+}
+
+.wl-table tbody tr:hover {
+  background: var(--wl-row-hover);
+}
+
+.wl-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.wl-table tbody tr.wl-row--emergency {
+  background: var(--wl-row-emergency);
+}
+
+.wl-table tbody tr.wl-row--emergency td:first-child {
+  box-shadow: inset 3px 0 0 var(--wl-danger);
+}
+
+.wl-primary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--wl-text);
+  font-weight: 650;
+}
+
+.wl-secondary {
+  margin-top: 3px;
+  color: var(--wl-muted);
+  font-size: 12px;
+}
+
+.wl-truncate {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wl-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+  color: var(--wl-text-2);
+}
+
+.wl-tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.wl-empty-value {
+  color: var(--wl-muted-2);
+}
+
+.wl-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.wl-copy button {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--wl-muted);
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.12s, background-color 0.12s;
+}
+
+.wl-copy button svg {
+  font-size: 13px;
+}
+
+.wl-table tbody tr:hover .wl-copy button,
+.wl-copy button:focus-visible {
+  opacity: 1;
+}
+
+.wl-copy button:hover {
+  background: var(--wl-teal-dim);
+  color: var(--wl-teal-strong);
+}
+
+.wl-stat {
+  display: inline-flex;
+  align-items: center;
+  height: 18px;
+  padding: 0 6px;
+  border-radius: 4px;
+  background: var(--wl-danger);
+  color: #ffffff;
+  font-size: 9.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  flex: 0 0 auto;
+}
+
+.wl-modalities {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.wl-modality {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 7px;
+  border-radius: 5px;
+  border: 1px solid var(--wl-line-strong);
+  background: var(--wl-panel-2);
+  color: var(--wl-text-2);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.wl-status {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 5px;
+}
+
+/* ---------- row actions ---------- */
+
+.wl-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+}
+
+.wl-icon-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--wl-muted);
+  cursor: pointer;
+  transition: color 0.12s, background-color 0.12s;
+}
+
+.wl-icon-btn svg {
+  font-size: 19px;
+}
+
+.wl-icon-btn:hover:not(:disabled),
+.wl-icon-btn[aria-expanded='true'] {
+  background: var(--wl-teal-dim);
+  color: var(--wl-teal-strong);
+}
+
+.wl-icon-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.wl-icon-btn--alert {
+  color: var(--wl-danger);
+}
+
+.wl-icon-btn--alert:hover:not(:disabled) {
+  background: var(--wl-danger-dim);
+  color: var(--wl-danger);
+}
+
+.wl-divider {
+  width: 1px;
+  height: 20px;
+  margin: 0 6px;
+  background: var(--wl-line-strong);
+}
+
+.wl-split {
+  display: inline-flex;
+  align-items: stretch;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid var(--wl-teal);
+  overflow: hidden;
+}
+
+.wl-split > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 0;
+  background: var(--wl-teal);
+  color: #ffffff;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background-color 0.12s;
+}
+
+.wl--dark .wl-split > button {
+  color: #04211c;
+}
+
+.wl-split > button:first-child {
+  padding: 0 10px 0 9px;
+}
+
+.wl-split > button:last-child {
+  padding: 0 5px;
+  border-left: 1px solid rgba(255, 255, 255, 0.28);
+}
+
+.wl--dark .wl-split > button:last-child {
+  border-left-color: rgba(4, 33, 28, 0.3);
+}
+
+.wl-split > button svg {
+  font-size: 17px;
+}
+
+.wl-split > button:hover,
+.wl-split > button[aria-expanded='true'] {
+  background: var(--wl-teal-strong);
+}
+
+/* ---------- filters ---------- */
+
+.wl-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 32px;
+  border-radius: 7px;
+  border: 1px solid var(--wl-line-strong);
+  background: var(--wl-input);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.wl-field:hover {
+  border-color: var(--wl-muted-2);
+}
+
+.wl-field:focus-within {
+  border-color: var(--wl-teal);
+}
+
+.wl-field > svg {
+  flex: 0 0 auto;
+  margin-left: 8px;
+  font-size: 16px;
+  color: var(--wl-muted-2);
+}
+
+.wl-field input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 8px;
+  border: 0 !important;
+  outline: none;
+  background: transparent !important;
+  color: var(--wl-text) !important;
+  font: inherit;
+  font-size: 12.5px;
+  box-shadow: none !important;
+}
+
+.wl-field input::placeholder {
+  color: var(--wl-muted-2);
+  opacity: 1;
+}
+
+.wl-field-clear {
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  margin-right: 5px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--wl-muted);
+  cursor: pointer;
+}
+
+.wl-field-clear:hover {
+  background: var(--wl-teal-dim);
+  color: var(--wl-text);
+}
+
+.wl-field-clear svg {
+  font-size: 14px;
+}
+
+.wl-select-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  height: 32px;
+  padding: 0 6px 0 8px;
+  border-radius: 7px;
+  border: 1px solid var(--wl-line-strong);
+  background: var(--wl-input);
+  color: var(--wl-muted-2);
+  font: inherit;
+  font-size: 12.5px;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.wl-select-btn:hover,
+.wl-select-btn[aria-expanded='true'] {
+  border-color: var(--wl-teal);
+}
+
+.wl-select-btn > svg {
+  flex: 0 0 auto;
+  font-size: 16px;
+}
+
+.wl-select-btn > svg:last-child {
+  margin-left: auto;
+  font-size: 18px;
+  transition: transform 0.15s;
+}
+
+.wl-select-btn[aria-expanded='true'] > svg:last-child {
+  transform: rotate(180deg);
+}
+
+.wl-select-btn--set {
+  border-color: var(--wl-teal-ring);
+  background: var(--wl-teal-dim);
+  color: var(--wl-text);
+  font-weight: 600;
+}
+
+.wl-select-btn--set > svg {
+  color: var(--wl-teal-strong);
+}
+
+.wl-select-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---------- popovers & menus (portal) ---------- */
+
+.wl-pop.MuiPaper-root {
+  margin-top: 6px;
+  border-radius: 10px;
+  border: 1px solid var(--wl-line-strong);
+  background: var(--wl-panel);
+  color: var(--wl-text);
+  box-shadow: var(--wl-pop-shadow);
+  font-size: 13px;
+  background-image: none;
+}
+
+/*
+ * Legacy styles.css paints every MUI menu: `.MuiPaper-root ul` teal,
+ * `.MuiPaper-root ul li` monospace 12px with a grey rule and a white hover, and
+ * a bare `li` flex/padding with a lilac hover. `.wl-pop.MuiPaper-root` outranks
+ * all of them, so the worklist's popovers and menus take only the rules below.
+ */
+.wl-pop.MuiPaper-root ul {
+  background: transparent;
+  color: inherit;
+}
+
+.wl-pop.MuiPaper-root ul li,
+.wl-pop.MuiPaper-root ul li:hover {
+  display: block;
+  padding: 0;
+  border-bottom: 0;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  font-size: inherit;
+  cursor: default;
+}
+
+.wl-pop.MuiPaper-root ul li.MuiMenuItem-root {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.wl-pop-section {
+  padding: 10px 12px;
+}
+
+.wl-pop-section + .wl-pop-section {
+  border-top: 1px solid var(--wl-line);
+}
+
+.wl-pop-title {
+  margin: 0 0 8px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--wl-muted-2);
+}
+
+.wl-pop-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-top: 1px solid var(--wl-line);
+  background: var(--wl-panel-2);
+  border-radius: 0 0 10px 10px;
+}
+
+.wl-options {
+  max-height: 260px;
+  overflow-y: auto;
+  margin: 0 -6px;
+  padding: 0;
+  list-style: none;
+}
+
+.wl-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--wl-text-2);
+  font: inherit;
+  font-size: 13px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wl-option:hover,
+.wl-option:focus-visible {
+  outline: none;
+  background: var(--wl-row-hover);
+  color: var(--wl-text);
+}
+
+.wl-option[aria-checked='true'] {
+  color: var(--wl-text);
+  font-weight: 650;
+}
+
+.wl-option svg {
+  flex: 0 0 auto;
+  font-size: 18px;
+  color: var(--wl-muted-2);
+}
+
+.wl-option[aria-checked='true'] svg {
+  color: var(--wl-teal);
+}
+
+.wl-option small {
+  margin-left: auto;
+  color: var(--wl-muted-2);
+  font-size: 11px;
+}
+
+.wl-quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.wl-quick button {
+  height: 26px;
+  padding: 0 10px;
+  border-radius: 999px;
+  border: 1px solid var(--wl-line-strong);
+  background: transparent;
+  color: var(--wl-text-2);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s, color 0.12s;
+}
+
+.wl-quick button:hover {
+  border-color: var(--wl-teal);
+  color: var(--wl-teal-strong);
+}
+
+.wl-quick button[aria-pressed='true'] {
+  border-color: var(--wl-teal);
+  background: var(--wl-teal);
+  color: #ffffff;
+}
+
+.wl--dark .wl-quick button[aria-pressed='true'] {
+  color: #04211c;
+}
+
+.wl-date-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.wl-date-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--wl-muted);
+}
+
+.wl-date-grid input {
+  height: 34px;
+  padding: 0 8px;
+  border-radius: 7px;
+  border: 1px solid var(--wl-line-strong) !important;
+  background: var(--wl-input) !important;
+  color: var(--wl-text) !important;
+  font: inherit;
+  font-size: 13px;
+  box-shadow: none !important;
+}
+
+.wl-date-grid input:focus {
+  outline: none;
+  border-color: var(--wl-teal) !important;
+  box-shadow: 0 0 0 3px var(--wl-teal-ring) !important;
+}
+
+.wl-pop .MuiMenu-list {
+  padding: 6px;
+}
+
+/* `li.MuiMenuItem-root` under `.wl-pop.MuiPaper-root ul` — the same base as the
+   legacy reset above, one class higher, so these win over it. */
+.wl-pop.MuiPaper-root ul li.MuiMenuItem-root {
+  min-height: 36px;
+  gap: 10px;
+  margin: 0;
+  padding: 0 10px;
+  border-radius: 7px;
+  color: var(--wl-text-2);
+  font: inherit;
+  font-size: 13px;
+  background: transparent;
+}
+
+.wl-pop.MuiPaper-root ul li.MuiMenuItem-root:hover,
+.wl-pop.MuiPaper-root ul li.MuiMenuItem-root.Mui-focusVisible {
+  background: var(--wl-row-hover);
+  color: var(--wl-text);
+}
+
+.wl-pop .MuiMenuItem-root svg {
+  font-size: 18px;
+  color: var(--wl-muted);
+}
+
+.wl-pop .MuiMenuItem-root:hover svg {
+  color: var(--wl-teal-strong);
+}
+
+.wl-pop.MuiPaper-root ul li.MuiMenuItem-root.wl-menu-ai {
+  margin-bottom: 4px;
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.14), rgba(59, 130, 246, 0.14));
+  color: var(--wl-text);
+  font-weight: 650;
+}
+
+.wl-pop.MuiPaper-root ul li.MuiMenuItem-root.wl-menu-ai:hover,
+.wl-pop.MuiPaper-root ul li.MuiMenuItem-root.wl-menu-ai.Mui-focusVisible {
+  background: linear-gradient(135deg, rgba(139, 92, 246, 0.26), rgba(59, 130, 246, 0.26));
+}
+
+.wl-pop .wl-menu-ai svg,
+.wl-pop .wl-menu-ai:hover svg {
+  color: #8b5cf6;
+}
+
+.wl-pop .MuiDivider-root {
+  margin: 4px 6px;
+  border-color: var(--wl-line);
+}
+
+/* ---------- footer, states ---------- */
+
+.wl-footer {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 18px;
+  border-top: 1px solid var(--wl-line);
+  background: var(--wl-panel-2);
+  border-radius: 0 0 var(--wl-radius) var(--wl-radius);
+  color: var(--wl-muted);
+  font-size: 12.5px;
+}
+
+.wl-per-page {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.wl-per-page select {
+  height: 30px;
+  padding: 0 26px 0 10px;
+  border-radius: 7px;
+  border: 1px solid var(--wl-line-strong);
+  background-color: var(--wl-input);
+  color: var(--wl-text);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.wl-pager {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+}
+
+.wl-page {
+  display: inline-flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 12px;
+  border-radius: 7px;
+  background: var(--wl-teal-dim);
+  color: var(--wl-teal-strong);
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.wl-pager .wl-btn {
+  height: 30px;
+  padding: 0 9px;
+}
+
+.wl-notice {
+  padding: 8px 18px;
+  border-top: 1px solid var(--wl-line);
+  background: var(--wl-teal-dim);
+  color: var(--wl-text-2);
+  font-size: 12.5px;
+}
+
+.wl-progress {
+  position: absolute;
+  top: 88px;
+  left: 0;
+  right: 0;
+  z-index: 3;
+  height: 2px;
+  overflow: hidden;
+  background: transparent;
+}
+
+.wl-progress::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  width: 30%;
+  background: var(--wl-teal);
+  animation: wl-progress 1.1s ease-in-out infinite;
+}
+
+@keyframes wl-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(340%);
+  }
+}
+
+.wl-skeleton {
+  display: block;
+  height: 10px;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--wl-line) 0%, var(--wl-line-strong) 50%, var(--wl-line) 100%);
+  background-size: 200% 100%;
+  animation: wl-shimmer 1.3s ease-in-out infinite;
+}
+
+@keyframes wl-shimmer {
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.wl-empty {
+  padding: 72px 24px;
+  text-align: center;
+}
+
+.wl-empty-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  margin-bottom: 14px;
+  border-radius: 14px;
+  background: var(--wl-teal-dim);
+  color: var(--wl-teal-strong);
+}
+
+.wl-empty-icon svg {
+  font-size: 26px;
+}
+
+.wl-empty h2 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--wl-text);
+}
+
+.wl-empty p {
+  margin: 0 auto 16px;
+  max-width: 360px;
+  color: var(--wl-muted);
+  line-height: 1.5;
+}
+
+.wl-empty-actions {
+  display: inline-flex;
+  gap: 8px;
+}
+
+.wl-banner {
+  padding: 0 18px 12px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wl *,
+  .wl-pop * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

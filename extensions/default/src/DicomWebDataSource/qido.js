@@ -59,6 +59,11 @@ function processResults(qidoStudies) {
       isEmergency: qidoStudy?.isEmergency || '',
       isReportGenerated: qidoStudy?.isReportGenerated || '',
       isReferralSent: qidoStudy?.isReferralSent || '',
+      // Automated AI pipeline state, written by the PACS during upload.
+      isMedGemmaAnalysisDone: qidoStudy?.isMedGemmaAnalysisDone || '',
+      medGemmaAnalysisProgress: qidoStudy?.medGemmaAnalysisProgress || '',
+      isMedGemmaReportGenerated: qidoStudy?.isMedGemmaReportGenerated || '',
+      reportGenerationProgress: qidoStudy?.reportGenerationProgress || '',
       modalities: getString(getModalities(qidoStudy['00080060'], qidoStudy['00080061'])) || '',
     });
   });
