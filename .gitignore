@@ -51,3 +51,6 @@ Analyze API response.json
 required-report-format.pdf
 response-2.json
 docs/ai-analysis-plan.md
+platform/app/src/routes/WorkList/AiAnalysisDialog/reportGenerationResult.json
+.gitignore
+allstudies-api-response.json

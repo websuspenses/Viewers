@@ -34,6 +34,7 @@ export {
   ActionButtons,
   AboutModal,
   StatusBadge,
+  ProgressBanner,
   InlineAlert,
   AccessDenied,
   AdvancedToolbox,

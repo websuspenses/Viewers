@@ -96,6 +96,7 @@
     "react-resize-detector": "^9.1.0",
     "react-router": "^6.8.1",
     "react-router-dom": "^6.8.1",
+    "regenerator-runtime": "^0.14.1",
     "suneditor-react": "^2.16.1"
   },
   "devDependencies": {
