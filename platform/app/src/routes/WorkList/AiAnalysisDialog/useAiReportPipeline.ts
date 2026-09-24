@@ -165,7 +165,16 @@ export default function useAiReportPipeline({
       const key = `${studyInstanceUid}:${instanceId}`;
       if (!frameCache.current.has(key)) {
         const request = fetchFrameImages({ baseUrl, studyInstanceUid, instanceId, authHeaders });
-        request.catch(() => frameCache.current.delete(key));
+        // A frame without its AI layers is not cached: the PACS may not serve
+        // them yet (route not deployed, report still writing its PNGs), and a
+        // cached miss would hide them until the page is reloaded.
+        request
+          .then(images => {
+            if (!images.heatmap && !images.annotated) {
+              frameCache.current.delete(key);
+            }
+          })
+          .catch(() => frameCache.current.delete(key));
         frameCache.current.set(key, request);
       }
       return frameCache.current.get(key) as Promise<FrameImages>;
