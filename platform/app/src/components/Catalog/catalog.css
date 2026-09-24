@@ -1,0 +1,399 @@
+/*
+ * Catalogue pages (Template Library, Study Review Specialists). Built on the
+ * worklist tokens (worklist.css) — `.wl`, `.wl-card`, `.wl-toolbar`, `.wl-btn`,
+ * `.wl-field`, `.wl-footer` — so both themes match the worklist exactly.
+ */
+
+.cat .wl-card {
+  min-width: 0;
+  max-width: 1280px;
+  width: 100%;
+  margin: 0 auto;
+}
+
+.cat .wl-toolbar {
+  border-bottom: 1px solid var(--wl-line);
+}
+
+.cat-search {
+  width: 260px;
+  max-width: 100%;
+  height: 34px;
+}
+
+/* ---------- list / grid switch ---------- */
+
+.cat-seg {
+  display: inline-flex;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 9px;
+  border: 1px solid var(--wl-line);
+  background: var(--wl-panel-2);
+}
+
+.cat-seg button {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 28px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--wl-muted);
+  cursor: pointer;
+  transition: background-color 0.12s, color 0.12s;
+}
+
+.cat-seg button svg {
+  font-size: 18px;
+}
+
+.cat-seg button:hover {
+  color: var(--wl-text);
+}
+
+.cat-seg button[aria-pressed='true'] {
+  background: var(--wl-panel);
+  color: var(--wl-teal-strong);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12), 0 0 0 1px var(--wl-line);
+}
+
+.cat-seg button:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--wl-teal-ring);
+}
+
+/* ---------- body ---------- */
+
+.cat-body {
+  padding: 18px;
+  min-height: 240px;
+}
+
+.cat-body--list {
+  padding: 0;
+}
+
+.cat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+/* legacy styles.css: bare `li { display:flex; padding:5px }` with a lilac hover */
+.cat-grid > li,
+.cat-grid > li:hover {
+  display: block;
+  padding: 0;
+  background: transparent;
+  cursor: default;
+}
+
+/* ---------- card ---------- */
+
+.cat-card {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 16px;
+  border: 1px solid var(--wl-line);
+  border-radius: 12px;
+  background: var(--wl-panel);
+  transition: border-color 0.15s, box-shadow 0.15s, transform 0.15s;
+}
+
+.cat-card:hover {
+  border-color: var(--wl-teal-ring);
+  box-shadow: 0 10px 24px -14px rgba(15, 33, 44, 0.35);
+  transform: translateY(-1px);
+}
+
+.wl--dark .cat-card:hover {
+  box-shadow: 0 12px 28px -14px rgba(0, 0, 0, 0.7);
+}
+
+.cat-card--skeleton:hover {
+  border-color: var(--wl-line);
+  box-shadow: none;
+  transform: none;
+}
+
+.cat-card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.cat-card-title {
+  margin: 0;
+  color: var(--wl-text);
+  font-size: 14.5px;
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.cat-card-sub {
+  margin-top: 3px;
+  color: var(--wl-muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.cat-card-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 14px 0 0;
+  padding: 12px 0 0;
+  border-top: 1px dashed var(--wl-line);
+  list-style: none;
+}
+
+.cat-card-meta li,
+.cat-card-meta li:hover {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--wl-text-2);
+  font-size: 12.5px;
+  cursor: default;
+}
+
+.cat-card-meta svg {
+  flex: 0 0 auto;
+  font-size: 16px;
+  color: var(--wl-muted);
+}
+
+.cat-card-meta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 14px;
+}
+
+.cat-card-foot .cat-chip {
+  margin-right: auto;
+}
+
+/* ---------- avatars & chips (pastel tones) ---------- */
+
+.cat-avatar {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 11px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.cat-avatar--sm {
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  font-size: 11.5px;
+}
+
+.cat-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+}
+
+.cat-tone-sky { background: #e6f3fd; color: #1e5f8f; box-shadow: inset 0 0 0 1px #bfdcf3; }
+.cat-tone-mint { background: #e3f6ee; color: #1d6b50; box-shadow: inset 0 0 0 1px #b9e5d2; }
+.cat-tone-lavender { background: #efeafd; color: #5a3fa0; box-shadow: inset 0 0 0 1px #d8ccf6; }
+.cat-tone-peach { background: #fff0e3; color: #9a5316; box-shadow: inset 0 0 0 1px #f7d2b0; }
+.cat-tone-rose { background: #fde8ec; color: #9f2d44; box-shadow: inset 0 0 0 1px #f5c3cd; }
+.cat-tone-slate { background: #eef2f6; color: #475569; box-shadow: inset 0 0 0 1px #d5dde6; }
+
+.wl--dark .cat-tone-sky { background: #11293b; color: #9fd0f2; box-shadow: inset 0 0 0 1px #1f4a66; }
+.wl--dark .cat-tone-mint { background: #0f2c24; color: #93dfc0; box-shadow: inset 0 0 0 1px #1d5242; }
+.wl--dark .cat-tone-lavender { background: #221a3d; color: #c7b6f5; box-shadow: inset 0 0 0 1px #3d3170; }
+.wl--dark .cat-tone-peach { background: #33230f; color: #f5c393; box-shadow: inset 0 0 0 1px #5c4020; }
+.wl--dark .cat-tone-rose { background: #351520; color: #f3a9b8; box-shadow: inset 0 0 0 1px #5e2535; }
+.wl--dark .cat-tone-slate { background: #1a2530; color: #c3d0da; box-shadow: inset 0 0 0 1px #2e3d4a; }
+
+/* ---------- actions ---------- */
+
+.cat-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--wl-line-strong);
+  border-radius: 8px;
+  background: transparent;
+  color: var(--wl-text-2);
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s, color 0.12s;
+}
+
+.cat-action svg {
+  font-size: 16px;
+}
+
+.cat-action:hover {
+  border-color: var(--wl-teal);
+  background: var(--wl-teal-dim);
+  color: var(--wl-teal-strong);
+}
+
+.cat-action--danger:hover {
+  border-color: var(--wl-danger);
+  background: var(--wl-danger-dim);
+  color: var(--wl-danger);
+}
+
+.cat-action--icon {
+  width: 30px;
+  padding: 0;
+  justify-content: center;
+}
+
+.cat-action:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px var(--wl-teal-ring);
+}
+
+.cat-actions {
+  display: inline-flex;
+  justify-content: flex-end;
+  gap: 6px;
+}
+
+/* ---------- list view ---------- */
+
+.cat-table-wrap {
+  overflow-x: auto;
+}
+
+.cat-table {
+  width: 100%;
+  min-width: 720px;
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+.cat-table th {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--wl-line-strong);
+  background: var(--wl-head);
+  color: var(--wl-muted);
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  text-align: left;
+  text-transform: uppercase;
+}
+
+.cat-table td {
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--wl-line);
+  color: var(--wl-text-2);
+  font-size: 13px;
+  vertical-align: middle;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat-table tbody tr {
+  transition: background-color 0.12s;
+}
+
+.cat-table tbody tr:hover {
+  background: var(--wl-row-hover);
+}
+
+.cat-table tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.cat-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.cat-name strong {
+  display: block;
+  color: var(--wl-text);
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cat-name small {
+  display: block;
+  margin-top: 2px;
+  color: var(--wl-muted);
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cat-list-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 24px 18px;
+}
+
+/* ---------- small screens ---------- */
+
+@media (max-width: 640px) {
+  .cat.wl {
+    padding: 12px;
+  }
+
+  .cat .wl-toolbar {
+    gap: 10px;
+  }
+
+  .cat-search {
+    order: 5;
+    flex: 1 0 100%;
+    width: auto;
+  }
+
+  .cat .wl-footer {
+    flex-wrap: wrap;
+  }
+
+  .cat .wl-pager {
+    width: 100%;
+    justify-content: space-between;
+    margin-left: 0;
+  }
+}

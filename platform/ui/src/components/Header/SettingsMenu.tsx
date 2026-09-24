@@ -100,12 +100,9 @@ const SettingsMenu = ({ id, menuOptions, isActive }) => {
               transform: 'translateX(-100%)',
               zIndex: 9999,
             }}
-            className={classnames(
-              'w-64 overflow-hidden rounded-xl border py-2 shadow-lg',
-              isActive
-                ? 'border-border-subtleDark bg-surface-overlayDark'
-                : 'border-border-subtle bg-surface-overlay'
-            )}
+            // Styled in NavBar.css (`.ciai-menu`); the panel renders in a portal,
+            // outside the header, so it carries its own theme class.
+            className={classnames('ciai-menu', isActive && 'ciai-menu--dark')}
           >
             {menuOptions.map((option, index) => {
               const destructive = isDestructive(option.title);
@@ -114,14 +111,7 @@ const SettingsMenu = ({ id, menuOptions, isActive }) => {
 
               return (
                 <React.Fragment key={option.id ?? index}>
-                  {showDivider && (
-                    <div
-                      className={classnames(
-                        'my-1.5 border-t',
-                        isActive ? 'border-border-subtleDark' : 'border-border-subtle'
-                      )}
-                    />
-                  )}
+                  {showDivider && <div className="ciai-menu-divider" />}
                   <button
                     type="button"
                     role="menuitem"
@@ -131,22 +121,16 @@ const SettingsMenu = ({ id, menuOptions, isActive }) => {
                       option.onClick();
                     }}
                     className={classnames(
-                      'flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors duration-100',
-                      destructive
-                        ? isActive
-                          ? 'text-statusText-dangerDark hover:bg-statusBg-dangerDark'
-                          : 'text-statusText-danger hover:bg-statusBg-danger'
-                        : isActive
-                          ? 'text-content-primaryDark hover:bg-white/5'
-                          : 'text-content-primary hover:bg-black/5'
+                      'ciai-menu-item',
+                      destructive && 'ciai-menu-item--danger'
                     )}
                   >
-                    {option.icon && (
-                      <Icon
-                        name={option.icon}
-                        className="h-4 w-4 shrink-0 opacity-70"
-                      />
-                    )}
+                    <span
+                      className="ciai-menu-icon"
+                      aria-hidden="true"
+                    >
+                      {option.icon && <Icon name={option.icon} />}
+                    </span>
                     <span className="truncate">{option.title}</span>
                   </button>
                 </React.Fragment>

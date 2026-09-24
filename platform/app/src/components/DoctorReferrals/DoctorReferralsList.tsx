@@ -1,12 +1,20 @@
 import React, { useState, useEffect, ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 import '../ReportTemplates/report.css';
-import Stack from '@mui/material/Stack';
-import Button from '@mui/material/Button';
-import CircularProgress from '@mui/material/CircularProgress';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
+import classnames from 'classnames';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import PersonAddAlt1OutlinedIcon from '@mui/icons-material/PersonAddAlt1Outlined';
+import ApartmentOutlinedIcon from '@mui/icons-material/ApartmentOutlined';
+import PhoneOutlinedIcon from '@mui/icons-material/PhoneOutlined';
+import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import { Link } from 'react-router-dom';
+import CatalogView, {
+  CatalogActionButton,
+  CatalogAvatar,
+  CatalogColumn,
+  toneFor,
+} from '../Catalog/CatalogView';
 import { Header, AccessDenied, InlineAlert, AboutModal, useModal } from '@ohif/ui';
 import ConfirmationDialog from '../AdminPanel/Users/ConfirmationDialog';
 import CreateDoctorReferral from './CreateDoctorReferral';
@@ -93,7 +101,7 @@ function DoctorReferralsList() {
     document.body.classList.add('reportsList_ContainerCls');
     return () => {
       document.body.classList.remove('bg-black');
-      document.body.classList.add('reportsList_ContainerCls');
+      document.body.classList.remove('reportsList_ContainerCls');
     };
   }, []);
 
@@ -223,6 +231,106 @@ function DoctorReferralsList() {
     setReferralPopup(true);
   };
 
+  const initialsOf = (name = '') =>
+    name
+      .replace(/^(dr\.?|doctor)\s+/i, '')
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map(part => part[0]?.toUpperCase())
+      .join('') || '?';
+
+  const doctorActions = (doctor: Doctor) => (
+    <>
+      {isShowFeature('create_referral_doctor') && (
+        <CatalogActionButton
+          icon={<EditOutlinedIcon />}
+          label="Edit"
+          onClick={() => handleEditItem(doctor.doc_id)}
+        />
+      )}
+      {isShowFeature('delete_referral_doctor') && (
+        <CatalogActionButton
+          icon={<DeleteOutlineIcon />}
+          label="Delete specialist"
+          danger
+          iconOnly
+          onClick={handleDeleteTemplate}
+        />
+      )}
+    </>
+  );
+
+  const renderDoctorCard = (doctor: Doctor) => (
+    <article className="cat-card">
+      <div className="cat-card-head">
+        <CatalogAvatar
+          label={initialsOf(doctor.doc_name)}
+          tone={toneFor(doctor.doc_name || '')}
+        />
+        <div style={{ minWidth: 0 }}>
+          <h3 className="cat-card-title">{doctor.doc_name}</h3>
+          <div className="cat-card-sub">{doctor.doc_specialization}</div>
+        </div>
+      </div>
+      <ul className="cat-card-meta">
+        {doctor.doc_clinic && (
+          <li title={doctor.doc_clinic}>
+            <ApartmentOutlinedIcon aria-hidden="true" />
+            <span>{doctor.doc_clinic}</span>
+          </li>
+        )}
+        {doctor.doc_phone_number && (
+          <li title={doctor.doc_phone_number}>
+            <PhoneOutlinedIcon aria-hidden="true" />
+            <span>{doctor.doc_phone_number}</span>
+          </li>
+        )}
+        {doctor.doc_email && (
+          <li title={doctor.doc_email}>
+            <MailOutlineIcon aria-hidden="true" />
+            <span>{doctor.doc_email}</span>
+          </li>
+        )}
+      </ul>
+      <div className="cat-card-foot">
+        <span style={{ marginRight: 'auto' }} />
+        {doctorActions(doctor)}
+      </div>
+    </article>
+  );
+
+  const doctorColumns: CatalogColumn<Doctor>[] = [
+    {
+      key: 'name',
+      label: 'Specialist',
+      width: '30%',
+      render: doctor => (
+        <div className="cat-name">
+          <CatalogAvatar
+            size="sm"
+            label={initialsOf(doctor.doc_name)}
+            tone={toneFor(doctor.doc_name || '')}
+          />
+          <div style={{ minWidth: 0 }}>
+            <strong title={doctor.doc_name}>{doctor.doc_name}</strong>
+            <small title={doctor.doc_specialization}>{doctor.doc_specialization}</small>
+          </div>
+        </div>
+      ),
+    },
+    { key: 'clinic', label: 'Clinic', width: '20%', render: doctor => doctor.doc_clinic || '—' },
+    { key: 'phone', label: 'Phone', width: '15%', render: doctor => doctor.doc_phone_number || '—' },
+    { key: 'email', label: 'Email', width: '20%', render: doctor => doctor.doc_email || '—' },
+    {
+      key: 'actions',
+      label: 'Actions',
+      width: '15%',
+      align: 'right',
+      render: doctor => <div className="cat-actions">{doctorActions(doctor)}</div>,
+    },
+  ];
+
   const versionNumber = process.env.VERSION_NUMBER;
   const commitHash = process.env.COMMIT_HASH;
 
@@ -273,125 +381,58 @@ function DoctorReferralsList() {
           isActive={isActive}
         />
       )}
-      <div className="reportcontainer">
-        <h1 className="doctors-list-title">Study Review Specialists</h1>
-        {isShowFeature('create_referral_doctor') && (
-          <div className="createBtnCls flex flex-wrap items-center justify-between gap-3">
-            <div className="response-container grow">
-              {updateError && (
-                <InlineAlert
-                  type={isSuccess === 'success' ? 'success' : 'error'}
-                  message={updateError}
-                  isActive={isActive}
-                />
-              )}
-            </div>
-            <div>
-              <Button
-                variant="contained"
-                color="success"
-                className="createUserCls"
+      {isShowFeature('view_referral_doctors_list') ? (
+        <CatalogView<Doctor>
+          title="Study Review Specialists"
+          noun={['specialist', 'specialists']}
+          items={doctorsList || []}
+          getKey={doctor => doctor.doc_id}
+          getSearchText={doctor =>
+            [doctor.doc_name, doctor.doc_specialization, doctor.doc_clinic, doctor.doc_email].join(' ')
+          }
+          searchPlaceholder="Search specialists"
+          renderCard={renderDoctorCard}
+          columns={doctorColumns}
+          isDark={isActive}
+          isLoading={isLoadingDoctors}
+          storageKey="catalogView:specialists"
+          primaryAction={
+            isShowFeature('create_referral_doctor') && (
+              <button
+                type="button"
+                className="wl-btn wl-btn--primary"
                 onClick={handleCreateReferral}
               >
-                Create Referral
-              </Button>
-            </div>
-          </div>
-        )}
-
-        {isShowFeature('view_referral_doctors_list') && (
-          <>
-            {isLoadingDoctors ? (
-              <div className="flex flex-col items-center justify-center gap-3 py-16">
-                <CircularProgress size={28} sx={{ color: '#0a7c6c' }} />
-                <p style={{ color: isActive ? '#8890a0' : '#6b7280', fontSize: 13 }}>
-                  Loading specialists…
-                </p>
-              </div>
-            ) : doctorsList.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-2 py-16 text-center">
-                <p style={{ fontWeight: 600, color: isActive ? '#f3f4f6' : '#111827' }}>
-                  No study review specialists yet
-                </p>
-                <p style={{ fontSize: 13, color: isActive ? '#8890a0' : '#6b7280' }}>
-                  Add a specialist to start referring studies for review.
-                </p>
-              </div>
-            ) : (
-              <ul className="templatesList grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {doctorsList.map(item => (
-                  <li
-                    key={item.doc_id}
-                    className={isActive ? 'templatesList_dark' : 'templates-item'}
-                  >
-                    <div className="modality-area">
-                      <strong className={isActive ? 'templateTitleCls' : 'templateTitleCls_dark'}>
-                        {item.doc_name}
-                      </strong>
-                      <p className="sub-modality">
-                        {item.doc_specialization}, {item.doc_clinic}
-                      </p>
-                      {(item.doc_phone_number || item.doc_email) && (
-                        <p
-                          className="sub-modality"
-                          style={{ fontSize: 12, opacity: 0.8 }}
-                        >
-                          {item.doc_phone_number}
-                          {item.doc_phone_number && item.doc_email ? ' · ' : ''}
-                          {item.doc_email}
-                        </p>
-                      )}
-                    </div>
-
-                    <div className="buttonAdjustCls mt-3 flex items-center">
-                      <Stack
-                        direction="row"
-                        spacing={1.5}
-                      >
-                        {isShowFeature('create_referral_doctor') && (
-                          <Button
-                            variant="outlined"
-                            color="success"
-                            size="small"
-                            startIcon={<EditIcon fontSize="small" />}
-                            onClick={() => handleEditItem(item.doc_id)}
-                          >
-                            Edit
-                          </Button>
-                        )}
-                        {isShowFeature('delete_referral_doctor') && (
-                          <Button
-                            variant="outlined"
-                            color="error"
-                            size="small"
-                            startIcon={<DeleteIcon fontSize="small" />}
-                            onClick={handleDeleteTemplate}
-                          >
-                            Delete
-                          </Button>
-                        )}
-                      </Stack>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </>
-        )}
-        {!isShowFeature('view_referral_doctors_list') && (
-          <>
-            <AccessDenied
-              isActive={isActive}
-              message="Sorry, you do not have the necessary permissions to view this page. If you believe this is a mistake, please contact the administrator."
-            />
-            <p style={{ textAlign: 'center' }}>
-              <Link to="/workList">
-                <span>Go Back to Home</span>
-              </Link>
-            </p>
-          </>
-        )}
-      </div>
+                <PersonAddAlt1OutlinedIcon aria-hidden="true" />
+                Add specialist
+              </button>
+            )
+          }
+          notice={
+            updateError ? (
+              <InlineAlert
+                type={isSuccess === 'success' ? 'success' : 'error'}
+                message={updateError}
+                isActive={isActive}
+              />
+            ) : null
+          }
+          emptyTitle="No study review specialists yet"
+          emptyText="Add a specialist to start referring studies for review."
+        />
+      ) : (
+        <main className={classnames('wl', 'cat', isActive && 'wl--dark')}>
+          <AccessDenied
+            isActive={isActive}
+            message="Sorry, you do not have the necessary permissions to view this page. If you believe this is a mistake, please contact the administrator."
+          />
+          <p style={{ textAlign: 'center' }}>
+            <Link to="/workList">
+              <span>Go Back to Home</span>
+            </Link>
+          </p>
+        </main>
+      )}
       {showEditConfirm && editItem && (
         <CreateDoctorReferral
           open={showEditConfirm}

@@ -68,3 +68,106 @@
     height: 36px;
   }
 }
+
+/* ------------------------------------------------------------------ settings menu */
+
+.ciai-menu {
+  --menu-bg: #ffffff;
+  --menu-line: #e1e8ec;
+  --menu-text: #163a5f;
+  --menu-muted: #647c8b;
+  --menu-hover: rgba(10, 143, 122, 0.09);
+  --menu-icon-bg: #eef4f7;
+  --menu-accent: #077061;
+  --menu-danger: #be123c;
+  --menu-danger-bg: #fde8ec;
+
+  width: 248px;
+  padding: 6px;
+  border: 1px solid var(--menu-line);
+  border-radius: 12px;
+  background: var(--menu-bg);
+  box-shadow: 0 16px 40px -12px rgba(15, 33, 44, 0.28), 0 2px 6px rgba(15, 33, 44, 0.06);
+  font-size: 13px;
+}
+
+.ciai-menu.ciai-menu--dark {
+  --menu-bg: #0d1b26;
+  --menu-line: rgba(255, 255, 255, 0.1);
+  --menu-text: #e4eef4;
+  --menu-muted: #8faec0;
+  --menu-hover: rgba(18, 165, 140, 0.14);
+  --menu-icon-bg: rgba(255, 255, 255, 0.06);
+  --menu-accent: #6ee7d0;
+  --menu-danger: #fda4af;
+  --menu-danger-bg: rgba(244, 63, 94, 0.14);
+  box-shadow: 0 18px 44px -10px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.04);
+}
+
+.ciai-menu .ciai-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--menu-text);
+  font: inherit;
+  font-weight: 550;
+  text-align: left;
+  cursor: pointer;
+  transition: background-color 0.12s, color 0.12s;
+}
+
+.ciai-menu .ciai-menu-item:hover,
+.ciai-menu .ciai-menu-item:focus-visible {
+  outline: none;
+  background: var(--menu-hover);
+}
+
+.ciai-menu .ciai-menu-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  background: var(--menu-icon-bg);
+  color: var(--menu-muted);
+  transition: background-color 0.12s, color 0.12s;
+}
+
+.ciai-menu .ciai-menu-icon svg {
+  width: 16px;
+  height: 16px;
+}
+
+.ciai-menu .ciai-menu-item:hover .ciai-menu-icon {
+  background: var(--menu-bg);
+  color: var(--menu-accent);
+}
+
+.ciai-menu .ciai-menu-item--danger {
+  color: var(--menu-danger);
+}
+
+.ciai-menu .ciai-menu-item--danger .ciai-menu-icon {
+  color: var(--menu-danger);
+}
+
+.ciai-menu .ciai-menu-item--danger:hover {
+  background: var(--menu-danger-bg);
+}
+
+.ciai-menu .ciai-menu-item--danger:hover .ciai-menu-icon {
+  color: var(--menu-danger);
+}
+
+.ciai-menu .ciai-menu-divider {
+  height: 1px;
+  margin: 6px 4px;
+  background: var(--menu-line);
+}

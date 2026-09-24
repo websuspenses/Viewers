@@ -65,6 +65,16 @@
 
 /* ------------------------------------------------------------------ layout */
 
+/* Same canvas behind the viewer, instead of the legacy olive body. */
+html body:has(.vw) {
+  background-color: #eef2f5 !important;
+}
+
+html body:has(.vw.vw--dark) {
+  background-color: #070f16 !important;
+}
+
+
 .vw-top {
   display: flex;
   flex: 0 0 auto;

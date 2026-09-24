@@ -77,6 +77,19 @@
 
 /* ---------- page ---------- */
 
+/* The body shows below the page whenever content outgrows the viewport, and
+   legacy styles.css paints it olive (`body.bg-black-on { #1c1c14 !important }`).
+   While the worklist is mounted the body takes the worklist canvas instead;
+   `html body:has()` outranks the legacy rule. */
+html body:has(.wl) {
+  background-color: #f3f6f8 !important;
+}
+
+html body:has(.wl.wl--dark) {
+  background-color: #070f16 !important;
+}
+
+
 .wl {
   flex: 1 1 auto;
   min-height: 0;
