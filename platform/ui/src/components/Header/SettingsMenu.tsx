@@ -3,6 +3,8 @@ import PropTypes from 'prop-types';
 import ReactDOM from 'react-dom';
 import classnames from 'classnames';
 import Icon from '../Icon';
+import { ReactComponent as Sun } from '../ToggleSwitch/Sun.svg';
+import { ReactComponent as Moon } from '../ToggleSwitch/Moon.svg';
 
 /**
  * Bespoke settings/account menu used by the shared Header. Deliberately not the
@@ -73,7 +75,7 @@ const SettingsMenu = ({ id, menuOptions, isActive }) => {
         onClick={() => setOpen(o => !o)}
         className={classnames(
           'flex h-9 items-center gap-1 rounded-full pl-2.5 pr-2 transition duration-150',
-          'hover:bg-white/10 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent',
+          'focus-visible:ring-accent hover:bg-white/10 focus:outline-none focus-visible:ring-2',
           isActive ? 'text-primary-active-dark' : 'text-primary-active'
         )}
       >
@@ -83,7 +85,10 @@ const SettingsMenu = ({ id, menuOptions, isActive }) => {
         />
         <Icon
           name="chevron-down"
-          className={classnames('h-3.5 w-3.5 transition-transform duration-150', open && 'rotate-180')}
+          className={classnames(
+            'h-3.5 w-3.5 transition-transform duration-150',
+            open && 'rotate-180'
+          )}
         />
       </button>
 
@@ -114,10 +119,14 @@ const SettingsMenu = ({ id, menuOptions, isActive }) => {
                   {showDivider && <div className="ciai-menu-divider" />}
                   <button
                     type="button"
-                    role="menuitem"
+                    role={option.toggle ? 'menuitemcheckbox' : 'menuitem'}
+                    aria-checked={option.toggle ? !!option.checked : undefined}
                     data-cy={option.id}
                     onClick={() => {
-                      close();
+                      // A switch stays open so the flip is visible.
+                      if (!option.toggle) {
+                        close();
+                      }
                       option.onClick();
                     }}
                     className={classnames(
@@ -131,7 +140,19 @@ const SettingsMenu = ({ id, menuOptions, isActive }) => {
                     >
                       {option.icon && <Icon name={option.icon} />}
                     </span>
-                    <span className="truncate">{option.title}</span>
+                    <span className="min-w-0 flex-1 truncate">{option.title}</span>
+                    {option.toggle && (
+                      <span
+                        className={classnames(
+                          'ciai-menu-switch dark_mode_label',
+                          option.checked && 'dark_mode_label--checked'
+                        )}
+                        aria-hidden="true"
+                      >
+                        <Sun />
+                        <Moon />
+                      </span>
+                    )}
                   </button>
                 </React.Fragment>
               );
@@ -151,6 +172,8 @@ SettingsMenu.propTypes = {
       title: PropTypes.string.isRequired,
       icon: PropTypes.string,
       onClick: PropTypes.func.isRequired,
+      toggle: PropTypes.bool,
+      checked: PropTypes.bool,
     })
   ).isRequired,
 };

@@ -32,7 +32,7 @@ const TRIGGERED_STORAGE_KEY = 'aiReportTriggeredStudies';
 /** Report generation calls an LLM; a full page of finished studies should not start at once. */
 const MAX_CONCURRENT_AUTO_REPORTS = 2;
 /** A queued report whose progress never appears is treated as not started (~2 min). */
-const MAX_EMPTY_QUEUED_POLLS = 30;
+const MAX_EMPTY_QUEUED_POLLS = 6;
 const MAX_CONSECUTIVE_POLL_FAILURES = 5;
 
 function readTriggered(): Set<string> {
@@ -64,7 +64,7 @@ export default function useAiReportPipeline({
   baseUrl,
   authHeaders,
   autoGenerate = true,
-  pollIntervalMs = 4000,
+  pollIntervalMs = 25000,
 }: Options) {
   const [live, setLive] = useState<Record<string, AiLiveState>>({});
   const [triggered, setTriggered] = useState<Set<string>>(readTriggered);
@@ -130,9 +130,8 @@ export default function useAiReportPipeline({
       } catch (error) {
         patchLive(uid, {
           triggered: false,
-          error: `Could not start report generation (${
-            error instanceof Error ? error.message : 'unknown error'
-          }).`,
+          error: `Could not start report generation (${error instanceof Error ? error.message : 'unknown error'
+            }).`,
         });
       } finally {
         inFlight.current.delete(`trigger:${uid}`);
@@ -257,9 +256,8 @@ export default function useAiReportPipeline({
           markTriggered(uid, false);
           patchLive(uid, {
             triggered: false,
-            error: `Lost track of report progress (${
-              error instanceof Error ? error.message : 'network error'
-            }).`,
+            error: `Lost track of report progress (${error instanceof Error ? error.message : 'network error'
+              }).`,
           });
         }
       } finally {

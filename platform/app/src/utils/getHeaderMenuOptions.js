@@ -15,7 +15,7 @@
  * @param {() => void} [params.onProfileClick] - opens the Profile/subscription
  *   modal; omitted entirely if the caller has no way to open it (e.g. no cached
  *   profile data yet)
- * @returns {Array<{ title: string, icon: string, onClick: () => void }>}
+ * @returns {Array<{ title: string, icon: string, onClick: () => void, toggle?: boolean, checked?: boolean }>}
  */
 export default function getHeaderMenuOptions({
   t,
@@ -56,6 +56,9 @@ export default function getHeaderMenuOptions({
     title: t('Header:Dark/Light Mode'),
     icon: isActive ? 'darkModeIcon' : 'lightModeIcon',
     onClick: handleChangeSwitch,
+    // Rendered as the sun/moon switch; the menu stays open when it flips.
+    toggle: true,
+    checked: !!isActive,
   });
 
   if (appConfig?.oidc) {

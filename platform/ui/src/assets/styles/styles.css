@@ -461,11 +461,13 @@ svg.text-primary-active {
   visibility: hidden;
 }
 
-.dark_mode_input:checked + .dark_mode_label {
+.dark_mode_input:checked + .dark_mode_label,
+.dark_mode_label.dark_mode_label--checked {
   background: #dcdee0;
 }
 
-.dark_mode_input:checked + .dark_mode_label:after {
+.dark_mode_input:checked + .dark_mode_label:after,
+.dark_mode_label.dark_mode_label--checked:after {
   left: 62px;
   transform: translateX(-100%);
   background: linear-gradient(180deg, #777, #3a3a3a);
@@ -494,11 +496,13 @@ svg.text-primary-active {
   transition: 0.3s;
 }
 
-.dark_mode_input:checked + .dark_mode_label svg.sun {
+.dark_mode_input:checked + .dark_mode_label svg.sun,
+.dark_mode_label.dark_mode_label--checked svg.sun {
   fill: #7e7e7e;
 }
 
-.dark_mode_input:checked + .dark_mode_label svg.moon {
+.dark_mode_input:checked + .dark_mode_label svg.moon,
+.dark_mode_label.dark_mode_label--checked svg.moon {
   fill: #fff;
 }
 
@@ -1463,7 +1467,7 @@ svg.mr-2.inline-flex.w-4.instances-svg.text-secondary-light g {
 }
 
 .secondary-logo img {
-  width: 150px;
+  width: 135px;
   height: auto;
 }
 

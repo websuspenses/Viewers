@@ -82,7 +82,7 @@
   --menu-danger: #be123c;
   --menu-danger-bg: #fde8ec;
 
-  width: 248px;
+  width: 264px;
   padding: 6px;
   border: 1px solid var(--menu-line);
   border-radius: 12px;
@@ -164,6 +164,10 @@
 
 .ciai-menu .ciai-menu-item--danger:hover .ciai-menu-icon {
   color: var(--menu-danger);
+}
+
+.ciai-menu .ciai-menu-switch {
+  flex: 0 0 auto;
 }
 
 .ciai-menu .ciai-menu-divider {

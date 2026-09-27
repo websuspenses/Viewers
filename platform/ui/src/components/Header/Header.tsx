@@ -136,11 +136,14 @@ function Header({
             screen === 'ReportTemplateList' ||
             screen === 'GenerateReport' ? (
               <div className="flex items-center gap-3">
-                <ToggleSwitch
-                  handleChange={handleChange}
-                  IsActive={isActive}
-                  screen={screen}
-                />
+                {/* Pages with a settings menu switch theme from inside it. */}
+                {!menuOptions?.length && (
+                  <ToggleSwitch
+                    handleChange={handleChange}
+                    IsActive={isActive}
+                    screen={screen}
+                  />
+                )}
                 <div className="secondary-logo">
                   <img src="/bhashyam-infotech-logo.png" />
                 </div>
@@ -169,6 +172,8 @@ Header.propTypes = {
       title: PropTypes.string.isRequired,
       icon: PropTypes.string,
       onClick: PropTypes.func.isRequired,
+      toggle: PropTypes.bool,
+      checked: PropTypes.bool,
     })
   ),
   children: PropTypes.oneOfType([PropTypes.node, PropTypes.func]),
