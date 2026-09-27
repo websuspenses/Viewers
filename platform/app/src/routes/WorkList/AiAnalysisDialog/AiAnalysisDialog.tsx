@@ -41,6 +41,7 @@ import {
   EvidenceFinding,
   EvidenceTier,
   FetchedFrameImages,
+  FrameImageRequest,
   GroupedFinding,
   TIER_LABELS,
   buildAllFindingRecords,
@@ -96,7 +97,10 @@ type Props = {
   onGenerateReport: () => void;
   loadResult: (options?: { force?: boolean }) => Promise<AiCompletePayload>;
   /** Original, heatmap and AI-marking images for a heatmap `frame_key`, as data URIs. */
-  loadFrameImages: (instanceId: string) => Promise<FetchedFrameImages>;
+  loadFrameImages: (
+    instanceId: string,
+    paths: { heatmapPath?: string; annotatedPath?: string }
+  ) => Promise<FetchedFrameImages>;
 };
 
 type FrameLoadState = 'loading' | 'failed';
@@ -992,13 +996,15 @@ export default function AiAnalysisDialog({
 
     let cancelled = false;
     const queue = [...pending];
-    setFrameLoadState(Object.fromEntries(pending.map(key => [key, 'loading' as const])));
+    setFrameLoadState(
+      Object.fromEntries(pending.map(frame => [frame.frameKey, 'loading' as const]))
+    );
 
     const worker = async () => {
       while (!cancelled && queue.length) {
-        const key = queue.shift() as string;
+        const { frameKey: key, heatmapPath, annotatedPath } = queue.shift() as FrameImageRequest;
         try {
-          const images = await loadFrameImages(key);
+          const images = await loadFrameImages(key, { heatmapPath, annotatedPath });
           if (!cancelled) {
             setFrameImages(current => ({ ...current, [key]: images }));
             setFrameLoadState(({ [key]: _done, ...rest }) => rest);

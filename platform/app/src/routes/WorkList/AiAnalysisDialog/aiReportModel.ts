@@ -606,12 +606,28 @@ export function normalizeAiPayload(payload: AiCompletePayload | null): AiComplet
   return derived.length ? { ...payload, findings_summary: derived } : payload;
 }
 
+/** A frame to fetch images for, with the saved paths of its AI layers. */
+export type FrameImageRequest = {
+  frameKey: string;
+  heatmapPath?: string;
+  annotatedPath?: string;
+};
+
 /** Heatmap frames that carry a frame key but no embedded original image. */
-export function getFramesMissingImages(payload: AiCompletePayload | null): string[] {
-  const keys = collectHeatmaps(payload, { requireImage: false })
+export function getFramesMissingImages(payload: AiCompletePayload | null): FrameImageRequest[] {
+  const frames = new Map<string, FrameImageRequest>();
+  collectHeatmaps(payload, { requireImage: false })
     .filter(heatmap => heatmap.frame_key && !heatmap.original_image_b64)
-    .map(heatmap => heatmap.frame_key as string);
-  return Array.from(new Set(keys));
+    .forEach(heatmap => {
+      const frameKey = heatmap.frame_key as string;
+      const known = frames.get(frameKey);
+      frames.set(frameKey, {
+        frameKey,
+        heatmapPath: known?.heatmapPath || heatmap.output_path || '',
+        annotatedPath: known?.annotatedPath || heatmap.gemini_annotated_output_path || '',
+      });
+    });
+  return Array.from(frames.values());
 }
 
 export type FetchedFrameImages = { original?: string; heatmap?: string; annotated?: string };

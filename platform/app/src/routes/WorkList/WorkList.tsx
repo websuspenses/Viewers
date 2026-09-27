@@ -1081,8 +1081,8 @@ function WorkList({
           loadResult={options =>
             aiPipeline.loadReportResult(aiAnalysisStudy.studyInstanceUid, options)
           }
-          loadFrameImages={instanceId =>
-            aiPipeline.loadFrameImages(aiAnalysisStudy.studyInstanceUid, instanceId)
+          loadFrameImages={(instanceId, paths) =>
+            aiPipeline.loadFrameImages(aiAnalysisStudy.studyInstanceUid, instanceId, paths)
           }
         />
       )}

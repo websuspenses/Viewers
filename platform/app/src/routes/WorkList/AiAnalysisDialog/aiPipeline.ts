@@ -359,6 +359,43 @@ function optional(request: Promise<string>) {
   return request.catch(() => '');
 }
 
+/** Where the analysis service writes its PNGs, and the route the viewer's domain serves them on. */
+const AI_ANALYSIS_DIR = '/var/lib/orthanc/ai-analysis/';
+const AI_ANALYSIS_FILES_ROUTE = '/ai-analysis-files/';
+
+/**
+ * Maps a saved analysis path to its URL on the viewer's domain:
+ * `/var/lib/orthanc/ai-analysis/<study>/series_3/<frame>_heatmap.png` →
+ * `/ai-analysis-files/<study>/series_3/<frame>_heatmap.png`. Anything outside
+ * that folder maps to `''`.
+ */
+export function toAiAnalysisFileUrl(path?: string) {
+  if (!path || !path.startsWith(AI_ANALYSIS_DIR)) {
+    return '';
+  }
+  const segments = path.slice(AI_ANALYSIS_DIR.length).split('/');
+  if (!segments.every(segment => segment && segment !== '.' && segment !== '..')) {
+    return '';
+  }
+  return AI_ANALYSIS_FILES_ROUTE + segments.map(encodeURIComponent).join('/');
+}
+
+/** Tries each URL in turn and returns the first image that loads. */
+async function fetchFirstImage(urls: string[], authHeaders?: string, signal?: AbortSignal) {
+  let lastError: unknown = new Error('No image URL');
+  for (const url of urls.filter(Boolean)) {
+    try {
+      return await fetchImageDataUrl(url, authHeaders, signal);
+    } catch (error) {
+      if (signal?.aborted) {
+        throw error;
+      }
+      lastError = error;
+    }
+  }
+  throw lastError;
+}
+
 /**
  * The stored report leaves every image out of `reportGenerationResult`; the
  * PACS keeps them on disk and serves them per frame from
@@ -368,6 +405,10 @@ function optional(request: Promise<string>) {
  * The original falls back to Orthanc's own `/instances/{id}/preview` (one level
  * above the DICOMweb root) for PACS builds that predate the ai-image route.
  *
+ * The heatmap and AI-marked images are read first from their saved paths
+ * (`output_path`, `gemini_annotated_output_path`) under `/ai-analysis-files/`,
+ * falling back to the ai-image route where that is not served.
+ *
  * Data URIs rather than object URLs: the printed report, the DOC export and the
  * sandboxed beta viewer all embed images as HTML strings.
  */
@@ -375,12 +416,16 @@ export async function fetchFrameImages({
   baseUrl,
   studyInstanceUid,
   instanceId,
+  heatmapPath,
+  annotatedPath,
   authHeaders,
   signal,
 }: {
   baseUrl: string;
   studyInstanceUid: string;
   instanceId: string;
+  heatmapPath?: string;
+  annotatedPath?: string;
   authHeaders?: string;
   signal?: AbortSignal;
 }): Promise<FrameImages> {
@@ -393,8 +438,20 @@ export async function fetchFrameImages({
     fetchImageDataUrl(imageUrl('original'), authHeaders, signal).catch(() =>
       fetchImageDataUrl(previewUrl, authHeaders, signal)
     ),
-    optional(fetchImageDataUrl(imageUrl('heatmap'), authHeaders, signal)),
-    optional(fetchImageDataUrl(imageUrl('annotated'), authHeaders, signal)),
+    optional(
+      fetchFirstImage(
+        [toAiAnalysisFileUrl(heatmapPath), imageUrl('heatmap')],
+        authHeaders,
+        signal
+      )
+    ),
+    optional(
+      fetchFirstImage(
+        [toAiAnalysisFileUrl(annotatedPath), imageUrl('annotated')],
+        authHeaders,
+        signal
+      )
+    ),
   ]);
 
   return { original, heatmap, annotated };

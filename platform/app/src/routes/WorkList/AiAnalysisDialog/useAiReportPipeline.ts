@@ -157,13 +157,23 @@ export default function useAiReportPipeline({
   );
 
   const loadFrameImages = useCallback(
-    (studyInstanceUid: string, instanceId: string) => {
+    (
+      studyInstanceUid: string,
+      instanceId: string,
+      paths: { heatmapPath?: string; annotatedPath?: string } = {}
+    ) => {
       if (!baseUrl) {
         return Promise.reject(new Error('The PACS URL is not configured.'));
       }
       const key = `${studyInstanceUid}:${instanceId}`;
       if (!frameCache.current.has(key)) {
-        const request = fetchFrameImages({ baseUrl, studyInstanceUid, instanceId, authHeaders });
+        const request = fetchFrameImages({
+          baseUrl,
+          studyInstanceUid,
+          instanceId,
+          ...paths,
+          authHeaders,
+        });
         // A frame without its AI layers is not cached: the PACS may not serve
         // them yet (route not deployed, report still writing its PNGs), and a
         // cached miss would hide them until the page is reloaded.
