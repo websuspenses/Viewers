@@ -1,5 +1,5 @@
 /* eslint-disable react/jsx-props-no-spreading */
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Enums, ExtensionManager, MODULE_TYPES, log } from '@ohif/core';
 //
@@ -205,6 +205,38 @@ function DataSourceWrapper(props) {
   }, [data, location, params, isLoading, setIsLoading, dataSource, isDataSourceInitialized]);
   // queryFilterValues
 
+  // Read by the quiet refresh, which runs from a timer rather than a render.
+  const latest = useRef({ data, isLoading, location });
+  latest.current = { data, isLoading, location };
+
+  /**
+   * Re-runs the current study query without the loading state, so rows update
+   * in place. It yields to a normal load: skipped while one runs, and its answer
+   * is dropped if the query changed meanwhile. The search reports a failed
+   * request as no studies, so an empty answer never replaces a non-empty list.
+   */
+  const refreshQuietly = useCallback(async () => {
+    const start = latest.current;
+    if (!isDataSourceInitialized || start.isLoading || typeof start.data.location === 'string') {
+      return;
+    }
+
+    const queryFilterValues = _getQueryFilterValues(start.location.search, STUDIES_LIMIT);
+    const studies = (await dataSource.query.studies.search(queryFilterValues)) || [];
+
+    const current = latest.current;
+    if (
+      current.isLoading ||
+      current.data !== start.data ||
+      current.location.search !== start.location.search ||
+      (!studies.length && current.data.studies.length)
+    ) {
+      return;
+    }
+    // Same location, so the effect above does not query again.
+    setData(previous => ({ ...previous, studies, total: studies.length }));
+  }, [dataSource, isDataSourceInitialized]);
+
   // TODO: Better way to pass DataSource?
   return (
     <LayoutTemplate
@@ -216,6 +248,7 @@ function DataSourceWrapper(props) {
       isLoadingData={isLoading}
       // To refresh the data, simply reset it to DEFAULT_DATA which invalidates it and triggers a new query to fetch the data.
       onRefresh={() => setData(DEFAULT_DATA)}
+      onQuietRefresh={refreshQuietly}
     />
   );
 }

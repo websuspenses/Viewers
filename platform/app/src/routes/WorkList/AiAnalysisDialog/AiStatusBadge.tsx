@@ -5,6 +5,7 @@ import {
   AiStudyState,
   STAGE_LABELS,
   describeAnalysis,
+  isAnalysisIncomplete,
   describeReportStep,
   getAnalysisPercent,
   getReportPercent,
@@ -35,7 +36,7 @@ function getBadgeContent(state: AiStudyState) {
       return { label: 'Report queued', detail: 'Waiting for report generation to start' };
     case 'analyzed':
       return {
-        label: 'Analysis complete',
+        label: isAnalysisIncomplete(state.analysis) ? 'Analysis incomplete' : 'Analysis complete',
         detail: describeAnalysis(state.analysis) || 'Ready for report generation',
       };
     case 'ready':

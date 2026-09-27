@@ -79,6 +79,11 @@ const getStatusBadgeVariant = (status: string) => {
   return 'neutral';
 };
 
+/** How often the worklist re-reads its studies while the tab is visible. */
+const AUTO_REFRESH_INTERVAL_MS = 60000;
+/** Rapid tab switching must not turn into back-to-back study queries. */
+const AUTO_REFRESH_MIN_GAP_MS = 15000;
+
 /**
  * TODO:
  * - debounce `setFilterValues` (150ms?)
@@ -91,6 +96,7 @@ function WorkList({
   hotkeysManager,
   dataPath,
   onRefresh,
+  onQuietRefresh,
   servicesManager,
   ...props
 }) {
@@ -168,7 +174,10 @@ function WorkList({
     shouldUseDefaultSort && canSort ? { sortBy: 'studyDate', sortDirection: 'ascending' } : {};
   const sortedStudies = studies;
   const hostname = window.location.hostname;
-  const hideOption = hostname == 'ciaiteleradiology.com' ? false : true;
+  // Save to server copies a local study to the cloud, so it is hidden on the
+  // cloud itself: ciaiteleradiology.com and every tenant subdomain.
+  const isCloudHost = /(^|\.)ciaiteleradiology\.com$/i.test(hostname);
+  const hideOption = !isCloudHost;
   if (canSort) {
     studies.sort((s1, s2) => {
       if (shouldUseDefaultSort) {
@@ -352,6 +361,42 @@ function WorkList({
     storeStidStatus(stuID, isReportGenerated);
     navigate(bsurl);
   };
+
+  // Keeps the list current without a reload: studies that arrive from any source
+  // (worklist upload, modality, /pacs) and their AI status. One study query a
+  // minute while the tab is visible, plus one on returning to the tab.
+  useEffect(() => {
+    if (typeof onQuietRefresh !== 'function') {
+      return undefined;
+    }
+    let running = false;
+    let lastRun = Date.now();
+
+    const refresh = async () => {
+      if (running || document.visibilityState === 'hidden') {
+        return;
+      }
+      if (Date.now() - lastRun < AUTO_REFRESH_MIN_GAP_MS) {
+        return;
+      }
+      running = true;
+      lastRun = Date.now();
+      try {
+        await onQuietRefresh();
+      } catch (error) {
+        console.warn('Worklist auto-refresh failed', error);
+      } finally {
+        running = false;
+      }
+    };
+
+    const intervalId = window.setInterval(refresh, AUTO_REFRESH_INTERVAL_MS);
+    document.addEventListener('visibilitychange', refresh);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', refresh);
+    };
+  }, [onQuietRefresh]);
 
   // ~ Rows & Studies
   const [expandedRows, setExpandedRows] = useState([]);

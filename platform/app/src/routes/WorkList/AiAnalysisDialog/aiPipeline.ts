@@ -92,7 +92,13 @@ export function normalizeStatus(status: unknown): NormalizedStatus {
   if (!text) {
     return '';
   }
-  if (['done', 'complete', 'completed', 'success', 'succeeded', 'finished'].includes(text)) {
+  // `incomplete`: the analysis finished but some frames failed. It is final, and
+  // the report can still be built from the frames that succeeded.
+  if (
+    ['done', 'complete', 'completed', 'success', 'succeeded', 'finished', 'incomplete'].includes(
+      text
+    )
+  ) {
     return 'done';
   }
   if (['error', 'failed', 'failure', 'cancelled', 'canceled'].includes(text)) {
@@ -141,6 +147,15 @@ export function parseAnalysisProgress(value: unknown) {
 
 export function parseReportProgress(value: unknown) {
   return parseJsonLenient<ReportProgress>(value);
+}
+
+/** Analysis that finished with some frames failed (PACS status `incomplete`). */
+export function isAnalysisIncomplete(analysis: AnalysisProgress | null) {
+  return (
+    String(analysis?.status ?? '')
+      .trim()
+      .toLowerCase() === 'incomplete'
+  );
 }
 
 export function deriveAiState(flags: AiStudyFlags, live: AiLiveState = {}): AiStudyState {
