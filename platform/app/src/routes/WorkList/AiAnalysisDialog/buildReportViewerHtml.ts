@@ -153,7 +153,7 @@ const VIEWER_CSS = `
   .topbar .stat small { color: var(--muted); font-size: 10.5px; letter-spacing: 0.04em; text-transform: uppercase; }
   .beta {
     background: var(--teal-dim); color: #6ee7d0; border: 1px solid rgba(18,165,140,0.4);
-    padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
+    padding: 2px 8px; border-radius: 999px; font-size: 10px; font-weight: 600; letter-spacing: 0.08em;
   }
 
   /* ---------- layout ---------- */
@@ -162,7 +162,7 @@ const VIEWER_CSS = `
     display: flex; align-items: center; justify-content: space-between;
     padding: 12px 14px; border-bottom: 1px solid var(--line); flex: 0 0 auto;
   }
-  .pane-head h2 { margin: 0; font-size: 11px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .pane-head h2 { margin: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
   .collapse {
     background: transparent; border: 1px solid var(--line-strong); border-radius: 5px;
     width: 24px; height: 24px; display: grid; place-items: center; color: var(--muted); font-size: 12px; line-height: 1;
@@ -203,21 +203,21 @@ const VIEWER_CSS = `
   .tile[aria-current="true"] { border-color: var(--teal); border-left-color: var(--teal); background: #123040; }
   .tile img { width: 64px; height: 64px; object-fit: cover; border-radius: 4px; background: #000; flex: 0 0 auto; }
   .tile .meta { min-width: 0; flex: 1; }
-  .tile .tid { font-size: 10px; font-weight: 800; color: var(--teal); letter-spacing: 0.04em; }
+  .tile .tid { font-size: 10px; font-weight: 600; color: var(--teal); letter-spacing: 0.04em; }
   .tile .tname {
     font-size: 12px; font-weight: 600; margin: 2px 0 5px; line-height: 1.3;
     display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
   }
   .empty { color: var(--muted-2); font-size: 12px; text-align: center; padding: 28px 12px; line-height: 1.6; }
 
-  .sev { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 9px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; }
+  .sev { display: inline-block; padding: 1px 6px; border-radius: 3px; font-size: 9px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
   /* Pastel severity: soft fill, deep same-hue text — matches the worklist and dialog. */
   .sev-critical { background: #ffd9d3; color: #8e2414; }
   .sev-high { background: #ffe3c7; color: #8a4510; }
   .sev-medium { background: #fbf0bf; color: #6b5500; }
   .sev-low { background: #e3e9ef; color: #3b4f60; }
   .tier { display: inline-block; margin-left: 5px; padding: 1px 5px; border-radius: 3px; font-size: 9px;
-          font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+          font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
           color: #6ee7d0; background: rgba(18,165,140,0.16); border: 1px solid rgba(18,165,140,0.35); }
 
   /* ---------- centre stage ---------- */
@@ -227,7 +227,7 @@ const VIEWER_CSS = `
     padding: 9px 14px; border-bottom: 1px solid var(--line); background: var(--panel); flex: 0 0 auto;
   }
   .seg { display: flex; border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; }
-  .seg button { background: transparent; border: 0; padding: 6px 12px; font-size: 11.5px; font-weight: 700; color: var(--muted); }
+  .seg button { background: transparent; border: 0; padding: 6px 12px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
   .seg button + button { border-left: 1px solid var(--line-strong); }
   .seg button[aria-pressed="true"] { background: var(--teal); color: #05221c; }
   .toggle {
@@ -245,7 +245,7 @@ const VIEWER_CSS = `
   .canvas { flex: 1 1 auto; display: flex; gap: 12px; padding: 16px; min-height: 0; overflow: auto; }
   .view { flex: 1 1 0; display: flex; flex-direction: column; min-width: 0; }
   .view .vlabel {
-    font-size: 10px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase;
     color: var(--muted); padding-bottom: 8px; display: flex; gap: 8px; align-items: center;
   }
   .view .vlabel i { font-style: normal; color: var(--muted-2); letter-spacing: 0; font-weight: 500; text-transform: none; font-size: 11px; }
@@ -275,9 +275,9 @@ const VIEWER_CSS = `
   .kv dd.flag { color: #ff9b86; }
   .kv dd.ok { color: #5fd3a5; }
   .block { padding: 14px; border-bottom: 1px solid var(--line); }
-  .block h3 { margin: 0 0 9px; font-size: 10.5px; font-weight: 800; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+  .block h3 { margin: 0 0 9px; font-size: 10.5px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
   .verdict { display: flex; gap: 11px; align-items: flex-start; }
-  .verdict .big { font-size: 17px; font-weight: 800; line-height: 1.25; }
+  .verdict .big { font-size: 17px; font-weight: 600; line-height: 1.25; }
   .verdict .sub { color: var(--muted); font-size: 11.5px; margin-top: 3px; }
   .sevbar { display: flex; gap: 5px; margin-top: 11px; flex-wrap: wrap; }
   .desc { color: #cfe4ec; font-size: 12.5px; line-height: 1.6; }
@@ -357,9 +357,8 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
         <div class="divider"></div>
         <div class="stat"><b id="topEvidence">—</b><small>With evidence</small></div>
         <div class="divider"></div>
-        <div class="stat"><b>${context.study.series} / ${
-    context.study.frames
-  }</b><small>Series / frames</small></div>
+        <div class="stat"><b>${context.study.series} / ${context.study.frames
+    }</b><small>Series / frames</small></div>
       </header>
 
       <div class="body">

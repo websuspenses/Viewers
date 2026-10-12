@@ -310,11 +310,24 @@ const REPORT_CSS = `
 
   .frame { position: relative; display: inline-block; max-width: 100%; line-height: 0; }
   .frame img { display: block; max-width: 100%; height: auto; }
-  /* Caps keep a finding's evidence to two printed pages, matching the reference
-     layout where only the verification panel continues overleaf. */
-  .stage-primary .frame img { max-height: 68mm; }
-  .stage-compare .frame img { max-height: 46mm; }
-  .stage-support .frame img { max-height: 40mm; }
+  /* A finding's evidence fits one printed page: the three images sit side by
+     side (original first), so the verification panel no longer continues
+     overleaf onto a page carrying nothing else. */
+  .evidence { break-inside: avoid; page-break-inside: avoid; }
+  .evidence h2.finding { font-size: 15pt; margin-bottom: 1.5mm; }
+  .evidence .finding-meta { margin-bottom: 3mm; }
+  .evidence .stages { margin-bottom: 3mm; }
+  .evidence .stage-step { padding: 1.2mm 1.8mm; }
+  .evidence .panel-row { gap: 2.5mm; }
+  .evidence .panel { margin-bottom: 3mm; }
+  /* Equal label heights keep the three images level when one label wraps. */
+  .evidence .panel > .panel-label { min-height: 10mm; display: flex; align-items: center; }
+  .evidence .panel .stage { padding: 2mm; min-height: 68mm; display: flex; align-items: center; justify-content: center; }
+  .evidence .panel .frame img { max-height: 64mm; }
+  .evidence .panel .caption { padding: 1.5mm 2.5mm; font-size: 6.5pt; }
+  .evidence table.verify { font-size: 7.5pt; }
+  .evidence table.verify th, .evidence table.verify td { padding: 1.4mm 2.5mm; }
+  .evidence .note { margin-top: 2.5mm; }
 
 
   .verify-title { background: var(--navy); color: #ffffff; font-size: 7.5pt; font-weight: bold; letter-spacing: 0.08em; text-transform: uppercase; padding: 2.4mm 3mm; }
@@ -324,6 +337,9 @@ const REPORT_CSS = `
   table.verify td { padding: 2.1mm 3mm; border: 1px solid var(--line); width: 28%; word-wrap: break-word; }
   .flag { color: #b3261e; font-weight: bold; }
   .ok { color: #1c6b3f; font-weight: bold; }
+
+  .block + .block { margin-top: 7mm; }
+  .narrative + .narrative { margin-top: 6mm; }
 
   /* ---- narrative ---- */
   .narrative h2 { color: var(--navy); font-size: 14pt; margin: 0 0 3mm; }
@@ -680,12 +696,6 @@ function renderReportedTableBody(rows: GroupedFinding[], part: number, partCount
 }
 
 /**
- * Usable height for a table body on one sheet, after the header band, section
- * heading, intro note, table head and footer band are taken out.
- */
-const TABLE_BUDGET_MM = 168;
-
-/**
  * The short summary the team asked for: the findings that decide what happens
  * next, before any of the detail pages.
  */
@@ -754,33 +764,77 @@ function estimateRowMm(finding: GroupedFinding, descriptionColumnChars: number) 
   return 8 + lines * 3.9;
 }
 
-/** Packs rows onto sheets by estimated height rather than by a fixed count. */
-function chunkByHeight(
-  rows: GroupedFinding[],
-  descriptionColumnChars: number,
-  budgetMm = TABLE_BUDGET_MM
-): GroupedFinding[][] {
-  const sheets: GroupedFinding[][] = [];
-  let current: GroupedFinding[] = [];
+/** Heading, intro note and header row of one table block, plus the gap before it. */
+const TABLE_BLOCK_OVERHEAD_MM = 36;
+/** Sheet body height left for blocks once the header and footer bands are taken out. */
+const SHEET_BODY_BUDGET_MM = 195;
+
+type SheetBlock = { body: string; label: string };
+
+type TableSpec = {
+  rows: GroupedFinding[];
+  descriptionColumnChars: number;
+  label: string;
+  render: (rows: GroupedFinding[], part: number, partCount: number) => string;
+};
+
+/**
+ * Flows the findings tables across sheets as one continuous run. Each table
+ * used to open a sheet of its own and be split on its own, so a short table,
+ * or the last few rows of a long one, printed as a page that was mostly white
+ * space. Here a table starts wherever the previous one ended and only breaks
+ * to a new sheet when its next row would not fit.
+ */
+function flowTables(tables: TableSpec[], budgetMm = SHEET_BODY_BUDGET_MM) {
+  const placed: { table: TableSpec; rows: GroupedFinding[]; sheet: number }[] = [];
+  let sheet = 0;
   let used = 0;
 
-  rows.forEach(row => {
-    const height = estimateRowMm(row, descriptionColumnChars);
-    if (current.length && used + height > budgetMm) {
-      sheets.push(current);
-      current = [];
-      used = 0;
+  tables.forEach(table => {
+    let index = 0;
+    while (index < table.rows.length) {
+      const rows: GroupedFinding[] = [];
+      let height = TABLE_BLOCK_OVERHEAD_MM;
+      while (index < table.rows.length) {
+        const rowMm = estimateRowMm(table.rows[index], table.descriptionColumnChars);
+        // A row taller than a whole sheet still has to go somewhere, so an
+        // empty sheet always takes at least one.
+        if (used + height + rowMm > budgetMm && (rows.length || used > 0)) {
+          break;
+        }
+        rows.push(table.rows[index]);
+        height += rowMm;
+        index += 1;
+      }
+      if (rows.length) {
+        placed.push({ table, rows, sheet });
+        used += height;
+      }
+      if (index < table.rows.length) {
+        sheet += 1;
+        used = 0;
+      }
     }
-    current.push(row);
-    used += height;
   });
 
-  if (current.length) {
-    sheets.push(current);
-  }
+  // Part numbers ("2 of 3") are only known once every table has been placed.
+  const sheets: SheetBlock[][] = [];
+  tables.forEach(table => {
+    const parts = placed.filter(part => part.table === table);
+    parts.forEach((part, index) => {
+      if (!sheets[part.sheet]) {
+        sheets[part.sheet] = [];
+      }
+      sheets[part.sheet].push({
+        body: table.render(part.rows, index + 1, parts.length),
+        label: `${table.label}${parts.length > 1 ? ` ${index + 1}/${parts.length}` : ''}`,
+      });
+    });
+  });
 
-  return sheets.length ? sheets : [[]];
+  return { sheets: sheets.filter(Boolean), lastSheetUsedMm: used };
 }
+
 
 function renderMeasurementsBody(evidence: EvidenceFinding[], part: number, partCount: number) {
   const rows = evidence
@@ -878,11 +932,10 @@ function renderEvidenceBody(finding: EvidenceFinding, studyInstanceUid: string) 
   // format requires. There is deliberately no fourth panel: the service returns
   // no manual measurement, so a "human marking" panel could only be the AI's
   // own box drawn over the original and captioned as if a person had placed it.
-  const panels: { label: string; image: string; caption: string; stage: string }[] = [
+  const panels: { label: string; image: string; caption: string }[] = [
     {
       label: '1. Original diagnostic image',
       image: finding.originalImage,
-      stage: 'stage-primary',
       caption: 'Unmodified frame at the AI-detected location. No overlay applied.',
     },
   ];
@@ -891,7 +944,6 @@ function renderEvidenceBody(finding: EvidenceFinding, studyInstanceUid: string) 
     panels.push({
       label: '2. CIAI AI marking',
       image: finding.annotatedImage,
-      stage: 'stage-compare',
       // The annotation is baked into this image by the analysis service. Drawing
       // our own caliper on top of it would double-annotate the same lesion.
       caption: `AI localization as returned by the analysis service. Image measurement: <b>${escapeHtml(
@@ -904,21 +956,19 @@ function renderEvidenceBody(finding: EvidenceFinding, studyInstanceUid: string) 
     panels.push({
       label: `${finding.annotatedImage ? '3' : '2'}. Heatmap — final evidence layer`,
       image: finding.heatmapImage,
-      stage: 'stage-compare',
       caption: 'Supports the finding. Does not replace the original DICOM image.',
     });
   }
 
-  const [primary, ...rest] = panels;
-
   const renderPanel = (panel: typeof panels[number]) => `
     <div class="panel">
       <div class="panel-label">${panel.label}</div>
-      <div class="stage ${panel.stage}">${renderFrame(panel.image, `${finding.name} — ${panel.label}`)}</div>
+      <div class="stage">${renderFrame(panel.image, `${finding.name} — ${panel.label}`)}</div>
       <div class="caption">${panel.caption}</div>
     </div>`;
 
   return `
+    <div class="evidence">
     <h2 class="finding">${escapeHtml(finding.findingId)} - ${escapeHtml(finding.name)}</h2>
     <div class="finding-meta">
       <span class="sev ${severityClass(finding.severity)}">${escapeHtml(finding.severity)}</span>
@@ -933,8 +983,7 @@ function renderEvidenceBody(finding: EvidenceFinding, studyInstanceUid: string) 
 
     ${renderStageStrip(finding)}
 
-    ${renderPanel(primary)}
-    ${rest.length ? `<div class="panel-row">${rest.map(renderPanel).join('')}</div>` : ''}
+    <div class="panel-row">${panels.map(renderPanel).join('')}</div>
 
     <div class="verify-title">Clinical verification panel</div>
     <table class="verify">
@@ -983,6 +1032,7 @@ function renderEvidenceBody(finding: EvidenceFinding, studyInstanceUid: string) 
           )}</p>`
         : ''
     }
+    </div>
   `;
 }
 
@@ -1074,69 +1124,86 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
     </section>`
   );
 
-  if (priority.length) {
-    addSheet(renderPriorityBody(priority, priorityOverflow), 'Priority findings');
-  }
+  const tables: TableSpec[] = [
+    {
+      rows: priority,
+      descriptionColumnChars: 46,
+      label: 'Priority findings',
+      render: rows => renderPriorityBody(rows, priorityOverflow),
+    },
+    {
+      rows: measured,
+      descriptionColumnChars: 46,
+      label: 'Measured findings',
+      render: renderMeasuredTableBody,
+    },
+    {
+      rows: reported,
+      descriptionColumnChars: 54,
+      label: 'Reported findings',
+      render: renderReportedTableBody,
+    },
+    // Evidence sections are reserved for findings there is something to verify.
+    // Printing two pages of "Pending / Not measured" for a narrative-only
+    // finding added length without adding anything a radiologist could check.
+    {
+      rows: measured,
+      descriptionColumnChars: 40,
+      label: 'Image-level measurements',
+      render: renderMeasurementsBody,
+    },
+  ];
 
-  if (measured.length) {
-    const parts = chunkByHeight(measured, 46);
-    parts.forEach((part, index) => {
-      addSheet(
-        renderMeasuredTableBody(part, index + 1, parts.length),
-        `Measured findings${parts.length > 1 ? ` ${index + 1}/${parts.length}` : ''}`
-      );
-    });
-  }
+  const { sheets: tableSheets, lastSheetUsedMm } = flowTables(tables);
 
-  if (reported.length) {
-    const parts = chunkByHeight(reported, 54);
-    parts.forEach((part, index) => {
-      addSheet(
-        renderReportedTableBody(part, index + 1, parts.length),
-        `Reported findings${parts.length > 1 ? ` ${index + 1}/${parts.length}` : ''}`
-      );
-    });
-  }
-
-  // Evidence sections are reserved for findings there is something to verify.
-  // Printing two pages of "Pending / Not measured" for a narrative-only finding
-  // added length without adding anything a radiologist could check.
-  if (measured.length) {
-    const parts = chunkByHeight(measured, 40);
-    parts.forEach((part, index) => {
-      addSheet(
-        renderMeasurementsBody(part, index + 1, parts.length),
-        `Image-level measurements${parts.length > 1 ? ` ${index + 1}/${parts.length}` : ''}`
-      );
-    });
-    measured.forEach(finding =>
-      addSheet(
-        renderEvidenceBody(finding, study.studyInstanceUid),
-        `Finding ${finding.findingId || finding.name}`
-      )
-    );
-  } else {
-    addSheet(
-      `${sectionHeading('Measured Findings')}
+  if (!measured.length) {
+    const note: SheetBlock = {
+      body: `${sectionHeading('Measured Findings')}
        <p class="note">No finding in this study carried a measurement recoverable from the image, so
        there is no evidence section to verify. The reported findings follow.</p>`,
-      'Measured findings'
-    );
+      label: 'Measured findings',
+    };
+    if (tableSheets.length && lastSheetUsedMm + 30 <= SHEET_BODY_BUDGET_MM) {
+      tableSheets[tableSheets.length - 1].push(note);
+    } else {
+      tableSheets.push([note]);
+    }
   }
 
+  tableSheets.forEach(blocks => {
+    addSheet(
+      blocks.map(block => `<div class="block">${block.body}</div>`).join(''),
+      blocks.map(block => block.label).join(' · ')
+    );
+  });
+
+  measured.forEach(finding =>
+    addSheet(
+      renderEvidenceBody(finding, study.studyInstanceUid),
+      `Finding ${finding.findingId || finding.name}`
+    )
+  );
+
   if (includeNarrative && payload.report?.report_text) {
-    splitReportSections(stripLowPriorityFindings(payload.report.report_text))
+    // One flowing sheet: a page per section printed one-sentence sections such
+    // as Technique on a page of their own. The untitled lead section is the
+    // patient/study table the narrative model prepends, which the cover already
+    // shows, so it is left out.
+    const narrative = splitReportSections(stripLowPriorityFindings(payload.report.report_text))
       .filter(
         section => !REPLACED_NARRATIVE_SECTIONS.some(pattern => pattern.test(section.title || ''))
       )
-      .forEach(section => {
-        const body = `
+      .filter(section => section.title || !/^#\s+radiology report\b/i.test(section.body))
+      .map(
+        section => `
           <div class="narrative">
             ${section.title ? sectionHeading(section.title) : ''}
             ${renderSafeReportMarkdown(section.body)}
-          </div>`;
-        addSheet(body, section.title || 'Narrative report');
-      });
+          </div>`
+      );
+    if (narrative.length) {
+      addSheet(narrative.join(''), 'Narrative report');
+    }
   }
 
   if (includeSpecificationAppendix) {
