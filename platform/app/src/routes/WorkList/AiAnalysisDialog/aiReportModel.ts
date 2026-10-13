@@ -22,6 +22,9 @@ export type AiAnomalyRegion = {
   description?: string;
   size_estimate?: string;
   bbox?: number[];
+  /** Width x height of the marked box in mm, from DICOM pixel spacing (ai-analysis 1.6.5+). */
+  extent_mm?: number[];
+  extent_basis?: string;
 };
 
 export type AiHeatmap = {
@@ -51,6 +54,8 @@ export type AiFindingSummary = {
   confidence?: number;
   location?: string;
   size_estimate?: string;
+  /** Measured size of the marked box, e.g. "32 × 28 mm" (ai-analysis 1.6.5+). */
+  marked_box?: string;
   description?: string;
   frame_key?: string;
 };
@@ -306,8 +311,8 @@ export function getAnomalyFindings<T extends { severity?: string; name?: string;
 export type EvidenceTier = 'measured' | 'reported';
 
 export const TIER_LABELS: Record<EvidenceTier, string> = {
-  measured: 'Measured',
-  reported: 'Narrative only',
+  measured: 'Marked on image',
+  reported: 'Not marked',
 };
 
 /**
@@ -341,7 +346,7 @@ export function getEvidenceTier(finding: {
   description: string;
   severity: string;
 }): EvidenceTier {
-  if (finding.imageMeasurement.measurable && finding.bbox && finding.originalImage) {
+  if (finding.bbox && finding.originalImage) {
     return 'measured';
   }
 
@@ -723,39 +728,54 @@ export function getDifferenceMm(image: Measurement, narrative: Measurement) {
   return roundTo(Math.abs(representativeMm(image) - representativeMm(narrative)));
 }
 
+export const CONSISTENCY_LABELS: Record<Consistency, string> = {
+  match: 'AI estimate fits marked box',
+  mismatch: 'AI estimate larger than marked box - verify',
+  'image-only': 'No AI size estimate',
+  'narrative-only': 'No marked box - estimate unverified',
+  unmeasured: 'Not measured',
+};
+
 /**
- * Tolerance scales with the size of the thing being measured: 2 mm of
- * disagreement is noise on a 5 cm mass and a doubling on a 2 mm calcification.
+ * The marked box, measured in mm from DICOM pixel spacing by ai-analysis. It
+ * is the box drawn around the finding, so it bounds the lesion's in-plane
+ * size from above rather than tracing it.
  */
-function agreementToleranceMm(image: Measurement, narrative: Measurement) {
-  const larger = Math.max(representativeMm(image), representativeMm(narrative));
-  return Math.max(2, roundTo(larger * 0.15));
+export function markedBoxMeasurement(region?: AiAnomalyRegion): Measurement {
+  const extent = (region?.extent_mm || []).filter(value => typeof value === 'number' && value > 0);
+  if (extent.length !== 2) {
+    return { raw: '', measurable: false, mm: null, mmMax: null, kind: 'none', display: 'Not measured' };
+  }
+  const [width, height] = extent;
+  const fmt = (value: number) => (value >= 10 ? String(Math.round(value)) : trimNumber(value));
+  const atDetector = /detector/i.test(region?.extent_basis || '') ? ' (at detector)' : '';
+  return {
+    raw: `${width} x ${height} mm`,
+    measurable: true,
+    mm: roundTo(Math.min(width, height)),
+    mmMax: roundTo(Math.max(width, height)),
+    kind: 'product',
+    display: `${fmt(width)} × ${fmt(height)} mm${atDetector}`,
+  };
 }
 
-function classifyConsistency(image: Measurement, narrative: Measurement): Consistency {
-  if (image.measurable && narrative.measurable) {
-    const difference = getDifferenceMm(image, narrative) as number;
-    return difference <= agreementToleranceMm(image, narrative) ? 'match' : 'mismatch';
+/**
+ * The box is an upper bound, so an AI estimate smaller than it agrees with it;
+ * only an estimate clearly larger than the box's longest side is a conflict.
+ */
+function classifyAgainstBox(box: Measurement, estimate: Measurement): Consistency {
+  if (box.measurable && estimate.measurable) {
+    const limit = (box.mmMax as number) * 1.15 + 2;
+    return (estimate.mmMax as number) <= limit ? 'match' : 'mismatch';
   }
-
-  if (image.measurable) {
+  if (box.measurable) {
     return 'image-only';
   }
-
-  if (narrative.measurable) {
+  if (estimate.measurable) {
     return 'narrative-only';
   }
-
   return 'unmeasured';
 }
-
-export const CONSISTENCY_LABELS: Record<Consistency, string> = {
-  match: 'Consistent',
-  mismatch: 'Mismatch retained - verify',
-  'image-only': 'Narrative omits measurement - verify',
-  'narrative-only': 'Image layer omits measurement - verify',
-  unmeasured: 'No measurement recovered',
-};
 
 /**
  * Joins the narrative findings to their image evidence.
@@ -807,10 +827,17 @@ export function buildEvidenceFindings(
     const region =
       bestRegion.score > 0 ? bestRegion.region : regions.length === 1 ? regions[0] : undefined;
 
-    const imageMeasurement = parseMeasurement(region?.size_estimate);
+    // Image measurement = the marked box measured from pixel spacing. Results
+    // from before ai-analysis 1.6.5 carry no extent; their region size is
+    // MedGemma's own text copied over, so comparing it with the estimate
+    // would only compare the AI with itself — it is shown as not measured.
+    const imageMeasurement = markedBoxMeasurement(region);
     const narrativeMeasurement = parseMeasurement(finding.size_estimate);
-    const consistency = classifyConsistency(imageMeasurement, narrativeMeasurement);
-    const differenceMm = getDifferenceMm(imageMeasurement, narrativeMeasurement);
+    const consistency = classifyAgainstBox(imageMeasurement, narrativeMeasurement);
+    const differenceMm =
+      consistency === 'mismatch'
+        ? roundTo((narrativeMeasurement.mmMax as number) - (imageMeasurement.mmMax as number))
+        : null;
 
     evidence.push({
       findingId: finding.finding_id || '',

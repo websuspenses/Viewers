@@ -99,7 +99,9 @@ function toViewerFinding(finding: GroupedFinding): ViewerFinding {
     consistency: CONSISTENCY_LABELS[finding.consistency],
     consistencyOk: finding.consistency === 'match',
     difference:
-      finding.differenceMm === null ? 'Pending radiologist measurement' : `${finding.differenceMm} mm`,
+      finding.differenceMm === null
+        ? 'Pending radiologist measurement'
+        : `Estimate exceeds box by ${finding.differenceMm} mm`,
     isAnomaly: finding.isAnomaly,
     tier: finding.tier,
     occurrences: finding.occurrences,
@@ -571,10 +573,10 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
           ['Severity', '<span class="sev sev-' + esc(f.severity) + '">' + esc(f.severity) + '</span>', ''],
           ['Region', esc(f.region || '—'), ''],
           ['Localization', esc(f.location || '—'), ''],
-          ['Image measurement', esc(f.imageMeasurement), ''],
+          ['Marked box (measured)', esc(f.imageMeasurement), ''],
           ['Image AI score', esc(f.imageScore), ''],
-          ['Narrative output', esc(f.narrativeMeasurement) + ' / ' + esc(f.narrativeScore), ''],
-          ['Consistency', esc(f.consistency), f.consistencyOk ? 'ok' : 'flag'],
+          ['AI size estimate', esc(f.narrativeMeasurement) + ' / ' + esc(f.narrativeScore), ''],
+          ['Estimate vs box', esc(f.consistency), f.consistencyOk ? 'ok' : 'flag'],
           ['Difference', esc(f.difference), ''],
           ['Series', esc(f.series || '—'), ''],
           ['Source frame', esc(f.frameKey || '—'), ''],

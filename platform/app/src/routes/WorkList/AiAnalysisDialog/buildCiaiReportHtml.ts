@@ -13,6 +13,7 @@
 
 import {
   AiCompletePayload,
+  AiFindingSummary,
   CONSISTENCY_LABELS,
   EvidenceFinding,
   GroupedFinding,
@@ -21,7 +22,6 @@ import {
   formatDicomDate,
   getAnomalyFindings,
   getImageSrc,
-  getMaxDifferenceMm,
   getMeasurementRange,
   getReportableFindings,
   getTier,
@@ -321,9 +321,17 @@ const REPORT_CSS = `
   .evidence .panel-row { gap: 2.5mm; }
   .evidence .panel { margin-bottom: 3mm; }
   /* Equal label heights keep the three images level when one label wraps. */
-  .evidence .panel > .panel-label { min-height: 10mm; display: flex; align-items: center; }
-  .evidence .panel .stage { padding: 2mm; min-height: 68mm; display: flex; align-items: center; justify-content: center; }
-  .evidence .panel .frame img { max-height: 64mm; }
+  .evidence .panel > .panel-label { min-height: 8mm; display: flex; align-items: center; }
+  /* Two panels instead of three, so each image can be half as large again. */
+  .evidence .panel .stage { padding: 2mm; min-height: calc(var(--evidence-img, 88mm) + 4mm); display: flex; align-items: center; justify-content: center; }
+  .evidence .panel .frame img { max-height: var(--evidence-img, 88mm); }
+  .evidence table.evidence-findings { margin-bottom: 3mm; font-size: 7.5pt; }
+  /* Fixed layout: the long source-frame id under each finding id used to set
+     the ID column's width and squeeze the finding text into tall rows. */
+  table.grid { table-layout: fixed; }
+  table.grid .id .trace { white-space: normal; }
+  .verify-flag { color: #ad2d45; font-size: 7pt; font-weight: bold; margin-top: 0.6mm; }
+  table.grid .flag, .flag { color: #ad2d45; font-size: 7pt; font-weight: bold; }
   .evidence .panel .caption { padding: 1.5mm 2.5mm; font-size: 6.5pt; }
   .evidence table.verify { font-size: 7.5pt; }
   .evidence table.verify th, .evidence table.verify td { padding: 1.4mm 2.5mm; }
@@ -460,13 +468,14 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
   // raw entry list where two thirds are duplicates and background noise.
   const counts = summarizeSeverities(grouped);
   const worst = counts.critical ? 'critical' : counts.high ? 'high' : counts.medium ? 'medium' : 'low';
-  const maxDifference = getMaxDifferenceMm(measured);
+  const toVerify = grouped.filter(finding => /^\[Verify:/.test(finding.description || '')).length;
+  const images = new Set(measured.map(finding => finding.frameKey).filter(Boolean)).size;
 
   const tiles: [string, string][] = [
-    [String(measured.length), 'Measured — verifiable'],
-    [String(reported.length), 'Reported — narrative only'],
-    [getMeasurementRange(measured), 'Recovered image measurements'],
-    [maxDifference ? `${maxDifference} mm` : 'None', 'Largest image vs narrative gap'],
+    [String(measured.length), `Marked on ${images} image${images === 1 ? '' : 's'}`],
+    [String(reported.length), 'Not marked on an image'],
+    [getMeasurementRange(measured), 'Marked box sizes'],
+    [String(toVerify), 'Flagged for verification'],
   ];
 
   const facts: [string, string][] = [
@@ -502,12 +511,12 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
     </div>
     <div class="hero">
       <h1>CIAI TELERADIOLOGY<br />AI PART</h1>
-      <div class="pipeline">ORIGINAL IMAGE&nbsp;&nbsp;|&nbsp;&nbsp;CIAI AI MARKING&nbsp;&nbsp;|&nbsp;&nbsp;HEATMAP&nbsp;&nbsp;|&nbsp;&nbsp;RADIOLOGIST VERIFY</div>
+      <div class="pipeline">ORIGINAL IMAGE&nbsp;&nbsp;|&nbsp;&nbsp;CIAI AI MARKING&nbsp;&nbsp;|&nbsp;&nbsp;RADIOLOGIST VERIFY</div>
     </div>
     <p class="cover-tagline">AI evidence should never hide the diagnostic image.</p>
     <p class="cover-lede">
-      Each finding is presented as the original diagnostic image first, then the CIAI AI marking,
-      with the heatmap retained at the end as supporting evidence. Every image shown is returned by
+      Each marked image is presented as the original diagnostic image first, then the CIAI AI
+      marking, with every finding on that image listed above them. Every image shown is returned by
       the analysis service; nothing is redrawn or inferred. The radiologist remains the final
       decision-maker.
     </p>
@@ -522,7 +531,7 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
           grouped.length ? `${grouped.length} distinct findings` : 'No anomalies reported'
         }</div>
         <div class="detail">
-          <b>${measured.length}</b> measured &middot; <b>${reported.length}</b> narrative only
+          <b>${measured.length}</b> marked on image &middot; <b>${reported.length}</b> not marked
           &nbsp;|&nbsp; ${counts.critical} critical &middot; ${counts.high} high &middot; ${counts.medium} medium
         </div>
         <div class="detail">
@@ -557,9 +566,10 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
 
     <div class="disclaimer">
       This document is AI-generated decision support, not a diagnosis. Every measurement, marking and
-      impression requires radiologist verification before clinical use. Image-level and narrative
-      values are kept as separate audit fields and any disagreement between them is flagged rather
-      than reconciled automatically.
+      impression requires radiologist verification before clinical use. Marked-box sizes are
+      measured from DICOM pixel spacing around the AI's box and are upper bounds; AI size estimates
+      are the model's wording. Findings an automated check could not support are flagged
+      "Verify" rather than removed.
     </div>
   `;
 }
@@ -572,19 +582,6 @@ function severityTag(severity: string) {
   )}</span>`;
 }
 
-/**
- * Source frame beneath the finding id, so every row in every table traces back
- * to the exact series and image it came from — not just the ones that earn a
- * full evidence section.
- */
-function traceNote(finding: GroupedFinding) {
-  if (!finding.frameKey) {
-    return '';
-  }
-  const extra = finding.frameKeys.length > 1 ? ` +${finding.frameKeys.length - 1}` : '';
-  return `<div class="trace">${escapeHtml(finding.frameKey)}${extra}</div>`;
-}
-
 function occurrenceNote(finding: GroupedFinding) {
   if (finding.occurrences < 2) {
     return '';
@@ -592,157 +589,74 @@ function occurrenceNote(finding: GroupedFinding) {
   return `<span class="occ">seen ${finding.occurrences}&times;</span>`;
 }
 
+const VERIFY_PREFIX = /^\[Verify: ([^\]]*)\]\s*/;
+
+/** Description with the study review's "[Verify: …]" note set apart as a flag. */
+function renderDescription(description: string) {
+  if (!description) {
+    return '';
+  }
+  const match = description.match(VERIFY_PREFIX);
+  const rest = match ? description.slice(match[0].length) : description;
+  return `${match ? `<div class="verify-flag">Verify: ${escapeHtml(match[1])}</div>` : ''}${
+    rest ? `<div class="sub">${escapeHtml(rest)}</div>` : ''
+  }`;
+}
+
 /**
- * Findings the radiologist can check against a picture: a recovered millimetre
- * value, a bounding box and a frame. These are the only rows that also get
- * evidence pages.
+ * The one findings table. It replaces separate Priority, Measured, Narrative
+ * and Image-level tables that listed the same rows up to three times.
  */
-function renderMeasuredTableBody(rows: GroupedFinding[], part: number, partCount: number) {
+function renderFindingsTableBody(rows: GroupedFinding[], part: number, partCount: number) {
   const body = rows
     .map(
       finding => `
       <tr>
         <td>${severityTag(finding.severity)}</td>
-        <td class="id">${escapeHtml(finding.findingId || '—')}${traceNote(finding)}</td>
+        <td class="id">${escapeHtml(finding.findingId || '—')}</td>
         <td>
           <b>${escapeHtml(finding.name)}</b> ${occurrenceNote(finding)}
-          ${finding.description ? `<div class="sub">${escapeHtml(finding.description)}</div>` : ''}
+          ${renderDescription(finding.description)}
         </td>
-        <td><b>${escapeHtml(finding.imageMeasurement.display)}</b></td>
-        <td>${escapeHtml(formatConfidence(finding.imageScore))}</td>
-        <td class="${finding.consistency === 'match' ? 'ok' : 'flag'}">${escapeHtml(
-        CONSISTENCY_LABELS[finding.consistency]
-      )}</td>
+        <td class="${finding.tier === 'measured' ? 'ok' : 'sub'}">${escapeHtml(
+          TIER_LABELS[finding.tier]
+        )}</td>
+        <td><b>${escapeHtml(finding.tier === 'measured' ? finding.imageMeasurement.display : '—')}</b></td>
+        <td>${escapeHtml(finding.narrativeMeasurement.display)}${
+          finding.consistency === 'mismatch'
+            ? `<div class="flag">${escapeHtml(CONSISTENCY_LABELS.mismatch)}</div>`
+            : ''
+        }</td>
         <td>${escapeHtml(finding.locations.join('; ') || '—')}</td>
       </tr>`
     )
     .join('');
 
   return `
-    ${sectionHeading(
-      `Measured Findings${partCount > 1 ? ` (${part} of ${partCount})` : ''}`
-    )}
+    ${sectionHeading(`Findings${partCount > 1 ? ` (${part} of ${partCount})` : ''}`)}
     ${
       part === 1
         ? `<p class="note" style="margin-top:0;margin-bottom:3.5mm">
-             Findings with a measurement recovered from the image itself, a locating box and a source
-             frame — the only ones that can be verified against a picture. Each has an evidence
-             section later in this report.
+             Most severe first. "Marked on image" findings have a locating box on a source frame and an
+             evidence page later in this report. The marked box is measured from the DICOM pixel
+             spacing; it is the box drawn around the finding, so it is an upper bound, not a traced
+             measurement. The AI size estimate is the model's own wording.
            </p>`
         : ''
     }
     <table class="grid">
       <thead>
         <tr>
-          <th style="width:10%">Severity</th>
-          <th style="width:10%">ID</th>
-          <th style="width:30%">Finding</th>
-          <th style="width:13%">Image size</th>
-          <th style="width:8%">Score</th>
-          <th style="width:15%">Consistency</th>
+          <th style="width:9%">Severity</th>
+          <th style="width:8%">ID</th>
+          <th style="width:39%">Finding</th>
+          <th style="width:9%">Evidence</th>
+          <th style="width:10%">Marked box</th>
+          <th style="width:11%">AI size estimate</th>
           <th style="width:14%">Location</th>
         </tr>
       </thead>
       <tbody>${body}</tbody>
-    </table>
-  `;
-}
-
-/** Reported by the narrative model with no measurable image evidence behind them. */
-function renderReportedTableBody(rows: GroupedFinding[], part: number, partCount: number) {
-  const body = rows
-    .map(
-      finding => `
-      <tr>
-        <td>${severityTag(finding.severity)}</td>
-        <td class="id">${escapeHtml(finding.findingId || '—')}${traceNote(finding)}</td>
-        <td>
-          <b>${escapeHtml(finding.name)}</b> ${occurrenceNote(finding)}
-          ${finding.description ? `<div class="sub">${escapeHtml(finding.description)}</div>` : ''}
-        </td>
-        <td>${escapeHtml(finding.narrativeMeasurement.display)}</td>
-        <td>${escapeHtml(finding.locations.join('; ') || '—')}</td>
-        <td class="sub">${escapeHtml(finding.seriesLabels.join('; ') || '—')}</td>
-      </tr>`
-    )
-    .join('');
-
-  return `
-    ${sectionHeading(
-      `Reported Findings — Narrative Only${partCount > 1 ? ` (${part} of ${partCount})` : ''}`
-    )}
-    ${
-      part === 1
-        ? `<p class="note" style="margin-top:0;margin-bottom:3.5mm">
-             Stated by the narrative model without a measurement recovered from the image, so there is
-             nothing to measure against. Sizes below are the model's own wording.
-           </p>`
-        : ''
-    }
-    <table class="grid">
-      <thead>
-        <tr>
-          <th style="width:10%">Severity</th>
-          <th style="width:10%">ID</th>
-          <th style="width:36%">Finding</th>
-          <th style="width:14%">Stated size</th>
-          <th style="width:16%">Location</th>
-          <th style="width:14%">Series</th>
-        </tr>
-      </thead>
-      <tbody>${body}</tbody>
-    </table>
-  `;
-}
-
-/**
- * The short summary the team asked for: the findings that decide what happens
- * next, before any of the detail pages.
- */
-function renderPriorityBody(priority: GroupedFinding[], remaining: number) {
-  return `
-    ${sectionHeading('Priority Findings')}
-    <p class="note" style="margin-top:0;margin-bottom:3.5mm">
-      The highest-severity findings in this study. ${
-        remaining ? `${remaining} further findings and` : 'Full'
-      } evidence for each finding follows.
-    </p>
-    <table class="grid">
-      <thead>
-        <tr>
-          <th style="width:12%">ID</th>
-          <th style="width:38%">Finding</th>
-          <th style="width:15%">Size</th>
-          <th style="width:20%">Location</th>
-          <th style="width:15%">Evidence</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${priority
-          .map(
-            finding => `<tr>
-              <td class="id">${escapeHtml(finding.findingId || '—')}${traceNote(finding)}</td>
-              <td><span class="sev ${severityClass(finding.severity)}">${escapeHtml(
-              finding.severity
-            )}</span> <b>${escapeHtml(finding.name)}</b>
-                ${
-                  finding.description
-                    ? `<div class="sub">${escapeHtml(finding.description)}</div>`
-                    : ''
-                }</td>
-              <td>${escapeHtml(
-                finding.tier === 'measured'
-                  ? finding.imageMeasurement.display
-                  : finding.narrativeMeasurement.display
-              )}</td>
-              <td>${escapeHtml(finding.locations.join('; ') || '—')}</td>
-              <td class="${finding.tier === 'measured' ? 'ok' : 'sub'}">${escapeHtml(
-              TIER_LABELS[finding.tier]
-            )}</td>
-            </tr>`
-          )
-          .join('')}
-      </tbody>
     </table>
   `;
 }
@@ -754,20 +668,26 @@ function renderPriorityBody(priority: GroupedFinding[], remaining: number) {
  * of its own.
  */
 function estimateRowMm(finding: GroupedFinding, descriptionColumnChars: number) {
-  const nameLines = Math.ceil((finding.name || '').length / (descriptionColumnChars * 0.7));
-  const descriptionLines = finding.description
-    ? Math.ceil(finding.description.length / descriptionColumnChars)
-    : 0;
-  const locationLines = Math.ceil((finding.locations.join('; ') || '-').length / 18);
-  const lines = Math.max(nameLines + descriptionLines, locationLines, 1);
-  // +3.5mm for the source-frame line that now sits under every finding id.
-  return 8 + lines * 3.9;
+  // Calibrated on a printed findings table (fixed layout): ~0.7 of the
+  // description width fits the bold 8pt name; the 7pt flag and description
+  // lines are 3.2 mm; the wrapped source-frame id under the finding id is
+  // ~11 characters per 2.8 mm line.
+  const description = finding.description || '';
+  const flag = description.match(/^\[Verify: [^\]]*\]\s*/);
+  const rest = flag ? description.slice(flag[0].length) : description;
+  const text =
+    Math.ceil((finding.name || '').length / (descriptionColumnChars * 0.7)) * 3.6 +
+    (flag ? Math.ceil(flag[0].length / descriptionColumnChars) * 3.2 : 0) +
+    (rest ? Math.ceil(rest.length / descriptionColumnChars) * 3.2 : 0);
+  const id = 3.5;
+  const location = Math.ceil((finding.locations.join('; ') || '-').length / 16) * 3.6;
+  return Math.max(text, id, location, 4) + 5.5;
 }
 
 /** Heading, intro note and header row of one table block, plus the gap before it. */
 const TABLE_BLOCK_OVERHEAD_MM = 36;
 /** Sheet body height left for blocks once the header and footer bands are taken out. */
-const SHEET_BODY_BUDGET_MM = 195;
+const SHEET_BODY_BUDGET_MM = 188;
 
 type SheetBlock = { body: string; label: string };
 
@@ -836,58 +756,6 @@ function flowTables(tables: TableSpec[], budgetMm = SHEET_BODY_BUDGET_MM) {
 }
 
 
-function renderMeasurementsBody(evidence: EvidenceFinding[], part: number, partCount: number) {
-  const rows = evidence
-    .map(
-      finding => `
-      <tr>
-        <td>
-          <span class="id">${escapeHtml(finding.findingId)}</span> — ${escapeHtml(finding.name)}
-          <div class="sub">${escapeHtml(finding.seriesLabel)}</div>
-        </td>
-        <td>${escapeHtml(finding.imageMeasurement.display)}</td>
-        <td>${escapeHtml(formatConfidence(finding.imageScore))}</td>
-        <td>${escapeHtml(finding.narrativeMeasurement.display)} / ${escapeHtml(
-        formatConfidence(finding.narrativeScore)
-      )}</td>
-        <td class="${finding.consistency === 'match' ? 'ok' : 'flag'}">${
-        finding.consistency === 'match'
-          ? 'Consistent — preserve both'
-          : 'Preserve both + flag mismatch'
-      }</td>
-      </tr>`
-    )
-    .join('');
-
-  return `
-    ${sectionHeading(
-      `Recovered Image-Level AI Measurements${partCount > 1 ? ` (${part} of ${partCount})` : ''}`
-    )}
-    <table class="grid">
-      <thead>
-        <tr>
-          <th style="width:32%">Finding</th>
-          <th style="width:16%">Image measurement</th>
-          <th style="width:11%">Image score</th>
-          <th style="width:20%">Narrative output</th>
-          <th style="width:21%">CIAI action</th>
-        </tr>
-      </thead>
-      <tbody>${rows}</tbody>
-    </table>
-    ${
-      part === partCount
-        ? `<p class="note">
-      CIAI captures measurements visible at the image-analysis stage even when the generated narrative
-      omits them. Image-level and narrative values remain separate audit fields until radiologist
-      verification.
-    </p>`
-        : ''
-    }
-  `;
-}
-
-
 /**
  * The verification workflow as a progress strip.
  *
@@ -901,8 +769,11 @@ function renderStageStrip(finding: EvidenceFinding) {
   const stages: [string, boolean, string][] = [
     ['Original', Boolean(finding.originalImage), 'shown'],
     ['Human / lab marking', false, 'not supplied'],
-    ['CIAI AI marking', Boolean(finding.annotatedImage), finding.annotatedImage ? 'shown' : 'none'],
-    ['Heatmap', Boolean(finding.heatmapImage), finding.heatmapImage ? 'shown' : 'none'],
+    [
+      'CIAI AI marking',
+      Boolean(finding.annotatedImage || finding.heatmapImage),
+      finding.annotatedImage || finding.heatmapImage ? 'shown' : 'none',
+    ],
     ['Radiologist verify', false, 'pending'],
   ];
 
@@ -921,94 +792,102 @@ function renderStageStrip(finding: EvidenceFinding) {
     </div>`;
 }
 
-function renderEvidenceBody(finding: EvidenceFinding, studyInstanceUid: string) {
-  const consistencyClass = finding.consistency === 'match' ? 'ok' : 'flag';
-  const differenceText =
-    finding.differenceMm === null
-      ? 'Not comparable — only one layer measured'
-      : `${finding.differenceMm} mm between image and narrative layers`;
-
-  // Exactly the three images the analysis service returns, in the order the
-  // format requires. There is deliberately no fourth panel: the service returns
-  // no manual measurement, so a "human marking" panel could only be the AI's
-  // own box drawn over the original and captioned as if a person had placed it.
+/**
+ * One evidence page per image, listing every finding marked on it. A frame
+ * with several findings used to get a page per finding, repeating the same
+ * pictures up to eleven times in one report.
+ */
+function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string, imageNumber: number) {
+  const lead = findings[0];
+  // The marked scan is the second panel; the composite (scan + findings panel)
+  // is only a fallback — its panel text is unreadable at this size and the
+  // same details are in the table above it.
+  const marking = lead.annotatedImage || lead.heatmapImage;
   const panels: { label: string; image: string; caption: string }[] = [
     {
       label: '1. Original diagnostic image',
-      image: finding.originalImage,
+      image: lead.originalImage,
       caption: 'Unmodified frame at the AI-detected location. No overlay applied.',
     },
   ];
-
-  if (finding.annotatedImage) {
+  if (marking) {
     panels.push({
       label: '2. CIAI AI marking',
-      image: finding.annotatedImage,
-      // The annotation is baked into this image by the analysis service. Drawing
-      // our own caliper on top of it would double-annotate the same lesion.
-      caption: `AI localization as returned by the analysis service. Image measurement: <b>${escapeHtml(
-        finding.imageMeasurement.display
-      )}</b>.`,
-    });
-  }
-
-  if (finding.heatmapImage) {
-    panels.push({
-      label: `${finding.annotatedImage ? '3' : '2'}. Heatmap — final evidence layer`,
-      image: finding.heatmapImage,
-      caption: 'Supports the finding. Does not replace the original DICOM image.',
+      image: marking,
+      caption:
+        'Locating box and glow drawn by the analysis service. The glow marks the box; it is not a model attention map.',
     });
   }
 
   const renderPanel = (panel: typeof panels[number]) => `
     <div class="panel">
       <div class="panel-label">${panel.label}</div>
-      <div class="stage">${renderFrame(panel.image, `${finding.name} — ${panel.label}`)}</div>
+      <div class="stage">${renderFrame(panel.image, `${lead.name} — ${panel.label}`)}</div>
       <div class="caption">${panel.caption}</div>
     </div>`;
 
+  const rows = findings
+    .map(
+      finding => `
+      <tr>
+        <td class="id">${escapeHtml(finding.findingId || '—')}</td>
+        <td><span class="sev ${severityClass(finding.severity)}">${escapeHtml(finding.severity)}</span>
+          <b>${escapeHtml(finding.name)}</b>
+          ${renderDescription(finding.description)}
+          ${
+            finding.imageRegionName && finding.imageRegionName !== finding.name
+              ? `<div class="sub">Marked as: ${escapeHtml(finding.imageRegionName)}</div>`
+              : ''
+          }</td>
+        <td><b>${escapeHtml(finding.imageMeasurement.display)}</b></td>
+        <td>${escapeHtml(finding.narrativeMeasurement.display)}</td>
+        <td class="${finding.consistency === 'match' ? 'ok' : finding.consistency === 'mismatch' ? 'flag' : 'sub'}">${escapeHtml(
+          CONSISTENCY_LABELS[finding.consistency]
+        )}</td>
+        <td>${escapeHtml(formatConfidence(finding.imageScore ?? finding.narrativeScore))}</td>
+      </tr>`
+    )
+    .join('');
+
+  // Each extra finding row takes ~14 mm, so the images shrink to keep the
+  // page to one sheet (2 findings on one image used to spill a blank page).
+  const imageMm = Math.max(55, 88 - Math.max(0, findings.length - 1) * 16);
+
   return `
-    <div class="evidence">
-    <h2 class="finding">${escapeHtml(finding.findingId)} - ${escapeHtml(finding.name)}</h2>
+    <div class="evidence" style="--evidence-img:${imageMm}mm">
+    <h2 class="finding">Image ${imageNumber} — ${escapeHtml(
+      findings.length === 1 ? lead.name : `${findings.length} findings`
+    )}</h2>
     <div class="finding-meta">
-      <span class="sev ${severityClass(finding.severity)}">${escapeHtml(finding.severity)}</span>
-      &nbsp;&nbsp;<b>Image-supported measurement:</b> ${escapeHtml(
-        finding.imageMeasurement.display
-      )}
-      &nbsp;&nbsp;|&nbsp;&nbsp;<b>Image AI score:</b> ${escapeHtml(
-        formatConfidence(finding.imageScore)
-      )}
-      &nbsp;&nbsp;|&nbsp;&nbsp;<b>Location:</b> ${escapeHtml(finding.location || 'Not stated')}
+      <b>Series:</b> ${escapeHtml(lead.seriesLabel || 'Not stated')}
+      &nbsp;&nbsp;|&nbsp;&nbsp;<b>Location:</b> ${escapeHtml(lead.location || 'Not stated')}
     </div>
 
-    ${renderStageStrip(finding)}
+    ${renderStageStrip(lead)}
+
+    <table class="grid evidence-findings">
+      <thead>
+        <tr>
+          <th style="width:10%">ID</th>
+          <th style="width:40%">Finding</th>
+          <th style="width:13%">Marked box</th>
+          <th style="width:13%">AI estimate</th>
+          <th style="width:16%">Estimate vs box</th>
+          <th style="width:8%">Score</th>
+        </tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>
 
     <div class="panel-row">${panels.map(renderPanel).join('')}</div>
 
-    <div class="verify-title">Clinical verification panel</div>
     <table class="verify">
       <tbody>
         <tr>
-          <th>Image measurement</th><td>${escapeHtml(finding.imageMeasurement.display)}</td>
-          <th>Image AI score</th><td>${escapeHtml(formatConfidence(finding.imageScore))}</td>
-        </tr>
-        <tr>
-          <th>Narrative AI output</th><td>${escapeHtml(
-            finding.narrativeMeasurement.display
-          )} / ${escapeHtml(formatConfidence(finding.narrativeScore))}</td>
-          <th>Consistency</th><td class="${consistencyClass}">${escapeHtml(
-    CONSISTENCY_LABELS[finding.consistency]
-  )}</td>
-        </tr>
-        <tr>
-          <th>Difference</th><td>${escapeHtml(differenceText)}</td>
-          <th>Series</th><td>${escapeHtml(finding.seriesLabel || 'Not stated')}</td>
-        </tr>
-        <tr>
-          <th>Source frame reference</th><td>${escapeHtml(finding.frameKey || 'Not stated')}</td>
-          <th>DICOM identifiers</th><td>Study ${escapeHtml(
-            studyInstanceUid
-          )}<br />Series ${escapeHtml(finding.seriesId || 'Not stated')}</td>
+          <th>Source frame</th><td>${escapeHtml(lead.frameKey || 'Not stated')}</td>
+          <th>DICOM identifiers</th><td>Study ${escapeHtml(studyInstanceUid)}<br />Series ${escapeHtml(
+            lead.seriesId || 'Not stated'
+          )}</td>
         </tr>
         <tr>
           <th>Radiologist confirmed value</th><td>_____________________</td>
@@ -1020,18 +899,6 @@ function renderEvidenceBody(finding: EvidenceFinding, studyInstanceUid: string) 
         </tr>
       </tbody>
     </table>
-    ${
-      finding.description
-        ? `<p class="note"><b>AI description:</b> ${escapeHtml(finding.description)}</p>`
-        : ''
-    }
-    ${
-      finding.imageRegionName && finding.imageRegionName !== finding.name
-        ? `<p class="note"><b>Image layer labelled this region:</b> ${escapeHtml(
-            finding.imageRegionName
-          )}</p>`
-        : ''
-    }
     </div>
   `;
 }
@@ -1069,7 +936,6 @@ function renderWorkflowBody() {
 export function buildCiaiReportHtml(options: ReportBuildOptions) {
   const {
     payload,
-    evidence,
     study,
     logoUrl,
     includeNarrative = true,
@@ -1092,13 +958,6 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
   const grouped = getReportableFindings(groupEvidenceFindings(buildAllFindingRecords(payload)));
   const measured = getTier(grouped, 'measured');
   const reported = getTier(grouped, 'reported');
-  // A study can run to dozens of evidence pages, so the cover leads with the
-  // findings that decide what happens next.
-  const PRIORITY_LIMIT = 6;
-  const priority = grouped
-    .filter(finding => ['critical', 'high'].includes((finding.severity || '').toLowerCase()))
-    .slice(0, PRIORITY_LIMIT);
-  const priorityOverflow = Math.max(0, grouped.length - priority.length);
   const excludedCount = allFindings.length - anomalies.length;
   const lowSeverityCount = anomalies.filter(
     finding => (finding.severity || 'low').toLowerCase() === 'low'
@@ -1126,31 +985,10 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
 
   const tables: TableSpec[] = [
     {
-      rows: priority,
-      descriptionColumnChars: 46,
-      label: 'Priority findings',
-      render: rows => renderPriorityBody(rows, priorityOverflow),
-    },
-    {
-      rows: measured,
-      descriptionColumnChars: 46,
-      label: 'Measured findings',
-      render: renderMeasuredTableBody,
-    },
-    {
-      rows: reported,
-      descriptionColumnChars: 54,
-      label: 'Reported findings',
-      render: renderReportedTableBody,
-    },
-    // Evidence sections are reserved for findings there is something to verify.
-    // Printing two pages of "Pending / Not measured" for a narrative-only
-    // finding added length without adding anything a radiologist could check.
-    {
-      rows: measured,
-      descriptionColumnChars: 40,
-      label: 'Image-level measurements',
-      render: renderMeasurementsBody,
+      rows: grouped,
+      descriptionColumnChars: 58,
+      label: 'Findings',
+      render: renderFindingsTableBody,
     },
   ];
 
@@ -1158,10 +996,10 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
 
   if (!measured.length) {
     const note: SheetBlock = {
-      body: `${sectionHeading('Measured Findings')}
-       <p class="note">No finding in this study carried a measurement recoverable from the image, so
-       there is no evidence section to verify. The reported findings follow.</p>`,
-      label: 'Measured findings',
+      body: `${sectionHeading('Evidence')}
+       <p class="note">No finding in this study was marked on an image, so there is no evidence
+       section to verify.</p>`,
+      label: 'Evidence',
     };
     if (tableSheets.length && lastSheetUsedMm + 30 <= SHEET_BODY_BUDGET_MM) {
       tableSheets[tableSheets.length - 1].push(note);
@@ -1177,10 +1015,16 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
     );
   });
 
-  measured.forEach(finding =>
+  // One evidence page per image, in order of each image's most severe finding.
+  const byFrame = new Map<string, GroupedFinding[]>();
+  measured.forEach(finding => {
+    const key = finding.frameKey || finding.findingId || finding.name;
+    byFrame.set(key, [...(byFrame.get(key) || []), finding]);
+  });
+  Array.from(byFrame.values()).forEach((findings, index) =>
     addSheet(
-      renderEvidenceBody(finding, study.studyInstanceUid),
-      `Finding ${finding.findingId || finding.name}`
+      renderEvidenceBody(findings, study.studyInstanceUid, index + 1),
+      `Image ${index + 1} · ${findings.map(finding => finding.findingId || finding.name).join(', ')}`
     )
   );
 
@@ -1194,6 +1038,12 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
         section => !REPLACED_NARRATIVE_SECTIONS.some(pattern => pattern.test(section.title || ''))
       )
       .filter(section => section.title || !/^#\s+radiology report\b/i.test(section.body))
+      .map(section => ({
+        ...section,
+        // The narrative ends with an AI-assistance disclaimer that every sheet's
+        // footer and the cover already carry; on its own it spilled onto a page.
+        body: section.body.replace(/\n[*_]*This report was generated with AI assistance[\s\S]*$/i, '\n'),
+      }))
       .map(
         section => `
           <div class="narrative">

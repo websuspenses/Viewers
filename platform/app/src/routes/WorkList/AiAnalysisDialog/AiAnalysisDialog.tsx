@@ -617,7 +617,7 @@ function EvidenceViewer({
           }}
         >
           <VerificationRow
-            label="Image measurement"
+            label="Marked box (measured)"
             value={finding.imageMeasurement.display}
           />
           <VerificationRow
@@ -625,13 +625,13 @@ function EvidenceViewer({
             value={formatConfidence(finding.imageScore)}
           />
           <VerificationRow
-            label="Narrative AI output"
+            label="AI size estimate"
             value={`${finding.narrativeMeasurement.display} / ${formatConfidence(
               finding.narrativeScore
             )}`}
           />
           <VerificationRow
-            label="Consistency"
+            label="Estimate vs box"
             value={CONSISTENCY_LABELS[finding.consistency]}
             flag={isMismatch}
           />
@@ -640,7 +640,7 @@ function EvidenceViewer({
             value={
               finding.differenceMm === null
                 ? 'Pending radiologist measurement'
-                : `${finding.differenceMm} mm`
+                : `Estimate exceeds box by ${finding.differenceMm} mm`
             }
             flag={Boolean(finding.differenceMm)}
           />
@@ -673,8 +673,8 @@ function EvidenceViewer({
 }
 
 const TIER_HINTS: Record<EvidenceTier, string> = {
-  measured: 'Has a measurement recovered from the image, a locating box and a source frame — these can be checked against a picture.',
-  reported: 'Stated by the narrative model with no measurable image evidence behind it.',
+  measured: 'Marked on the image with a locating box and a source frame — these can be checked against a picture.',
+  reported: 'Reported by the AI but not marked on any image.',
 };
 
 function FindingsTable({
@@ -742,8 +742,8 @@ function FindingsTable({
             },
           }}
         >
-          <ToggleButton value="measured">Measured ({counts.measured})</ToggleButton>
-          <ToggleButton value="reported">Narrative only ({counts.reported})</ToggleButton>
+          <ToggleButton value="measured">Marked on image ({counts.measured})</ToggleButton>
+          <ToggleButton value="reported">Not marked ({counts.reported})</ToggleButton>
           <ToggleButton value="all">All ({counts.all})</ToggleButton>
         </ToggleButtonGroup>
         <TextField
@@ -1608,24 +1608,24 @@ export default function AiAnalysisDialog({
                     }}
                   >
                     <StatCard
-                      label="Measured"
+                      label="Marked on image"
                       value={measuredFindings.length}
                       hint="Verifiable against a picture"
                     />
                     <StatCard
-                      label="Narrative only"
+                      label="Not marked"
                       value={reportedFindings.length}
-                      hint="No measurable image evidence"
+                      hint="Not located on any image"
                     />
                     <StatCard
-                      label="Measurements"
+                      label="Marked boxes"
                       value={getMeasurementRange(measuredFindings)}
-                      hint="Image-level range"
+                      hint="Measured from pixel spacing"
                     />
                     <StatCard
                       label="Mismatches"
                       value={mismatchCount}
-                      hint={`Largest gap ${getMaxDifferenceMm(measuredFindings)} mm`}
+                      hint={`Estimate exceeds box by up to ${getMaxDifferenceMm(measuredFindings)} mm`}
                     />
                     <StatCard
                       label="Reviewed"
