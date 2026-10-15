@@ -174,7 +174,9 @@ export function splitReportSections(markdown: string) {
 /**
  * Removes the `[LOW PRIORITY]` finding blocks from the narrative's Findings
  * section, so the prose agrees with the tables rather than reintroducing the
- * severity the report excludes.
+ * severity the report excludes. Calcification blocks are kept, as in
+ * isReportableFinding, and a Findings section left with no content gets the
+ * normal sentence instead of an empty heading.
  *
  * Scoped deliberately narrowly: only `###` blocks inside `## Findings`, which
  * are self-contained (heading plus its own bullets). Impression and
@@ -182,33 +184,57 @@ export function splitReportSections(markdown: string) {
  * and dropping an item there would renumber a list the radiologist may be
  * citing.
  */
+const NORMAL_FINDINGS_SENTENCE =
+  'No significant abnormality identified by the AI analysis. Radiologist review required.';
+
 export function stripLowPriorityFindings(markdown: string) {
   const lines = (markdown || '').split(/\r?\n/);
   const kept: string[] = [];
   let inFindings = false;
   let skipping = false;
+  let findingsHeading = -1;
+  let findingsHasContent = false;
+  let removedAny = false;
+
+  const closeFindings = () => {
+    if (findingsHeading >= 0 && removedAny && !findingsHasContent) {
+      kept.splice(findingsHeading + 1, 0, '', NORMAL_FINDINGS_SENTENCE, '');
+    }
+    findingsHeading = -1;
+  };
 
   lines.forEach(line => {
     const trimmed = line.trim();
 
-    if (/^##\s+/.test(trimmed)) {
+    if (/^##\s+/.test(trimmed) && !/^###/.test(trimmed)) {
+      closeFindings();
       inFindings = /^##\s+findings\b/i.test(trimmed);
       skipping = false;
       kept.push(line);
+      if (inFindings) {
+        findingsHeading = kept.length - 1;
+        findingsHasContent = false;
+        removedAny = false;
+      }
       return;
     }
 
     if (inFindings && /^###\s+/.test(trimmed)) {
-      skipping = /\[LOW PRIORITY\]/i.test(trimmed);
+      skipping = /\[LOW PRIORITY\]/i.test(trimmed) && !/calcif/i.test(trimmed);
       if (skipping) {
+        removedAny = true;
         return;
       }
     }
 
     if (!skipping) {
       kept.push(line);
+      if (inFindings && trimmed) {
+        findingsHasContent = true;
+      }
     }
   });
+  closeFindings();
 
   return kept.join('\n');
 }

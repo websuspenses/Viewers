@@ -315,18 +315,28 @@ export const TIER_LABELS: Record<EvidenceTier, string> = {
   reported: 'Not marked',
 };
 
+const CALCIFICATION = /calcif/i;
+
 /**
  * Findings below this severity are left out of the report altogether.
  *
  * The models rate roughly two thirds of a study "low", and on every study
  * reviewed so far none of those carried a measurement recoverable from the
  * image — so nothing verifiable is lost by excluding them.
+ *
+ * Calcifications are the exception: the radiologist review (2026-10-15)
+ * requires them to be reported, and the analysis rates physiological ones
+ * (pineal, choroid plexus) "low" on purpose.
  */
-export function isReportableFinding(finding: { severity?: string }) {
-  return (finding.severity || 'low').toLowerCase() !== 'low';
+export function isReportableFinding(finding: { severity?: string; name?: string }) {
+  return (
+    (finding.severity || 'low').toLowerCase() !== 'low' || CALCIFICATION.test(finding.name || '')
+  );
 }
 
-export function getReportableFindings<T extends { severity?: string }>(findings: T[]): T[] {
+export function getReportableFindings<T extends { severity?: string; name?: string }>(
+  findings: T[]
+): T[] {
   return findings.filter(isReportableFinding);
 }
 
@@ -564,7 +574,11 @@ export function deriveFindingsSummary(payload: AiCompletePayload | null): AiFind
   }
 
   return (payload.series_with_findings || []).flatMap((series, seriesIndex) => {
-    const findings: any[] = Array.isArray(series?.findings) ? series.findings : [];
+    // Suppressed findings (study review tier, ai-analysis 1.6.11+) stay in the
+    // stored data for the audit but are never listed or reported.
+    const findings: any[] = (Array.isArray(series?.findings) ? series.findings : []).filter(
+      finding => finding?.tier !== 'suppressed'
+    );
     const heatmaps: AiHeatmap[] = Array.isArray(series?.heatmaps) ? series.heatmaps : [];
     const seriesLabel = getSeriesLabel(series);
     const tag = getSeriesTag(series, seriesIndex);

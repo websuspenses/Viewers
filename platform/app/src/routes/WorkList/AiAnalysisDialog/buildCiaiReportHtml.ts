@@ -24,6 +24,7 @@ import {
   getImageSrc,
   getMeasurementRange,
   getReportableFindings,
+  isReportableFinding,
   getTier,
   groupEvidenceFindings,
   TIER_LABELS,
@@ -959,9 +960,7 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
   const measured = getTier(grouped, 'measured');
   const reported = getTier(grouped, 'reported');
   const excludedCount = allFindings.length - anomalies.length;
-  const lowSeverityCount = anomalies.filter(
-    finding => (finding.severity || 'low').toLowerCase() === 'low'
-  ).length;
+  const lowSeverityCount = anomalies.filter(finding => !isReportableFinding(finding)).length;
 
   const sheets: string[] = [];
   const addSheet = (body: string, sectionLabel: string) => {
