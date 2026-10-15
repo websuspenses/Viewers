@@ -673,8 +673,10 @@ function WorkList({
     }
   };
 
-  const handleShowModal = studyId => {
+  const [referralStudyLabel, setReferralStudyLabel] = useState('');
+  const handleShowModal = (studyId, label = '') => {
     setShowStudyInstanceID(studyId);
+    setReferralStudyLabel(label);
     setReferralPopup(true);
   };
 
@@ -983,7 +985,12 @@ function WorkList({
                   .join(' · ')
               )
             }
-            onRefer={() => handleShowModal(studyInstanceUid)}
+            onRefer={() =>
+              handleShowModal(
+                studyInstanceUid,
+                [patientName, modalities, description].filter(Boolean).join(' · ')
+              )
+            }
             onToggleEmergency={event => handleEmergency(event, studyInstanceUid)}
             onView={() =>
               openViewerRoute('/viewer', studyInstanceUid, modalities, isReportGenerated)
@@ -1162,6 +1169,8 @@ function WorkList({
           open={referralPopup}
           handleClose={handleCloseModal}
           StudyInstanceUId={showStudyInstanceId}
+          studyLabel={referralStudyLabel}
+          isActive={isActive}
         />
       )}
       {subscriptionFeatures && userInfoData && (

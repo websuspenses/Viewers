@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import SunEditor from 'suneditor-react';
 import 'suneditor/dist/css/suneditor.min.css';
 import { Header } from '@ohif/ui';
@@ -22,6 +23,8 @@ import SendIcon from '@mui/icons-material/Send';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
 import AiReviewBar from '../../routes/WorkList/AiAnalysisDialog/AiReviewBar';
+import getHeaderMenuOptions from '../../utils/getHeaderMenuOptions';
+import { UnsavedChangesDialog, useUnsavedChangesGuard } from '../common/useUnsavedChangesGuard';
 import {
   AiReview,
   DEFAULT_REVIEW_ROLE,
@@ -123,6 +126,7 @@ function useSession() {
 export default function AiReportEditor() {
   const { studyUid = '' } = useParams();
   const navigate = useNavigate();
+  const { t } = useTranslation();
   const [appConfig] = useAppConfig();
   const { authHeaders, roles } = useSession();
   const nodeAppHost = appConfig.nodeAppHostURL || 'https://ciaiteleradiology.com/teleapp';
@@ -171,6 +175,11 @@ export default function AiReportEditor() {
   const autosaveTimer = useRef<number | undefined>(undefined);
   const stateRef = useRef({ baseVersion, basedOn });
   stateRef.current = { baseVersion, basedOn };
+
+  // Leaving with unsaved changes (Cancel, Worklist, header back, browser Back,
+  // closing the tab) asks first; leaving anyway drops the local autosave too.
+  const guard = useUnsavedChangesGuard(dirty && canEdit, () => clearLocalDraft(studyUid));
+  const goToWorklist = () => guard.leave(() => navigate('/workList', { replace: true }));
 
   const findings = useMemo(
     () => sortFindingsSummary((aiPayload?.findings_summary || []).slice()),
@@ -278,18 +287,6 @@ export default function AiReportEditor() {
     contentRef.current = content;
     markDirty();
   };
-
-  // Unsaved work: warn before leaving the page.
-  useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => {
-      if (dirty) {
-        event.preventDefault();
-        event.returnValue = '';
-      }
-    };
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [dirty]);
 
   useEffect(() => () => window.clearTimeout(autosaveTimer.current), []);
 
@@ -421,7 +418,7 @@ export default function AiReportEditor() {
       await writeLegacyReport(pacsBase, authHeaders, studyUid, contentRef.current);
       setSubmitOpen(false);
       setToast({ severity: 'success', text: 'Report submitted' });
-      setTimeout(() => navigate('/'), 900);
+      setTimeout(() => guard.leaveNow(() => navigate('/workList', { replace: true })), 900);
     } catch (error) {
       setToast({ severity: 'error', text: 'Saved as a version, but the study could not be marked as reported. Submit again.' });
     } finally {
@@ -501,6 +498,25 @@ export default function AiReportEditor() {
     }
   };
 
+  // ---- header: settings menu (theme switch lives inside it) ----
+  const toggleHeaderTheme = () => {
+    const next = !isDarkHeader;
+    setIsDarkHeader(next);
+    try {
+      localStorage.setItem('active_dark', JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+  };
+  const headerMenu = getHeaderMenuOptions({
+    t,
+    isActive: isDarkHeader,
+    handleChangeSwitch: toggleHeaderTheme,
+    navigate: (path: string) => guard.leave(() => navigate(path, { replace: true })),
+    appConfig,
+    currentPath: '/ai-report',
+  });
+
   // ---- render ----
   const sourceText = {
     radiologist: `Editing version ${baseVersion}`,
@@ -525,21 +541,13 @@ export default function AiReportEditor() {
     <div className="are-root">
       <Header
         isSticky
-        menuOptions={[]}
+        menuOptions={headerMenu}
         isReturnEnabled={false}
         WhiteLabeling={{}}
         isActive={isDarkHeader}
-        handleChange={() => {
-          const next = !isDarkHeader;
-          setIsDarkHeader(next);
-          try {
-            localStorage.setItem('active_dark', JSON.stringify(next));
-          } catch {
-            // ignore
-          }
-        }}
+        handleChange={toggleHeaderTheme}
         screen="GenerateReport"
-        handleRedirectPage={() => navigate('/')}
+        handleRedirectPage={goToWorklist}
         modalityValue={studyUid}
       />
 
@@ -547,7 +555,7 @@ export default function AiReportEditor() {
         <Button
           size="small"
           startIcon={<ArrowBackIcon />}
-          onClick={() => navigate('/')}
+          onClick={goToWorklist}
           className="are-back"
         >
           Worklist
@@ -604,6 +612,14 @@ export default function AiReportEditor() {
             disabled={loading || initialHtml === null}
           >
             PDF
+          </Button>
+          <Button
+            size="small"
+            variant="text"
+            onClick={goToWorklist}
+            className="are-cancel"
+          >
+            {canEdit && !locked ? 'Cancel' : 'Close'}
           </Button>
           {canEdit && !locked && (
             <>
@@ -907,6 +923,12 @@ export default function AiReportEditor() {
           )}
         </DialogActions>
       </Dialog>
+
+      <UnsavedChangesDialog
+        {...guard.dialogProps}
+        dark
+        message="You have unsaved changes in this report. If you leave now, they will be lost."
+      />
 
       <Snackbar
         open={Boolean(toast)}

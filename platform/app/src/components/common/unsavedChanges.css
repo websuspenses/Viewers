@@ -1,0 +1,56 @@
+/* "Leave without saving?" dialog — worklist tokens (wl-pop carries them into the portal). */
+.wl-pop.ucd.MuiPaper-root {
+  width: 440px;
+  max-width: calc(100vw - 32px);
+  margin: 16px;
+  border-radius: 12px;
+}
+.ucd-body {
+  display: flex;
+  gap: 14px;
+  padding: 20px 22px 8px;
+}
+.ucd-icon {
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--wl-stat-bg);
+  color: var(--wl-stat-fg);
+}
+.ucd-title {
+  margin: 2px 0 6px;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--wl-text);
+}
+.ucd-message {
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: var(--wl-text-2);
+}
+.ucd-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 16px 22px 20px;
+}
+.wl-btn.ucd-leave {
+  border-color: var(--wl-danger);
+  background: var(--wl-danger);
+  color: #fff;
+}
+.wl-btn.ucd-leave:hover:not(:disabled) {
+  border-color: var(--wl-danger);
+  background: var(--wl-danger);
+  color: #fff;
+  filter: brightness(1.08);
+}
+.wl--dark .wl-btn.ucd-leave,
+.wl--dark .wl-btn.ucd-leave:hover:not(:disabled) {
+  color: #2a0a06;
+}

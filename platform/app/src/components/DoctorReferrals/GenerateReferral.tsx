@@ -1,15 +1,19 @@
-import React, { useEffect, useState } from 'react';
-import { styled } from '@mui/material/styles';
-import DialogTitle from '@mui/material/DialogTitle';
-import DialogContent from '@mui/material/DialogContent';
-import DialogActions from '@mui/material/DialogActions';
-import IconButton from '@mui/material/IconButton';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import classnames from 'classnames';
+import Dialog from '@mui/material/Dialog';
+import CircularProgress from '@mui/material/CircularProgress';
 import CloseIcon from '@mui/icons-material/Close';
-import Button from '@mui/material/Button';
-import Stack from '@mui/material/Stack';
-import Dialog, { DialogProps } from '@mui/material/Dialog';
+import SearchIcon from '@mui/icons-material/Search';
+import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import PersonAddAltOutlinedIcon from '@mui/icons-material/PersonAddAltOutlined';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import { useNavigate } from 'react-router-dom';
 import { useAppConfig } from '@state';
+
+import '../../routes/WorkList/components/worklist.css';
+import './generateReferral.css';
+
 interface Doctor {
   doc_id: string;
   doc_name: string;
@@ -23,318 +27,347 @@ interface Props {
   open: boolean;
   handleClose: () => void;
   StudyInstanceUId: string;
+  /** Shown under the title, e.g. "TEST^ONE · CT · Brain plain". */
+  studyLabel?: string;
+  /** Worklist dark mode. */
+  isActive?: boolean;
 }
 
-const BootstrapDialog = styled(Dialog)<DialogProps>(() => ({
-  '& .MuiDialogContent-root': {
-    padding: '16px',
-  },
-  '& .MuiDialogActions-root': {
-    padding: '8px',
-  },
-  '& .MuiPaper-root': {
-    width: '550px !important',
-  },
-})) as typeof Dialog;
+const NOTE_MAX = 500;
 
-function generateRandomString(length: number): string {
-  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
-  const charactersLength = characters.length;
-  let result = '';
-  for (let i = 0; i < length; i++) {
-    result += characters.charAt(Math.floor(Math.random() * charactersLength));
-  }
-  return result;
-}
+const initials = (name: string) =>
+  String(name || '')
+    .replace(/^dr\.?\s+/i, '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0].toUpperCase())
+    .join('') || '?';
 
-function GenerateReferral(props: Props) {
+const maskPhone = (phone: string) => {
+  const digits = String(phone || '').replace(/\D/g, '');
+  return digits.length >= 4 ? `•••• ${digits.slice(-4)}` : '';
+};
+
+/**
+ * Refer a study to a doctor from the lab's referral list. The doctor gets a
+ * WhatsApp message with a secure link to the study (teleapp send_study_referral),
+ * and the study status becomes "Referral sent".
+ */
+function GenerateReferral({ open, handleClose, StudyInstanceUId, studyLabel, isActive = false }: Props) {
   const navigate = useNavigate();
-  const { open, handleClose, StudyInstanceUId } = props;
-  //const nodeAppHost = process.env.REACT_APP_HOST_NAME;
-
-  const [value, setValue] = useState('');
-  const [doctorsData, setDoctorsData] = useState<Doctor[]>([]);
-  const [authHeaders, setAuthHeaders] = useState('');
-  const [error, setError] = useState('');
   const [appConfig] = useAppConfig();
-
   const nodeAppHost = appConfig.nodeAppHostURL || 'https://ciaiteleradiology.com/teleapp';
   const hostName = appConfig.pacsHostURL;
-
-  const handleChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
-    setValue(event.target.value);
-    setError('');
-  };
-
-  useEffect(() => {
+  const clientId = (window as any).config?.oidc?.[0]?.client_id || '';
+  const authHeaders = useMemo(() => {
     try {
-      const sessInfo = JSON.parse(
-        sessionStorage.getItem(
-          `oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`
-        ) || '{}'
-      );
-      const headers = `${sessInfo.token_type} ${sessInfo.access_token}`;
-      setAuthHeaders(headers);
-    } catch (error) {
-      console.error('Error getting auth headers:', error);
-      setError('Authentication error occurred');
+      const oidc = (window as any).config?.oidc?.[0];
+      const session = JSON.parse(sessionStorage.getItem(`oidc.user:${oidc?.authority}:${oidc?.client_id}`) || '{}');
+      return session?.access_token ? `${session.token_type || 'Bearer'} ${session.access_token}` : '';
+    } catch {
+      return '';
     }
   }, []);
 
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+  const [loadState, setLoadState] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [query, setQuery] = useState('');
+  const [selectedId, setSelectedId] = useState('');
+  const [note, setNote] = useState('');
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState('');
+  const [sentTo, setSentTo] = useState('');
+
+  const loadDoctors = useCallback(async () => {
+    if (!authHeaders) {
+      setLoadState('error');
+      return;
+    }
+    setLoadState('loading');
+    try {
+      const response = await fetch(`${nodeAppHost}/get_referral_doctors`, {
+        headers: {
+          Authorization: authHeaders,
+          clientId,
+          realm: clientId,
+          'Content-Type': 'application/json',
+          isAccess: 'view_referral_doctors_list',
+          labId: sessionStorage.getItem('labId') || '',
+        },
+      });
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+      }
+      const body = await response.json();
+      setDoctors(Array.isArray(body?.data) ? body.data : []);
+      setLoadState('ready');
+    } catch {
+      setLoadState('error');
+    }
+  }, [authHeaders, clientId, nodeAppHost]);
+
   useEffect(() => {
-    if (!authHeaders) return;
-
-    const fetchDoctors = async () => {
-      const clientId = window.config.oidc[0].client_id;
-      try {
-        const response = await fetch(`${nodeAppHost}/get_referral_doctors`, {
-          method: 'GET',
-          headers: {
-            Authorization: authHeaders,
-            clientId: clientId,
-            realm: clientId,
-            'Content-Type': 'application/json',
-            'test-header': 'test',
-            isAccess: 'view_referral_doctors_list',
-            labId: sessionStorage.getItem('labId') || '',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const actualData = await response.json();
-        setDoctorsData(actualData.data);
-      } catch (err) {
-        console.error('Error fetching doctors:', err);
-        setError('Failed to load doctors list');
-      }
-    };
-
-    fetchDoctors();
-  }, [authHeaders, nodeAppHost]);
-
-  const sendReferralHelper = async (studyInstanceUid: string, URL: string) => {
-    const clientId = window.config.oidc[0].client_id;
-    if (!value) {
-      setError('Please select a doctor');
-      return;
+    if (open) {
+      loadDoctors();
     }
+  }, [open, loadDoctors]);
 
-    try {
-      // const formData = {
-      //   sr_to_doctor: value,
-      //   sr_requester_id: 2,
-      //   sr_requester_comments: `Hello Doctor, Could you please check below URL: ${URL}`,
-      // };
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) {
+      return doctors;
+    }
+    return doctors.filter(d =>
+      [d.doc_name, d.doc_specialization, d.doc_clinic].some(field => String(field || '').toLowerCase().includes(q))
+    );
+  }, [doctors, query]);
+  const selected = doctors.find(d => String(d.doc_id) === String(selectedId));
 
-      const formData = {
-        sr_to_doctor: value,
-        sr_requester_id: 2,
-        sr_requester_comments: `Hello Doctor, Could you please check below URL: ${URL}`,
-        sr_url: URL,
-        sr_host_name: nodeAppHost,
-      };
-
-      const options = {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: authHeaders,
-          clientId: clientId,
-          realm: clientId,
-        },
-        body: JSON.stringify(formData),
-      };
-
-      const response = await fetch(`${nodeAppHost}/send_study_referral`, options);
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const statusBody = { status: 'Referral sent' };
-      const updateResponse = await fetch(`${hostName}/studies/${studyInstanceUid}/update_status`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: authHeaders,
-          clientId: clientId,
-          realm: clientId,
-        },
-        body: JSON.stringify(statusBody),
-      });
-
-      if (!updateResponse.ok) {
-        throw new Error(`HTTP error! status: ${updateResponse.status}`);
-      }
-
-      alert('Referred Successfully...');
-      navigate('/workList');
+  const close = () => {
+    if (!sending) {
       handleClose();
-    } catch (error) {
-      console.error('Error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to send referral');
     }
   };
 
-  // const cryptoKey = window.crypto.subtle.generateKey(
-  //   {
-  //     name: 'AES-GCM',
-  //     length: 256,
-  //   },
-  //   true,
-  //   ['encrypt', 'decrypt']
-  // );
-
-  // const encrypt = async text => {
-  //   const encodedText = new TextEncoder().encode(text);
-  //   const iv = window.crypto.getRandomValues(new Uint8Array(12));
-  //   const encryptedContent = await window.crypto.subtle.encrypt(
-  //     {
-  //       name: 'AES-GCM',
-  //       iv: iv,
-  //     },
-  //     await cryptoKey,
-  //     encodedText
-  //   );
-  //   const encryptedArray = new Uint8Array(encryptedContent);
-  //   const encryptedString = btoa(String.fromCharCode(...iv, ...encryptedArray));
-  //   return encryptedString;
-  // };
-
-  // const decrypt = async encryptedText => {
-  //   const encryptedArray = Uint8Array.from(atob(encryptedText), c => c.charCodeAt(0));
-  //   const iv = encryptedArray.slice(0, 12);
-  //   const encryptedContent = encryptedArray.slice(12);
-  //   const decryptedContent = await window.crypto.subtle.decrypt(
-  //     {
-  //       name: 'AES-GCM',
-  //       iv: iv,
-  //     },
-  //     await cryptoKey,
-  //     encryptedContent
-  //   );
-  //   const decodedText = new TextDecoder().decode(decryptedContent);
-  //   return decodedText;
-  // };
-
-  const sendStudyReferral = async (event: React.MouseEvent<HTMLButtonElement>) => {
-    event.preventDefault();
-
-    const clientId = window.config.oidc[0].client_id;
-    if (!value) {
-      setError('Please select a doctor');
+  const send = async () => {
+    if (!selected || sending) {
       return;
     }
-
-    try {
-      const response = await fetch(`${hostName}studies/${StudyInstanceUId}/get_cloud_url`, {
-        method: 'GET',
-        headers: {
-          Authorization: authHeaders,
-          clientId: clientId,
-          realm: clientId,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-      await sendReferralHelper(StudyInstanceUId, result.url);
-    } catch (error) {
-      console.error('Error:', error);
-      setError(error instanceof Error ? error.message : 'Failed to get study URL');
-    }
-  };
-
-  const handleResetForm = () => {
-    setValue('');
+    setSending(true);
     setError('');
+    const headers = { 'Content-Type': 'application/json', Authorization: authHeaders, clientId, realm: clientId };
+    const pacs = hostName.replace(/\/?$/, '/');
+    try {
+      const urlResponse = await fetch(`${pacs}studies/${encodeURIComponent(StudyInstanceUId)}/get_cloud_url`, { headers });
+      if (!urlResponse.ok) {
+        throw new Error("The study link couldn't be created. Is the study sent to the cloud?");
+      }
+      const { url } = await urlResponse.json();
+      const comment = note.trim()
+        ? `${note.trim()}\n\nStudy link: ${url}`
+        : `Hello Doctor, Could you please check below URL: ${url}`;
+      const referral = await fetch(`${nodeAppHost}/send_study_referral`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          sr_to_doctor: selected.doc_id,
+          sr_requester_comments: comment,
+          sr_url: url,
+          sr_host_name: nodeAppHost,
+        }),
+      });
+      if (!referral.ok) {
+        throw new Error(referral.status === 403
+          ? 'Referrals are not enabled for your account.'
+          : "The referral couldn't be sent. Try again.");
+      }
+      const status = await fetch(`${pacs}studies/${encodeURIComponent(StudyInstanceUId)}/update_status`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ status: 'Referral sent' }),
+      });
+      if (!status.ok) {
+        throw new Error('The referral was sent, but the study status could not be updated.');
+      }
+      setSentTo(selected.doc_name);
+      setTimeout(() => {
+        handleClose();
+        navigate('/workList');
+      }, 1400);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "The referral couldn't be sent.");
+      setSending(false);
+    }
   };
 
   return (
-    <BootstrapDialog
-      aria-labelledby="customized-dialog-title"
+    <Dialog
       open={open}
+      onClose={close}
+      aria-labelledby="referral-title"
+      PaperProps={{ className: classnames('wl-pop', 'rf', isActive && 'wl--dark') }}
     >
-      <DialogTitle
-        sx={{ m: 0, p: 2 }}
-        id="customized-dialog-title"
-      >
-        Doctor Referral
-      </DialogTitle>
-      <IconButton
-        aria-label="close"
-        onClick={handleClose}
-        sx={{
-          position: 'absolute',
-          right: 8,
-          top: 8,
-          color: theme => theme.palette.grey[500],
-        }}
-      >
-        <CloseIcon className="closeIconCls" />
-      </IconButton>
-      <DialogContent>
-        <div className="user-view _add-view">
-          <div className="box-AlignCls">
-            <div className="row">
-              <div className="col-sm-12 col-md-6">
-                <label
-                  htmlFor="dropdown"
-                  className="PatientNameCls"
-                >
-                  Doctor Name :
-                </label>
-                &nbsp;&nbsp;
-                <select
-                  className={`doctorsListCls ${error ? 'is-invalid' : ''}`}
-                  value={value}
-                  onChange={handleChange}
-                >
-                  <option value="">Select</option>
-                  {doctorsData.map(option => (
-                    <option
-                      key={option.doc_id}
-                      value={option.doc_id}
-                    >
-                      {option.doc_name}
-                    </option>
-                  ))}
-                </select>
-                {error && <div className="invalid-feedback">{error}</div>}
-              </div>
-            </div>
-          </div>
-        </div>
-      </DialogContent>
-      <DialogActions>
-        <Stack
-          direction="row"
-          spacing={2}
+      {sentTo ? (
+        <div
+          className="rf-done"
+          role="status"
         >
-          <Button
-            variant="contained"
-            color="error"
-            className="borderRadiusCls"
-            onClick={handleResetForm}
-          >
-            Clear
-          </Button>
-          <Button
-            variant="contained"
-            className="submitBtnMuiRefCls borderRadiusCls"
-            onClick={sendStudyReferral}
-            disabled={!value}
-          >
-            Refer
-          </Button>
-        </Stack>
-      </DialogActions>
-    </BootstrapDialog>
+          <CheckCircleIcon className="rf-done__icon" />
+          <h2 className="rf-title">Referral sent</h2>
+          <p className="rf-sub">{sentTo} will receive a WhatsApp message with a secure link to this study.</p>
+        </div>
+      ) : (
+        <>
+          <header className="rf-head">
+            <div>
+              <h2
+                id="referral-title"
+                className="rf-title"
+              >
+                Refer study to a doctor
+              </h2>
+              {studyLabel && <p className="rf-sub">{studyLabel}</p>}
+            </div>
+            <button
+              type="button"
+              className="rf-close"
+              aria-label="Close"
+              onClick={close}
+            >
+              <CloseIcon />
+            </button>
+          </header>
+
+          <div className="rf-body">
+            <label className="rf-search">
+              <SearchIcon aria-hidden="true" />
+              <input
+                id="referral-search"
+                type="search"
+                placeholder="Search by name, specialty or clinic"
+                value={query}
+                onChange={event => setQuery(event.target.value)}
+                disabled={loadState !== 'ready' || !doctors.length}
+                autoFocus
+              />
+            </label>
+
+            <div
+              className="rf-list"
+              role="radiogroup"
+              aria-label="Doctors"
+            >
+              {loadState === 'loading' && (
+                <div className="rf-state">
+                  <CircularProgress size={22} />
+                  <span>Loading doctors…</span>
+                </div>
+              )}
+              {loadState === 'error' && (
+                <div className="rf-state">
+                  <span>The doctor list couldn't be loaded.</span>
+                  <button
+                    type="button"
+                    className="wl-btn"
+                    onClick={loadDoctors}
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+              {loadState === 'ready' && !doctors.length && (
+                <div className="rf-state">
+                  <PersonAddAltOutlinedIcon className="rf-state__icon" />
+                  <span>No referral doctors yet.</span>
+                  <button
+                    type="button"
+                    className="wl-btn wl-btn--ghost"
+                    onClick={() => {
+                      handleClose();
+                      navigate('/doctor-referrals');
+                    }}
+                  >
+                    Add doctors
+                  </button>
+                </div>
+              )}
+              {loadState === 'ready' && doctors.length > 0 && !filtered.length && (
+                <div className="rf-state">
+                  <span>No doctor matches “{query}”.</span>
+                </div>
+              )}
+              {filtered.map(doctor => {
+                const id = String(doctor.doc_id);
+                const checked = id === String(selectedId);
+                return (
+                  <label
+                    key={id}
+                    className={classnames('rf-doctor', checked && 'is-selected')}
+                  >
+                    <input
+                      type="radio"
+                      name="referral-doctor"
+                      value={id}
+                      checked={checked}
+                      onChange={() => {
+                        setSelectedId(id);
+                        setError('');
+                      }}
+                    />
+                    <span
+                      className="rf-avatar"
+                      aria-hidden="true"
+                    >
+                      {initials(doctor.doc_name)}
+                    </span>
+                    <span className="rf-doctor__text">
+                      <span className="rf-doctor__name">{doctor.doc_name}</span>
+                      <span className="rf-doctor__meta">
+                        {[doctor.doc_specialization, doctor.doc_clinic].filter(Boolean).join(' · ') || '—'}
+                      </span>
+                    </span>
+                    {maskPhone(doctor.doc_phone_number) && (
+                      <span className="rf-doctor__phone">
+                        <WhatsAppIcon aria-hidden="true" />
+                        {maskPhone(doctor.doc_phone_number)}
+                      </span>
+                    )}
+                  </label>
+                );
+              })}
+            </div>
+
+            <label className="rf-note">
+              <span>Note to the doctor (optional)</span>
+              <textarea
+                id="referral-note"
+                rows={3}
+                maxLength={NOTE_MAX}
+                placeholder="e.g. Please review the right temporal finding — patient has a follow-up on Friday."
+                value={note}
+                onChange={event => setNote(event.target.value)}
+              />
+              <small>{note.length}/{NOTE_MAX}</small>
+            </label>
+
+            {error && (
+              <p
+                className="rf-error"
+                role="alert"
+              >
+                {error}
+              </p>
+            )}
+          </div>
+
+          <footer className="rf-foot">
+            <span className="rf-hint">
+              <WhatsAppIcon aria-hidden="true" />
+              The doctor gets a WhatsApp message with a secure link.
+            </span>
+            <span className="wl-spacer" />
+            <button
+              type="button"
+              className="wl-btn"
+              onClick={close}
+              disabled={sending}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="wl-btn wl-btn--primary"
+              onClick={send}
+              disabled={!selected || sending}
+            >
+              {sending ? <CircularProgress size={14} color="inherit" /> : <SendOutlinedIcon aria-hidden="true" />}
+              {sending ? 'Sending…' : selected ? `Refer to ${selected.doc_name}` : 'Choose a doctor'}
+            </button>
+          </footer>
+        </>
+      )}
+    </Dialog>
   );
 }
 

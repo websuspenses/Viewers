@@ -1,0 +1,280 @@
+/*
+ * Refer-to-doctor dialog — worklist tokens via .wl-pop (light / .wl--dark).
+ * The doctor list uses divs, not ul/li: .wl-pop.MuiPaper-root restyles lists.
+ */
+.wl-pop.rf.MuiPaper-root {
+  width: 560px;
+  max-width: calc(100vw - 32px);
+  max-height: calc(100vh - 48px);
+  margin: 16px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.rf-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px 12px;
+}
+.rf-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--wl-text);
+}
+.rf-sub {
+  margin: 4px 0 0;
+  font-size: 12.5px;
+  color: var(--wl-muted);
+}
+.rf-close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--wl-muted);
+  cursor: pointer;
+}
+.rf-close:hover {
+  background: var(--wl-teal-dim);
+  color: var(--wl-text);
+}
+
+.rf-body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 0 22px 8px;
+  overflow-y: auto;
+}
+
+.rf-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid var(--wl-line-strong);
+  border-radius: 9px;
+  background: var(--wl-input);
+  color: var(--wl-muted);
+}
+.rf-search:focus-within {
+  border-color: var(--wl-teal);
+  box-shadow: 0 0 0 3px var(--wl-teal-ring);
+}
+.rf-search svg {
+  font-size: 19px;
+}
+.rf-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0 !important;
+  background: transparent !important;
+  color: var(--wl-text) !important;
+  font: inherit;
+  font-size: 13.5px;
+  outline: none;
+  box-shadow: none !important;
+}
+.rf-search input::placeholder {
+  color: var(--wl-muted-2);
+}
+
+.rf-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 300px;
+  overflow-y: auto;
+  padding: 2px;
+}
+.rf-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 26px 12px;
+  color: var(--wl-muted);
+  text-align: center;
+}
+.rf-state__icon {
+  font-size: 30px !important;
+  color: var(--wl-muted-2);
+}
+
+.rf-doctor {
+  position: relative;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--wl-line);
+  border-radius: 10px;
+  background: var(--wl-panel);
+  cursor: pointer;
+  transition: border-color 0.12s, background-color 0.12s;
+}
+.rf-doctor:hover {
+  border-color: var(--wl-line-strong);
+  background: var(--wl-row-hover);
+}
+.rf-doctor.is-selected {
+  border-color: var(--wl-teal);
+  background: var(--wl-teal-dim);
+}
+.rf-doctor input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.rf-doctor:focus-within {
+  box-shadow: 0 0 0 3px var(--wl-teal-ring);
+}
+.rf-avatar {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--wl-teal-dim);
+  color: var(--wl-teal-strong);
+  font-size: 13px;
+  font-weight: 800;
+}
+.rf-doctor.is-selected .rf-avatar {
+  background: var(--wl-teal);
+  color: #fff;
+}
+.rf-doctor__text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.rf-doctor__name {
+  overflow: hidden;
+  font-size: 14px;
+  font-weight: 650;
+  color: var(--wl-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rf-doctor__meta {
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--wl-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rf-doctor__phone {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--wl-muted);
+  white-space: nowrap;
+}
+.rf-doctor__phone svg {
+  font-size: 15px;
+  color: #25a35a;
+}
+
+.rf-note {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rf-note > span {
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--wl-text-2);
+}
+.rf-note textarea {
+  resize: vertical;
+  min-height: 64px;
+  padding: 9px 11px;
+  border: 1px solid var(--wl-line-strong) !important;
+  border-radius: 9px;
+  background: var(--wl-input) !important;
+  color: var(--wl-text) !important;
+  font: inherit;
+  font-size: 13.5px;
+  outline: none;
+}
+.rf-note textarea:focus {
+  border-color: var(--wl-teal) !important;
+  box-shadow: 0 0 0 3px var(--wl-teal-ring);
+}
+.rf-note small {
+  align-self: flex-end;
+  font-size: 11px;
+  color: var(--wl-muted-2);
+}
+
+.rf-error {
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 8px;
+  background: var(--wl-danger-dim);
+  color: var(--wl-danger);
+  font-size: 13px;
+}
+
+.rf-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 22px 18px;
+  border-top: 1px solid var(--wl-line);
+  background: var(--wl-panel-2);
+}
+.rf-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--wl-muted);
+}
+.rf-hint svg {
+  font-size: 16px;
+  color: #25a35a;
+}
+.rf-foot .wl-btn--primary {
+  max-width: 260px;
+}
+
+.rf-done {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 28px 36px;
+  text-align: center;
+}
+.rf-done__icon {
+  font-size: 46px !important;
+  color: var(--wl-teal);
+}
+
+@media (max-width: 520px) {
+  .rf-hint {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rf-doctor {
+    transition: none;
+  }
+}

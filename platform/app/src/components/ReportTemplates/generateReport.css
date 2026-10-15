@@ -1,0 +1,97 @@
+/*
+ * Study Report page — built on the worklist design layer (worklist.css tokens,
+ * wl-card / wl-toolbar / wl-btn) and the template editor (catalog.css cat-*),
+ * so it reads as the same product in light and dark.
+ */
+.gr .gr-card {
+  min-width: 0;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.gr-source {
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--wl-line-strong);
+  color: var(--wl-text-2);
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.gr-source--existing {
+  border-color: var(--wl-teal-ring);
+  background: var(--wl-teal-dim);
+  color: var(--wl-teal-strong);
+}
+.gr-source--blank {
+  border-color: var(--wl-stat-ring);
+  background: var(--wl-stat-bg);
+  color: var(--wl-stat-fg);
+}
+
+.gr-save-state {
+  min-width: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--wl-stat-fg);
+}
+
+/* Patient / study details as a quiet strip of label–value pairs. */
+.gr-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 1px;
+  margin: 0 18px;
+  border: 1px solid var(--wl-line);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--wl-line);
+}
+.gr-summary__item {
+  min-width: 0;
+  padding: 10px 14px;
+  background: var(--wl-panel-2);
+}
+.gr-summary dt {
+  margin: 0 0 3px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--wl-muted-2);
+}
+.gr-summary dd {
+  margin: 0;
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--wl-text);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gr-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 72px 18px;
+  color: var(--wl-muted);
+}
+.gr-error {
+  padding: 18px;
+}
+
+/* The report itself stays on white "paper" in both themes. */
+.gr-surface .sun-editor .se-wrapper-inner {
+  padding: 28px 36px;
+}
+
+@media (max-width: 720px) {
+  .gr .wl-toolbar {
+    gap: 8px;
+  }
+  .gr-surface .sun-editor .se-wrapper-inner {
+    padding: 16px;
+  }
+}

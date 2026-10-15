@@ -68,6 +68,13 @@
 .are-back.MuiButton-root {
   color: var(--are-muted);
 }
+.are-bar .are-cancel.MuiButton-root {
+  color: var(--are-muted);
+}
+.are-bar .are-cancel.MuiButton-root:hover {
+  color: var(--are-text);
+  background: rgba(255, 255, 255, 0.06);
+}
 .are-title {
   flex: 1 1 320px;
   min-width: 0;

@@ -1,479 +1,435 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { json, useParams } from 'react-router-dom';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import classnames from 'classnames';
 import SunEditor from 'suneditor-react';
 import 'suneditor/dist/css/suneditor.min.css';
-import '../ReportTemplates/report.css';
 import { Header } from '@ohif/ui';
-import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
 import { useAppConfig } from '@state';
-import {
-  align,
-  font,
-  fontColor,
-  fontSize,
-  formatBlock,
-  hiliteColor,
-  horizontalRule,
-  lineHeight,
-  list,
-  paragraphStyle,
-  table,
-  template,
-  textStyle,
-  image,
-  link,
-} from 'suneditor/src/plugins';
-const defaultFonts = [
-  'Arial',
-  'Comic Sans MS',
-  'Courier New',
-  'Impact',
-  'Georgia',
-  'Tahoma',
-  'Trebuchet MS',
-  'Verdana',
+import Alert from '@mui/material/Alert';
+import CircularProgress from '@mui/material/CircularProgress';
+import Snackbar from '@mui/material/Snackbar';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import SendOutlinedIcon from '@mui/icons-material/SendOutlined';
+
+import getHeaderMenuOptions from '../../utils/getHeaderMenuOptions';
+import { UnsavedChangesDialog, useUnsavedChangesGuard } from '../common/useUnsavedChangesGuard';
+import '../ReportTemplates/report.css';
+import '../../routes/WorkList/components/worklist.css';
+import '../Catalog/catalog.css';
+import './generateReport.css';
+
+const FONTS = [
+  'Arial', 'Calibri', 'Courier New', 'Georgia', 'Helvetica', 'Sans-Serif', 'Segoe UI',
+  'Serif', 'Tahoma', 'Times New Roman', 'Trebuchet MS', 'Verdana',
 ];
 
-const sortedFontOptions = [
-  'Logical',
-  'Salesforce Sans',
-  'Garamond',
-  'Sans-Serif',
-  'Serif',
-  'Times New Roman',
-  'Helvetica',
-  ...defaultFonts,
-].sort();
-const customPlugin = {
-  // @Required @Unique
-  name: 'custom_example',
-  innerHTML: '<img src="/ohif-logo.svg" alt="OHIF Logo fadfdfsfdsfsd">',
-};
-let addOnPlugins1 = {
-  align,
-  image,
-  template,
-};
-const editorOptions = {
-  plugins: [addOnPlugins1],
-  maxWidth: '1070px',
-  minHeight: '50vh',
-  maxHeight: '50vh',
+// No `plugins` option: suneditor-react registers its own bundled plugins. Passing
+// plugins from 'suneditor/src/plugins' mixes two copies of the editor and
+// crashes on mount (align plugin reads options the bundled core never sets).
+const EDITOR_OPTIONS = {
+  minHeight: '58vh',
+  height: 'auto',
+  defaultStyle: 'font-family: "Segoe UI", Arial, sans-serif; font-size: 15px; line-height: 1.55; color: #111;',
   buttonList: [
     ['undo', 'redo'],
     ['font', 'fontSize', 'formatBlock'],
-    ['paragraphStyle', 'blockquote'],
     ['bold', 'underline', 'italic', 'strike', 'subscript', 'superscript'],
-    ['fontColor', 'hiliteColor', 'textStyle'],
-    ['removeFormat'],
-    ['outdent', 'indent'],
-    ['align', 'horizontalRule', 'list', 'lineHeight'],
-    ['table', 'link', 'image'],
-    ['fullScreen', 'showBlocks', 'codeView'],
-    ['preview', 'print', 'save'],
+    ['fontColor', 'hiliteColor', 'removeFormat'],
+    ['outdent', 'indent', 'align', 'list', 'lineHeight'],
+    ['table', 'horizontalRule', 'link', 'image'],
+    ['fullScreen', 'preview', 'print'],
   ],
   imageRotation: false,
-  font: sortedFontOptions,
-  fontSize: [12, 14, 16, 18, 20],
-  colorList: [
-    '#828282',
-    '#FF5400',
-    '#676464',
-    '#F1F2F4',
-    '#FF9B00',
-    '#F00',
-    '#fa6e30',
-    '#000',
-    'rgba(255, 153, 0, 0.1)',
-    '#FF6600',
-    '#0099FF',
-    '#74CC6D',
-    '#FF9900',
-    '#CCCCCC',
-  ],
+  font: FONTS,
+  fontSize: [12, 13, 14, 15, 16, 18, 20],
 };
 
+type StudySummary = {
+  patientName: string;
+  patientAge: string;
+  patientSex: string;
+  modality: string;
+  description: string;
+  studyDate: string;
+  accession: string;
+};
+type Source = 'existing' | 'template' | 'blank';
+
+const dicomValue = (study: any, tag: string) => {
+  const value = study?.[tag]?.Value?.[0];
+  if (value && typeof value === 'object') {
+    return String(value.Alphabetic || '').replace(/\^/g, ' ').trim();
+  }
+  return value == null ? '' : String(value);
+};
+const formatDicomDate = (value: string) =>
+  /^\d{8}$/.test(value || '') ? `${value.slice(6, 8)}-${value.slice(4, 6)}-${value.slice(0, 4)}` : value || '';
+const todayDdMmYyyy = () => {
+  const d = new Date();
+  return `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`;
+};
+const escapeHtml = (value: string) =>
+  String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/** The patient block a new report starts with (same fields the old page wrote). */
+const patientBlock = (study: StudySummary) => `
+<p class="patient-info-span" style="width: 200px">
+  <b>Patient name :</b>&nbsp;${escapeHtml(study.patientName)}<br />
+  <b>Modality :</b>&nbsp;${escapeHtml(study.modality)}<br />
+  <b>Study description :</b>&nbsp;${escapeHtml(study.description)}<br />
+  <b>Date:</b>&nbsp;${todayDdMmYyyy()}
+</p>`;
+
+/**
+ * Study Report page: write and submit the report for one study, starting from
+ * the existing report or the lab's template for the modality. Submit writes
+ * reportRaw, isReportGenerated and the study status, as before.
+ */
 const GenerateReport = () => {
-  const iframeBaseUrl = window.location.origin;
   const navigate = useNavigate();
-  const labId = sessionStorage.getItem('labId') || '';
-  //const nodeAppHost = process.env.REACT_APP_HOST_NAME;
-  // labName = labName.replace(/ /g, '_') + '.json';
+  const { t } = useTranslation();
   const params = useParams();
-  // console.log('Default param ', params);
-  const editorRef = useRef();
-  const contentRef = useRef();
-  //const contentModalityRef = useRef(null);
-  const [value, setValue] = useState('<p>sample info</p>');
-  const [isActive, setIsActive] = useState(false);
-
-  const modalityValue = params.mrn;
-  const modality = params.modality;
-  const reportType = params.type;
-  const [modalityInfo, getModalityData] = useState('');
-  const [modalitytemplateInfo, getModalityTemplateDate] = useState('');
-
-  const [selectedOption, setSelectedOption] = useState(modalityValue ? modalityValue : '');
-
-  const [modalitydata, setModalityData] = useState('<p>sample modality</p>');
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [authHeaders, setAuthHeaders] = useState('');
-  const clientId = window.config.oidc[0].client_id;
+  const studyUid = params.mrn || '';
+  const modalityParam = params.modality || '';
+  const reportType = params.type || 's';
   const [appConfig] = useAppConfig();
   const nodeAppHost = appConfig.nodeAppHostURL || 'https://ciaiteleradiology.com/teleapp';
   const hostName = appConfig.pacsHostURL;
+  const clientId = (window as any).config?.oidc?.[0]?.client_id || '';
+  const labId = sessionStorage.getItem('labId') || '';
 
-  useEffect(() => {
-    //fetch(`${hostName}studies/${modalityValue}/metadata/reportRaw`);
-    //const authHeaders = localStorage.getItem('auth-t');
-    // console.log('local headers --> read_study_template ', authHeaders);
-    if (authHeaders) {
-      // console.log('Inside local headers --> read_study_template ', authHeaders);
-      fetch(`${hostName}studies/${modalityValue}/metadata/reportRaw`, {
-        method: 'GET',
-        headers: {
-          Authorization: authHeaders,
-        },
-      })
-        .then(response => response.json())
-        .then(actualData => {
-          // console.log('Modality Info 1st API  ', actualData);
-          getModalityData(actualData.reportRaw);
-        })
-        .catch(err => {
-          console.log(err.message);
-        });
-      GetStudyData();
-    }
-  }, [authHeaders]);
-
-  useEffect(() => {
-    const sessInfo = JSON.parse(
-      sessionStorage.getItem(
-        `oidc.user:${window.config.oidc[0].authority}:${window.config.oidc[0].client_id}`
-      )
-    );
-    let authHeaders = sessInfo.token_type + ' ' + sessInfo.access_token;
-    // console.log("local headers ", authHeaders);
-    setAuthHeaders(authHeaders);
-  }, []);
-
-  useEffect(() => {
-    //fetch(`${nodeAppHost}/read_study_template_for_generate/${labId}/${modality}`)
-    //const authHeaders = localStorage.getItem('auth-t');
-    // console.log('local headers --> read_study_template ', authHeaders);
-    if (authHeaders) {
-      fetch(`${nodeAppHost}/read_study_template_for_generate/${labId}/${modality}/${reportType}`, {
-        method: 'GET',
-        // headers: {
-        //   Authorization: authHeaders,
-        // },
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: authHeaders,
-          clientId: clientId,
-          realm: clientId,
-          isAccess: 'read_study_template_for_generate',
-          labId: labId,
-          abcdefg: 'AAAAA',
-          x1234: 'BBBBB_' + labId,
-        },
-      })
-        .then(response => response.json())
-        .then(actualData => {
-          // console.log('actualData', actualData);
-          let updatedTemplateInfo;
-          if (modalityInfo === '') {
-            // console.log('Modality template Info 2nd API IF', modalitydata);
-            const p_modality = modalitydata['00080061'] ? modalitydata['00080061'].Value[0] : '';
-            const p_name = modalitydata['00100010']
-              ? modalitydata['00100010'].Value[0].Alphabetic
-              : '';
-
-            const p_desc = modalitydata['00081030'] ? modalitydata['00081030'].Value[0] : '';
-            const p_age = modalitydata['00101010'] ? modalitydata['00101010'].Value[0] : '';
-            const patientInfo = `
-            <p class="patient-info-span" style="width: 200px">
-
-              <b>Patient name :</b>&nbsp;${p_name}
-              <br />
-              <b>Modality :</b>&nbsp;
-              ${p_modality}
-            <br />
-              <b>Study description :</b>&nbsp;${p_desc}
-              <br />
-              <b>Date:</b>&nbsp;
-              ${formattedDate}
-            </p>`;
-            // console.log('Modality template Info 2nd API IF patientInfo', patientInfo);
-            updatedTemplateInfo = patientInfo + '<br/>' + actualData.data.template_content;
-          } else {
-            // console.log('Modality template Info 2nd API ELSE ', modalityInfo);
-            updatedTemplateInfo = modalityInfo;
-          }
-
-          getModalityTemplateDate(updatedTemplateInfo);
-        })
-        .catch(err => {
-          console.log(err.message);
-        });
-    }
-  }, [modalitydata, modalityInfo, authHeaders]);
-
-  function GetStudyData() {
-    // console.log('local headers --> read_study_template ', authHeaders);
-    fetch(
-      `${hostName}studies?StudyInstanceUID=${modalityValue}&&includefield=00101010,00101040,00081030`,
-      {
-        method: 'GET',
-        headers: {
-          Authorization: authHeaders,
-        },
-      }
-    )
-      .then(response => response.json())
-      .then(actualData => {
-        setModalityData(actualData[0]);
-      })
-      .catch(err => {
-        console.log(err.message);
-      });
-  }
-
-  const updateDate = () => {
-    setCurrentDate(new Date());
-  };
-
-  // Use useEffect to update the current date every second
-  useEffect(() => {
-    const intervalId = setInterval(updateDate, 1000);
-    return () => clearInterval(intervalId);
-  }, []); // Empty dependency array to run the effect only once on component mount
-
-  // Format the date as DD/MM/YYYY
-  const formattedDate = `${currentDate.getDate().toString().padStart(2, '0')}/${(
-    currentDate.getMonth() + 1
-  )
-    .toString()
-    .padStart(2, '0')}/${currentDate.getFullYear()}`;
-
-  // Set body style
-  useEffect(() => {
-    document.body.classList.add('bg-black');
-    document.body.classList.add('reportsList_ContainerCls');
-    return () => {
-      document.body.classList.remove('bg-black');
-      document.body.classList.remove('reportsList_ContainerCls');
-    };
-  }, []);
-
-  useEffect(() => {
-    if (isActive) {
-      document.body.classList.remove('bg-black');
-      document.body.classList.add('bg-black-on');
-    } else {
-      document.body.classList.remove('bg-black-on');
-      document.body.classList.add('bg-black');
-    }
-  }, [isActive]);
-
-  useEffect(() => {
-    const items = JSON.parse(localStorage.getItem('active_dark'));
-    if (items) {
-      setIsActive(items);
-    }
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem('active_dark', JSON.stringify(isActive));
-    document.body.classList.remove('bg-black');
-  }, [isActive]);
-
-  useEffect(() => {
-    // console.log(editorRef.current);
-  }, []);
-
-  useEffect(() => {
-    if (value !== '') {
-      // console.log('contentRef.current.innerHTML', contentRef, value);
-      if (!contentRef.current) {
-        return;
-      }
-
-      contentRef.current.innerHTML = value;
-    }
-  }, [value]);
-
-  const onChangeHandler = content => {
-    // console.log(content);
-    setValue(content);
-  };
-
-  function handleChangeSwitch() {
-    setIsActive(!isActive);
-  }
-  const handleSelectChange = event => {
-    setSelectedOption(event.target.value);
-  };
-
-  const handleSubmit = event => {
-    event.preventDefault();
-    // Handle form submission with selectedOption
-    let fiftyPerFlag = localStorage.getItem('fiftyPerFlag');
-
-    const contentValue = '';
-    // console.log('contentRef.current.innerHTML', value);
-    //const authHeaders = localStorage.getItem('auth-t');
-    const url = `${hostName}studies/${modalityValue}/addmetadata/reportRaw`;
-    const data = { data: value };
-    const options = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: authHeaders,
-      },
-      body: JSON.stringify(data),
-    };
-
-    const isReportGeneratedURL = `${hostName}/studies/${modalityValue}/addmetadata/isReportGenerated`;
-
-    let formData = { data: 'true' };
-
-    const isReportGeneratedOptions = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: authHeaders,
-      },
-      body: JSON.stringify(formData),
-    };
-
+  const [isActive, setIsActive] = useState<boolean>(() => {
     try {
-      const res = fetch(url, options);
-      // Update is isReportGenerated flag here
+      return Boolean(JSON.parse(localStorage.getItem('active_dark') || 'false'));
+    } catch {
+      return false;
+    }
+  });
+  const authHeaders = useMemo(() => {
+    try {
+      const oidc = (window as any).config?.oidc?.[0];
+      const session = JSON.parse(sessionStorage.getItem(`oidc.user:${oidc?.authority}:${oidc?.client_id}`) || '{}');
+      return session?.access_token ? `${session.token_type || 'Bearer'} ${session.access_token}` : '';
+    } catch {
+      return '';
+    }
+  }, []);
 
-      const res2 = fetch(isReportGeneratedURL, isReportGeneratedOptions);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState('');
+  const [study, setStudy] = useState<StudySummary | null>(null);
+  const [source, setSource] = useState<Source>('blank');
+  const [initialHtml, setInitialHtml] = useState<string | null>(null);
+  const [editorKey, setEditorKey] = useState(0);
+  const [dirty, setDirty] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [toast, setToast] = useState<{ severity: 'success' | 'error'; text: string } | null>(null);
+  const contentRef = useRef('');
 
-      Promise.all([res, res2])
-        .then(([response1, response2]) => {
-          // console.log('Generate Report updated', response1, "response2 ", response2);
-          let url2 = `${hostName}studies/${modalityValue}/update_status`;
-          const statusBody = { status: 'Report Generated' };
-          const options2 = {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: authHeaders,
-            },
-            body: JSON.stringify(statusBody),
-          };
+  const guard = useUnsavedChangesGuard(dirty);
+  const goToWorklist = () => guard.leave(() => navigate('/workList', { replace: true }));
 
-          try {
-            const res1 = fetch(url2, options2);
-            if (res1) {
-              sessionStorage.setItem('stuID', modalityValue);
-              sessionStorage.setItem('isReportGenerated', true);
-              if (fiftyPerFlag == 'true') {
-                alert('Report generated Successfully...');
-                //localStorage.setItem('fiftyPerFlag', 'false');
-                //localStorage.setItem('sid', "");
-                //localStorage.setItem('mdFlag', "");
-                window.location.reload();
-                //navigate('/workList');
-              } else {
-                navigate('/workList');
-                alert('Report generated Successfully...');
-                // console.log('Status updated Generate report', res1);
-              }
-            }
-            // console.log('response ', res1);
-          } catch (error) {
-            console.error('Error:', error);
-          }
+  // ---- theme: the switch lives in the settings menu ----
+  const toggleTheme = () => {
+    setIsActive(current => {
+      const next = !current;
+      try {
+        localStorage.setItem('active_dark', JSON.stringify(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
+  useEffect(() => {
+    document.body.classList.remove('bg-black', 'bg-black-on', 'reportsList_ContainerCls');
+  }, [isActive]);
+
+  // ---- load the report, the study and the template in parallel ----
+  const load = useCallback(async () => {
+    if (!authHeaders) {
+      setLoadError('You are signed out. Sign in again to write the report.');
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setLoadError('');
+    const pacs = hostName.replace(/\/?$/, '/');
+    try {
+      const [existing, studyRows, templateBody] = await Promise.all([
+        fetch(`${pacs}studies/${encodeURIComponent(studyUid)}/metadata/reportRaw`, { headers: { Authorization: authHeaders } })
+          .then(r => (r.ok ? r.json() : null))
+          .then(body => (typeof body?.reportRaw === 'string' ? body.reportRaw : ''))
+          .catch(() => ''),
+        fetch(`${pacs}studies?StudyInstanceUID=${encodeURIComponent(studyUid)}&includefield=00101010,00101040,00081030,00100040,00080061`, {
+          headers: { Authorization: authHeaders, Accept: 'application/json' },
         })
-        .catch(error => {
-          console.error('Error:', error);
-        });
+          .then(r => (r.ok ? r.json() : []))
+          .catch(() => []),
+        fetch(`${nodeAppHost}/read_study_template_for_generate/${encodeURIComponent(labId || '0')}/${encodeURIComponent(modalityParam)}/${encodeURIComponent(reportType)}`, {
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: authHeaders,
+            clientId,
+            realm: clientId,
+            isAccess: 'read_study_template_for_generate',
+            labId,
+          },
+        })
+          .then(r => (r.ok ? r.json() : null))
+          .then(body => body?.data?.template_content || '')
+          .catch(() => ''),
+      ]);
+      const row = Array.isArray(studyRows) ? studyRows[0] : null;
+      const summary: StudySummary = {
+        patientName: dicomValue(row, '00100010'),
+        patientAge: dicomValue(row, '00101010'),
+        patientSex: dicomValue(row, '00100040'),
+        modality: (row?.['00080061']?.Value || []).join('/') || modalityParam,
+        description: dicomValue(row, '00081030'),
+        studyDate: dicomValue(row, '00080020'),
+        accession: dicomValue(row, '00080050'),
+      };
+      setStudy(summary);
 
-      // if (res) {
-      //   console.log('Generate Report', res);
-      //   let url2 = `${hostName}studies/${modalityValue}/update_status`;
-      //   const statusBody = { "status": "Report Generated" };
-      //   const options2 = {
-      //     method: 'POST',
-      //     headers: {
-      //       'Content-Type': 'application/json',
-      //       Authorization: authHeaders,
-      //     },
-      //     body: JSON.stringify(statusBody),
-      //   };
-
-      //   try {
-      //     const res1 = fetch(url2, options2);
-      //     if (res1) {
-      //       if (fiftyPerFlag == "true") {
-      //         alert("Report generated Successfully...");
-      //         //localStorage.setItem('fiftyPerFlag', 'false');
-      //         //localStorage.setItem('sid', "");
-      //         //localStorage.setItem('mdFlag', "");
-      //         window.location.reload();
-      //         //navigate('/workList');
-      //       } else {
-      //         navigate('/workList');
-      //         alert("Report generated Successfully...");
-      //         console.log('Status updated Generate report', res1);
-      //       }
-      //     }
-      //     console.log('response ', res1);
-      //   } catch (error) {
-      //     console.error('Error:', error);
-      //   }
-
-      //   //navigate('/workList');
-      // }
+      let html = '';
+      let from: Source = 'blank';
+      if (existing && existing.replace(/<[^>]*>|&nbsp;|\s/g, '')) {
+        html = existing;
+        from = 'existing';
+      } else {
+        html = `${patientBlock(summary)}<br/>${templateBody || '<p><br></p>'}`;
+        from = templateBody ? 'template' : 'blank';
+      }
+      contentRef.current = html;
+      setSource(from);
+      setInitialHtml(html);
+      setEditorKey(key => key + 1);
+      setDirty(false);
     } catch (error) {
-      console.error('Error:', error);
+      setLoadError(error instanceof Error ? error.message : 'The report could not be loaded.');
+    } finally {
+      setLoading(false);
+    }
+  }, [authHeaders, clientId, hostName, labId, modalityParam, nodeAppHost, reportType, studyUid]);
+
+  useEffect(() => {
+    load();
+  }, [load]);
+
+  const onEditorChange = (content: string) => {
+    if (content === contentRef.current) {
+      return;
+    }
+    contentRef.current = content;
+    setDirty(true);
+  };
+
+  // ---- submit: same writes as before ----
+  const submit = async (event?: React.FormEvent) => {
+    event?.preventDefault();
+    if (submitting) {
+      return;
+    }
+    const text = contentRef.current.replace(/<[^>]*>|&nbsp;|\s/g, '');
+    if (!text) {
+      setToast({ severity: 'error', text: 'The report is empty.' });
+      return;
+    }
+    setSubmitting(true);
+    const pacs = hostName.replace(/\/?$/, '/');
+    const post = (path: string, body: unknown) =>
+      fetch(`${pacs}studies/${encodeURIComponent(studyUid)}/${path}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: authHeaders },
+        body: JSON.stringify(body),
+      }).then(r => {
+        if (!r.ok) {
+          throw new Error(`HTTP ${r.status}`);
+        }
+      });
+    try {
+      await Promise.all([
+        post('addmetadata/reportRaw', { data: contentRef.current }),
+        post('addmetadata/isReportGenerated', { data: 'true' }),
+      ]);
+      await post('update_status', { status: 'Report Generated' });
+      sessionStorage.setItem('stuID', studyUid);
+      sessionStorage.setItem('isReportGenerated', 'true');
+      setDirty(false);
+      setToast({ severity: 'success', text: 'Report submitted' });
+      const reloadInPlace = localStorage.getItem('fiftyPerFlag') === 'true';
+      setTimeout(() => {
+        if (reloadInPlace) {
+          guard.leaveNow(() => window.location.reload());
+        } else {
+          guard.leaveNow(() => navigate('/workList', { replace: true }));
+        }
+      }, 800);
+    } catch (error) {
+      setToast({ severity: 'error', text: "Couldn't submit the report. Check the connection and try again." });
+      setSubmitting(false);
     }
   };
 
-  const handleRedirectPage = () => {
-    navigate('/workList');
-  };
+  const menuOptions = getHeaderMenuOptions({
+    t,
+    isActive,
+    handleChangeSwitch: toggleTheme,
+    navigate: (path: string) => guard.leave(() => navigate(path, { replace: true })),
+    appConfig,
+    currentPath: '/generate-report',
+  });
+
+  const sourceLabel = {
+    existing: 'Editing the submitted report',
+    template: `From the ${modalityParam} template`,
+    blank: 'No template for this modality',
+  }[source];
+  const summaryItems: [string, string][] = study
+    ? ([
+        ['Patient', study.patientName],
+        ['Age / Sex', [study.patientAge, study.patientSex].filter(Boolean).join(' / ')],
+        ['Modality', study.modality],
+        ['Study', study.description],
+        ['Study date', formatDicomDate(study.studyDate)],
+        ['Accession', study.accession],
+      ].filter(([, value]) => value) as [string, string][])
+    : [];
 
   return (
     <div>
       <Header
         isSticky
-        menuOptions={[]}
+        menuOptions={menuOptions}
         isReturnEnabled={false}
         WhiteLabeling={{}}
         isActive={isActive}
-        handleChange={handleChangeSwitch}
+        handleChange={toggleTheme}
         screen="GenerateReport"
-        handleRedirectPage={handleRedirectPage}
-        modalityValue={modalityValue}
+        handleRedirectPage={goToWorklist}
+        modalityValue={studyUid}
       />
-      <div className="templateForm">
-        <h1 className="templateHeaderCls">Study Report</h1>
-        <form onSubmit={handleSubmit}>
-          <div style={{ display: 'grid', justifyContent: 'center' }}>
-            <SunEditor
-              ref={editorRef}
-              setOptions={editorOptions}
-              lang="en"
-              onChange={onChangeHandler}
-              setContents={modalitytemplateInfo}
-            />
+
+      <main className={classnames('wl', 'cat', 'gr', isActive && 'wl--dark')}>
+        <form
+          className="wl-card cat-editor gr-card"
+          onSubmit={submit}
+        >
+          <div className="wl-toolbar">
             <button
-              className="submitButton"
-              type="submit"
+              type="button"
+              className="cat-back"
+              aria-label="Back to worklist"
+              onClick={goToWorklist}
             >
-              Submit
+              <ArrowBackIcon />
+            </button>
+            <div>
+              <h1 className="wl-title">Study report</h1>
+              <p className="cat-editor-sub">Write the report and submit it to mark the study as reported.</p>
+            </div>
+            <span className="wl-spacer" />
+            {!loading && !loadError && (
+              <span className={classnames('gr-source', `gr-source--${source}`)}>{sourceLabel}</span>
+            )}
+            <span
+              className={classnames('gr-save-state', dirty && 'is-dirty')}
+              aria-live="polite"
+            >
+              {dirty ? 'Unsaved changes' : ''}
+            </span>
+            <button
+              type="button"
+              className="wl-btn"
+              onClick={goToWorklist}
+              disabled={submitting}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="wl-btn wl-btn--primary"
+              disabled={loading || !!loadError || submitting}
+            >
+              {submitting ? <CircularProgress size={14} color="inherit" /> : <SendOutlinedIcon aria-hidden="true" />}
+              {submitting ? 'Submitting…' : 'Submit report'}
             </button>
           </div>
+
+          {summaryItems.length > 0 && (
+            <dl className="gr-summary">
+              {summaryItems.map(([label, value]) => (
+                <div
+                  key={label}
+                  className="gr-summary__item"
+                >
+                  <dt>{label}</dt>
+                  <dd title={value}>{value}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+
+          {loading && (
+            <div className="gr-loading">
+              <CircularProgress size={26} />
+              <span>Loading the report…</span>
+            </div>
+          )}
+          {!loading && loadError && (
+            <div className="gr-error">
+              <Alert
+                severity="error"
+                action={
+                  <button
+                    type="button"
+                    className="wl-btn"
+                    onClick={load}
+                  >
+                    Retry
+                  </button>
+                }
+              >
+                {loadError}
+              </Alert>
+            </div>
+          )}
+
+          {!loading && !loadError && initialHtml !== null && (
+            <div className="cat-editor-surface gr-surface">
+              <SunEditor
+                key={editorKey}
+                lang="en"
+                setOptions={EDITOR_OPTIONS}
+                defaultValue={initialHtml}
+                onChange={onEditorChange}
+              />
+            </div>
+          )}
         </form>
-      </div>
+      </main>
+
+      <UnsavedChangesDialog
+        {...guard.dialogProps}
+        dark={isActive}
+        message="You have unsaved changes in this report. If you leave now, they will be lost."
+      />
+
+      <Snackbar
+        open={Boolean(toast)}
+        autoHideDuration={toast?.severity === 'error' ? null : 3000}
+        onClose={(_, reason) => reason !== 'clickaway' && setToast(null)}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <Alert
+          severity={toast?.severity || 'success'}
+          onClose={() => setToast(null)}
+        >
+          {toast?.text}
+        </Alert>
+      </Snackbar>
     </div>
   );
 };
