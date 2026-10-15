@@ -18,6 +18,7 @@ import Users from '../components/AdminPanel/Users';
 import ReportTemplatesList from '../components/ReportTemplates/ReportTemplatesList';
 import CreateTemplate from '../components/ReportTemplates/CreateTemplate';
 import GenerateReport from '../components/ReportTemplates/GenerateReport';
+import AiReportEditor from '../components/AiReportEditor/AiReportEditor';
 import DoctorReferralsList from '../components/DoctorReferrals/DoctorReferralsList';
 import CreateDoctorReferral from '../components/DoctorReferrals/CreateDoctorReferral';
 import GenerateReferral from '../components/DoctorReferrals/GenerateReferral';
@@ -106,6 +107,10 @@ const bakedInRoutes = [
   {
     path: '/generate-report/:mrn/:modality/:type',
     children: GenerateReport,
+  },
+  {
+    path: '/ai-report/:studyUid',
+    children: AiReportEditor,
   },
   {
     path: '/doctor-referrals',

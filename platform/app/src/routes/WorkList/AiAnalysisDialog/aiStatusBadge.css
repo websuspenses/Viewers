@@ -146,6 +146,16 @@
   background: linear-gradient(135deg, var(--ai-a), var(--ai-b));
 }
 
+/* Radiologist review of a ready report (docs §8.1): a ✓ / ✕ mark in place of
+   the dot, so the state reads without relying on colour. */
+.ai-badge__review-icon {
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--ai-a);
+}
+
 .ai-badge__spinner {
   flex: 0 0 auto;
   width: 10px;
@@ -234,4 +244,30 @@
   .ai-badge--moving::after {
     animation: none;
   }
+}
+
+/* ---- radiologist review (ready reports) ---- */
+
+/* Waiting for a radiologist: amber dot, stronger label. */
+.ai-badge[data-review='pending'] {
+  --ai-a: #f59e0b;
+  --ai-b: #a855f7;
+  --ai-edge: 75%;
+  font-weight: 800;
+}
+
+/* Accepted: green. */
+.ai-badge[data-review='accepted'] {
+  --ai-a: #10b981;
+  --ai-b: #34d399;
+  --ai-ink-dark: #a7f3d0;
+  --ai-glow: none;
+}
+
+/* Rejected: muted grey with a rose mark. */
+.ai-badge[data-review='rejected'] {
+  --ai-a: #e11d48;
+  --ai-b: #94a3b8;
+  --ai-ink-dark: #fecdd3;
+  --ai-glow: none;
 }

@@ -10,8 +10,31 @@ import {
   getAnalysisPercent,
   getReportPercent,
 } from './aiPipeline';
+import { AiReview, formatDecisionTime, rejectReasonLabel } from './aiReview';
 
 import './aiStatusBadge.css';
+
+function getReviewContent(review: AiReview | null | undefined) {
+  if (!review) {
+    return {
+      label: 'AI ready · Not reviewed',
+      detail: 'AI report ready — open it to accept or reject',
+      review: 'pending' as const,
+      percent: undefined as number | undefined,
+    };
+  }
+  const accepted = review.decision === 'accepted';
+  const who = review.user_name || 'a radiologist';
+  const when = formatDecisionTime(review.decided_at);
+  const reason = !accepted && rejectReasonLabel(review.reason);
+  const changed = review.previous ? ` (changed from ${review.previous})` : '';
+  return {
+    label: accepted ? 'AI accepted' : 'AI rejected',
+    detail: [`${accepted ? 'Accepted' : 'Rejected'} by ${who}`, when, reason].filter(Boolean).join(' · ') + changed,
+    review: review.decision,
+    percent: undefined as number | undefined,
+  };
+}
 
 function getBadgeContent(state: AiStudyState) {
   switch (state.stage) {
@@ -51,6 +74,11 @@ function getBadgeContent(state: AiStudyState) {
 
 type Props = {
   state: AiStudyState;
+  /**
+   * Radiologist decision for a ready report: undefined = review not loaded
+   * (plain "AI report ready"), null = not reviewed, or the latest decision.
+   */
+  review?: AiReview | null;
   isActive?: boolean;
   onClick?: () => void;
 };
@@ -62,8 +90,9 @@ type Props = {
  * pastel study-status pill. Moving stages swap the dot for a spinner and carry
  * a gradient progress line, so running and finished studies differ at a glance.
  */
-export default function AiStatusBadge({ state, isActive = false, onClick }: Props) {
-  const { label, detail, percent } = getBadgeContent(state);
+export default function AiStatusBadge({ state, review, isActive = false, onClick }: Props) {
+  const reviewContent = state.stage === 'ready' && review !== undefined ? getReviewContent(review) : null;
+  const { label, detail, percent } = reviewContent || getBadgeContent(state);
   const isMoving = ['analyzing', 'queued', 'generating'].includes(state.stage);
   const isInteractive = state.stage !== 'none' && Boolean(onClick);
 
@@ -81,6 +110,13 @@ export default function AiStatusBadge({ state, isActive = false, onClick }: Prop
           aria-hidden="true"
           className="ai-badge__spinner"
         />
+      ) : reviewContent && reviewContent.review !== 'pending' ? (
+        <span
+          aria-hidden="true"
+          className="ai-badge__review-icon"
+        >
+          {reviewContent.review === 'accepted' ? '✓' : '✕'}
+        </span>
       ) : (
         <span
           aria-hidden="true"
@@ -104,6 +140,7 @@ export default function AiStatusBadge({ state, isActive = false, onClick }: Prop
       <span
         className={className}
         data-stage={state.stage}
+        data-review={reviewContent?.review}
         title={detail}
       >
         {content}
@@ -116,6 +153,7 @@ export default function AiStatusBadge({ state, isActive = false, onClick }: Prop
       type="button"
       className={className}
       data-stage={state.stage}
+      data-review={reviewContent?.review}
       title={detail}
       aria-label={`${label}. ${detail}`}
       onClick={event => {

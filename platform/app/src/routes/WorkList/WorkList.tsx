@@ -22,6 +22,7 @@ import SubscriptionFeaturesModal from '../../components/AdminPanel/SubscriptionF
 import AiAnalysisDialog from './AiAnalysisDialog/AiAnalysisDialog';
 import AiStatusBadge from './AiAnalysisDialog/AiStatusBadge';
 import useAiReportPipeline from './AiAnalysisDialog/useAiReportPipeline';
+import { AiReview, DEFAULT_REVIEW_ROLE, fetchReviewStatus } from './AiAnalysisDialog/aiReview';
 import WorklistTable, { WorklistRow } from './components/WorklistTable';
 import StudyRowActions from './components/StudyRowActions';
 import {
@@ -146,6 +147,46 @@ function WorkList({
     authHeaders,
     autoGenerate: appConfig.aiReportAutoGenerate !== false,
   });
+
+  // Radiologist decisions on AI reports, per study (docs §8.1): absent = not
+  // loaded yet, null = not reviewed. Loaded for the visible rows only.
+  const [aiReviews, setAiReviews] = useState<Record<string, AiReview | null>>({});
+  const reviewApi = useMemo(() => ({ nodeAppHost, authHeaders }), [nodeAppHost, authHeaders]);
+  const canReviewAi =
+    Array.isArray(rolesInfo) &&
+    (rolesInfo as string[]).includes(appConfig.aiReviewRole || DEFAULT_REVIEW_ROLE);
+  const visibleStudyUids = useMemo(
+    () => (studies || []).map(study => study.studyInstanceUid).filter(Boolean),
+    [studies]
+  );
+  const visibleStudyKey = visibleStudyUids.join(',');
+
+  const loadAiReviews = (uids: string[], signal?: AbortSignal) =>
+    fetchReviewStatus(reviewApi, uids, signal)
+      .then(found => {
+        setAiReviews(current => {
+          const next = { ...current };
+          uids.forEach(uid => {
+            next[uid] = found[uid] || null;
+          });
+          return next;
+        });
+      })
+      .catch(error => {
+        if (error?.name !== 'AbortError') {
+          console.warn('AI review status could not be loaded:', error);
+        }
+      });
+
+  useEffect(() => {
+    if (!authHeaders || !visibleStudyUids.length) {
+      return undefined;
+    }
+    const controller = new AbortController();
+    loadAiReviews(visibleStudyUids, controller.signal);
+    return () => controller.abort();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authHeaders, visibleStudyKey]);
 
   const [userInfoData, setUserInfoResult] = useState({});
   const [isSaveToServerInprogress, setIsSaveToServerInprogress] = useState(false);
@@ -329,6 +370,21 @@ function WorkList({
 
   const handleCloseAiAnalysis = () => {
     setAiAnalysisStudy(null);
+  };
+
+  // A study opened before its row's decision loaded gets its own lookup.
+  useEffect(() => {
+    const uid = aiAnalysisStudy?.studyInstanceUid;
+    if (uid && authHeaders && !(uid in aiReviews)) {
+      loadAiReviews([uid]);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [aiAnalysisStudy?.studyInstanceUid, authHeaders]);
+
+  // "Review & edit" / "Accept & edit": the AI report editor (AI draft pre-filled).
+  const openReportEditor = (sid: string) => {
+    setAiAnalysisStudy(null);
+    navigate(`/ai-report/${encodeURIComponent(sid)}`);
   };
 
   const storeStidStatus = (stuID, isReportGenerated) => {
@@ -900,6 +956,7 @@ function WorkList({
             />
             <AiStatusBadge
               state={aiState}
+              review={aiReviews[studyInstanceUid]}
               isActive={isActive}
               onClick={() => handleOpenAiAnalysis(aiStudy)}
             />
@@ -1129,6 +1186,14 @@ function WorkList({
           loadFrameImages={(instanceId, paths) =>
             aiPipeline.loadFrameImages(aiAnalysisStudy.studyInstanceUid, instanceId, paths)
           }
+          review={{
+            api: reviewApi,
+            current: aiReviews[aiAnalysisStudy.studyInstanceUid] ?? null,
+            canReview: canReviewAi,
+            onChange: review =>
+              setAiReviews(current => ({ ...current, [aiAnalysisStudy.studyInstanceUid]: review })),
+            onOpenReportEditor: () => openReportEditor(aiAnalysisStudy.studyInstanceUid),
+          }}
         />
       )}
 

@@ -65,6 +65,8 @@ import { buildCiaiReportHtml } from './buildCiaiReportHtml';
 import { buildReportViewerHtml } from './buildReportViewerHtml';
 import { AiStage, AiStudyState, STAGE_LABELS, describeAnalysis } from './aiPipeline';
 import AiPipelineTracker from './AiPipelineTracker';
+import AiReviewBar from './AiReviewBar';
+import { AiReview, ReviewApi, sendViewedEvent } from './aiReview';
 
 /** Shared with the printed report and the beta viewer so branding stays in step. */
 const LOGO_PATH = '/ohif-whitebg-logo.svg';
@@ -101,6 +103,14 @@ type Props = {
     instanceId: string,
     paths: { heatmapPath?: string; annotatedPath?: string }
   ) => Promise<FetchedFrameImages>;
+  /** Accept / reject (docs §8). Omitted → no review bar. */
+  review?: {
+    api: ReviewApi;
+    current: AiReview | null;
+    canReview: boolean;
+    onChange: (review: AiReview | null) => void;
+    onOpenReportEditor?: () => void;
+  };
 };
 
 type FrameLoadState = 'loading' | 'failed';
@@ -919,6 +929,7 @@ export default function AiAnalysisDialog({
   onGenerateReport,
   loadResult,
   loadFrameImages,
+  review,
 }: Props) {
   // The result as the server sent it; exported verbatim as JSON.
   const [rawPayload, setRawPayload] = useState<AiCompletePayload | null>(null);
@@ -983,6 +994,23 @@ export default function AiAnalysisDialog({
   // The stored report keeps findings per series and no images, so it is brought
   // to the stream's shape and the original frames are filled in as they load.
   const normalizedPayload = useMemo(() => normalizeAiPayload(rawPayload), [rawPayload]);
+
+  // "AI report opened" audit event, once the report has actually loaded.
+  const reviewApi = review?.api;
+  useEffect(() => {
+    if (open && rawPayload && reviewApi) {
+      sendViewedEvent(reviewApi, study.studyInstanceUid);
+    }
+  }, [open, rawPayload, reviewApi, study.studyInstanceUid]);
+
+  // Findings the study review flagged ("[Verify: …]"): the accept dialog asks for them.
+  const verifyCount = useMemo(
+    () =>
+      (normalizedPayload?.findings_summary || []).filter(finding =>
+        String(finding?.description || '').startsWith('[Verify')
+      ).length,
+    [normalizedPayload]
+  );
   const completePayload = useMemo(
     () => withFrameImages(normalizedPayload, frameImages),
     [normalizedPayload, frameImages]
@@ -1895,6 +1923,19 @@ export default function AiAnalysisDialog({
           )}
         </Box>
       </DialogContent>
+
+      {review && isReady && (
+        <AiReviewBar
+          studyInstanceUid={study.studyInstanceUid}
+          api={review.api}
+          review={review.current}
+          canReview={review.canReview}
+          reportLoaded={Boolean(rawPayload) && !isLoadingResult}
+          verifyCount={verifyCount}
+          onReviewChange={review.onChange}
+          onOpenReportEditor={review.onOpenReportEditor}
+        />
+      )}
 
       <DialogActions>
         {hasResults && (
