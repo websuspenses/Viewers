@@ -444,13 +444,20 @@ export function groupEvidenceFindings(evidence: EvidenceFinding[]): GroupedFindi
       existing.locations.push(finding.location);
     }
 
-    // Promote the better-evidenced instance to be the one shown.
+    // Promote the better-evidenced instance to be the one shown: marked on an
+    // image first, then one the study review did not flag for verification
+    // (e.g. a tight box on the axial slice over a loose one on a reformat),
+    // then the more severe.
+    const flagged = (item: { description?: string }) => /^\[Verify:/.test(item.description || '');
+    const sameTier = tierRank(tier) === tierRank(existing.tier);
     const betterTier = tierRank(tier) < tierRank(existing.tier);
+    const sameTierUnflagged = sameTier && flagged(existing) && !flagged(finding);
     const sameTierMoreSevere =
-      tierRank(tier) === tierRank(existing.tier) &&
+      sameTier &&
+      flagged(existing) === flagged(finding) &&
       compareSeverity(finding.severity, existing.severity) < 0;
 
-    if (betterTier || sameTierMoreSevere) {
+    if (betterTier || sameTierUnflagged || sameTierMoreSevere) {
       const { occurrences, frameKeys, seriesLabels, locations } = existing;
       groups.set(key, { ...finding, tier, occurrences, frameKeys, seriesLabels, locations });
     }
