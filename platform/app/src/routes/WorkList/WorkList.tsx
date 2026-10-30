@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import classnames from 'classnames';
 import PropTypes, { element, func } from 'prop-types';
-import { useNavigate } from 'react-router-dom';
+import { useHref, useNavigate } from 'react-router-dom';
 import moment from 'moment';
 import qs from 'query-string';
 import isEqual from 'lodash.isequal';
@@ -114,6 +114,8 @@ function WorkList({
   // ~ Filters
   const searchParams = useSearchParams();
   const navigate = useNavigate();
+  // App root including the router basename, for URLs opened in a new tab.
+  const appRootHref = useHref('/');
 
   const STUDIES_LIMIT = 25;
   const queryFilterValues = _getQueryFilterValues(searchParams);
@@ -391,32 +393,36 @@ function WorkList({
     sessionStorage.removeItem('isReportGenerated');
     sessionStorage.setItem('stuID', stuID);
     sessionStorage.setItem('isReportGenerated', isReportGenerated);
+    // Per-tab copy of the study the viewer opens. localStorage is shared by
+    // every tab, so with studies open in several tabs it holds the last one;
+    // the viewer reads this tab's copy first (ViewerLayout handleViewerImage).
+    sessionStorage.setItem('sid', stuID);
+    sessionStorage.setItem('mdFlag', localStorage.getItem('mdFlag') || '');
   };
-  const handleDocModal = isReportGenerated => {
-    const bsurl = '/viewer?StudyInstanceUIDs=' + stuID;
+  // Opens an app route in a new tab, keeping the worklist open. No "noopener":
+  // only then does the new tab get a copy of this tab's sessionStorage — the
+  // login session and the study values stored just before. Opens in this tab
+  // if the browser blocks the new one.
+  const openInNewTab = (path: string) => {
+    const tab = window.open(`${appRootHref.replace(/\/$/, '')}${path}`, '_blank');
+    if (!tab) {
+      navigate(path);
+    }
+  };
+  // The viewer menu ("View Study", "Segmentation", …) opens the study in a new tab.
+  const openViewerMenuRoute = (route: string, isReportGenerated) => {
     storeStidStatus(stuID, isReportGenerated);
-    navigate(bsurl);
+    handleClose();
+    openInNewTab(`${route}?StudyInstanceUIDs=${stuID}`);
   };
-  const handleSegmentationModal = isReportGenerated => {
-    const bsurl = '/segmentation?StudyInstanceUIDs=' + stuID;
-    storeStidStatus(stuID, isReportGenerated);
-    navigate(bsurl);
-  };
-  const handleTMTVModal = isReportGenerated => {
-    const bsurl = '/tmtv?StudyInstanceUIDs=' + stuID;
-    storeStidStatus(stuID, isReportGenerated);
-    navigate(bsurl);
-  };
-  const handleMicroscopyModal = isReportGenerated => {
-    const bsurl = '/microscopy?StudyInstanceUIDs=' + stuID;
-    storeStidStatus(stuID, isReportGenerated);
-    navigate(bsurl);
-  };
-  const handleDynamicVolumeModal = isReportGenerated => {
-    const bsurl = '/dynamic-volume?StudyInstanceUIDs=' + stuID;
-    storeStidStatus(stuID, isReportGenerated);
-    navigate(bsurl);
-  };
+  const handleDocModal = isReportGenerated => openViewerMenuRoute('/viewer', isReportGenerated);
+  const handleSegmentationModal = isReportGenerated =>
+    openViewerMenuRoute('/segmentation', isReportGenerated);
+  const handleTMTVModal = isReportGenerated => openViewerMenuRoute('/tmtv', isReportGenerated);
+  const handleMicroscopyModal = isReportGenerated =>
+    openViewerMenuRoute('/microscopy', isReportGenerated);
+  const handleDynamicVolumeModal = isReportGenerated =>
+    openViewerMenuRoute('/dynamic-volume', isReportGenerated);
 
   // Keeps the list current without a reload: studies that arrive from any source
   // (worklist upload, modality, /pacs) and their AI status. One study query a

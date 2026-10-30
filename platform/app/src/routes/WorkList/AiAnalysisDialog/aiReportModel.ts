@@ -36,6 +36,8 @@ export type AiHeatmap = {
   summary?: string;
   output_path?: string;
   gemini_annotated_output_path?: string;
+  /** The frame as the AI saw it (head CT: brain window), saved by the PACS plugin. */
+  original_output_path?: string;
   analysis_json_path?: string;
   /** Attached during collection so a heatmap can name its own series. */
   seriesId?: string;
@@ -637,6 +639,7 @@ export type FrameImageRequest = {
   frameKey: string;
   heatmapPath?: string;
   annotatedPath?: string;
+  originalPath?: string;
 };
 
 /** Heatmap frames that carry a frame key but no embedded original image. */
@@ -651,6 +654,7 @@ export function getFramesMissingImages(payload: AiCompletePayload | null): Frame
         frameKey,
         heatmapPath: known?.heatmapPath || heatmap.output_path || '',
         annotatedPath: known?.annotatedPath || heatmap.gemini_annotated_output_path || '',
+        originalPath: known?.originalPath || heatmap.original_output_path || '',
       });
     });
   return Array.from(frames.values());
@@ -701,6 +705,53 @@ function normalizeName(value?: string) {
  * layers name the same lesion independently ("Right frontal lobe lesion" vs
  * "Right frontal lobe hyperdense lesion"), so shared words decide the pairing.
  */
+/** Finding names sent for marking on a frame: "Heatmap composite for CT: name1, name2". */
+function attemptedNames(heatmap?: AiHeatmap) {
+  const summary = String(heatmap?.summary || '');
+  const colon = summary.indexOf(':');
+  return colon < 0
+    ? []
+    : summary
+        .slice(colon + 1)
+        .split(',')
+        .map(name => name.trim())
+        .filter(Boolean);
+}
+
+/**
+ * The marked region that belongs to this finding, or none. ai-analysis
+ * 1.6.21+ names every box exactly after its finding. A finding the marking
+ * step did not find ("not located") has no box of its own and never borrows
+ * another finding's box on the same frame: two reports (2026-10-29) showed a
+ * not-located basal ganglia calcification as "Marked on image" with the falx
+ * calcification's box. Older results: a region whose name holds every word of
+ * the finding's ("Right pineal calcification"), when only one does, or the
+ * frame's only region when this finding was the only one sent for marking.
+ */
+function findOwnRegion(
+  heatmap: AiHeatmap | undefined,
+  finding: { name?: string; description?: string }
+): AiAnomalyRegion | undefined {
+  const regions = heatmap?.anomaly_regions || [];
+  if (!regions.length || /not located on the image/i.test(finding.description || '')) {
+    return undefined;
+  }
+  const key = normalizeFindingKey(finding.name);
+  const exact = regions.find(region => normalizeFindingKey(region.name) === key);
+  if (exact) {
+    return exact;
+  }
+  const words = key.split(' ').filter(Boolean);
+  const containing = regions.filter(region => {
+    const regionWords = new Set(normalizeFindingKey(region.name).split(' '));
+    return words.length > 0 && words.every(word => regionWords.has(word));
+  });
+  if (containing.length === 1) {
+    return containing[0];
+  }
+  return regions.length === 1 && attemptedNames(heatmap).length <= 1 ? regions[0] : undefined;
+}
+
 function nameSimilarity(left?: string, right?: string) {
   const a = normalizeName(left);
   const b = normalizeName(right);
@@ -834,19 +885,7 @@ export function buildEvidenceFindings(
       return;
     }
 
-    const regions = heatmap?.anomaly_regions || [];
-    const bestRegion = regions.reduce<{ region?: AiAnomalyRegion; score: number }>(
-      (best, region) => {
-        const score = nameSimilarity(region.name, finding.name);
-        return score > best.score ? { region, score } : best;
-      },
-      { region: undefined, score: 0 }
-    );
-
-    // A single-region frame is unambiguous even when the two layers named the
-    // lesion differently, so fall back to it rather than dropping the evidence.
-    const region =
-      bestRegion.score > 0 ? bestRegion.region : regions.length === 1 ? regions[0] : undefined;
+    const region = findOwnRegion(heatmap, finding);
 
     // Image measurement = the marked box measured from pixel spacing. Results
     // from before ai-analysis 1.6.5 carry no extent; their region size is

@@ -219,8 +219,17 @@ function ViewerLayout({
     setDrEnableFlag(true);
     setDrCloseFlag(false);
 
-    let s_id = localStorage.getItem('sid');
-    let md_Flag = localStorage.getItem('mdFlag');
+    // The study shown in THIS tab. The worklist opens studies in new tabs and
+    // localStorage is shared by all tabs, so it may hold another tab's study:
+    // the URL and this tab's sessionStorage copy come first.
+    const params = new URLSearchParams(window.location.search);
+    const urlStudy = (
+      params.get('StudyInstanceUIDs') ||
+      params.get('studyInstanceUIDs') ||
+      ''
+    ).split(',')[0];
+    let s_id = urlStudy || sessionStorage.getItem('sid') || localStorage.getItem('sid');
+    let md_Flag = sessionStorage.getItem('mdFlag') || localStorage.getItem('mdFlag');
 
     setDefaultLoad(true);
     setloadStudentID(stuID);

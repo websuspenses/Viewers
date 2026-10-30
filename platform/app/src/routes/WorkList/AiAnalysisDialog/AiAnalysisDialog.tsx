@@ -101,7 +101,7 @@ type Props = {
   /** Original, heatmap and AI-marking images for a heatmap `frame_key`, as data URIs. */
   loadFrameImages: (
     instanceId: string,
-    paths: { heatmapPath?: string; annotatedPath?: string }
+    paths: { heatmapPath?: string; annotatedPath?: string; originalPath?: string }
   ) => Promise<FetchedFrameImages>;
   /** Accept / reject (docs §8). Omitted → no review bar. */
   review?: {
@@ -1030,9 +1030,14 @@ export default function AiAnalysisDialog({
 
     const worker = async () => {
       while (!cancelled && queue.length) {
-        const { frameKey: key, heatmapPath, annotatedPath } = queue.shift() as FrameImageRequest;
+        const {
+          frameKey: key,
+          heatmapPath,
+          annotatedPath,
+          originalPath,
+        } = queue.shift() as FrameImageRequest;
         try {
-          const images = await loadFrameImages(key, { heatmapPath, annotatedPath });
+          const images = await loadFrameImages(key, { heatmapPath, annotatedPath, originalPath });
           if (!cancelled) {
             setFrameImages(current => ({ ...current, [key]: images }));
             setFrameLoadState(({ [key]: _done, ...rest }) => rest);

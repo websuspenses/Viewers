@@ -332,7 +332,11 @@ export default function AiReportEditor() {
       for (const series of aiPayload?.series_with_findings || []) {
         const heatmap = (series.heatmaps || []).find((h: any) => h.frame_key === frameKey);
         if (heatmap) {
-          return { heatmapPath: heatmap.output_path, annotatedPath: heatmap.gemini_annotated_output_path };
+          return {
+            heatmapPath: heatmap.output_path,
+            annotatedPath: heatmap.gemini_annotated_output_path,
+            originalPath: heatmap.original_output_path,
+          };
         }
       }
       return {};

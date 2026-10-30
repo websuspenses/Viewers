@@ -160,7 +160,7 @@ export default function useAiReportPipeline({
     (
       studyInstanceUid: string,
       instanceId: string,
-      paths: { heatmapPath?: string; annotatedPath?: string } = {}
+      paths: { heatmapPath?: string; annotatedPath?: string; originalPath?: string } = {}
     ) => {
       if (!baseUrl) {
         return Promise.reject(new Error('The PACS URL is not configured.'));

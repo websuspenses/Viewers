@@ -417,12 +417,13 @@ async function fetchFirstImage(urls: string[], authHeaders?: string, signal?: Ab
  * `studies/{uid}/ai-image/{instanceId}/{original|heatmap|annotated}`.
  * `frame_key` is the Orthanc instance ID.
  *
- * The original falls back to Orthanc's own `/instances/{id}/preview` (one level
- * above the DICOMweb root) for PACS builds that predate the ai-image route.
- *
- * The heatmap and AI-marked images are read first from their saved paths
- * (`output_path`, `gemini_annotated_output_path`) under `/ai-analysis-files/`,
- * falling back to the ai-image route where that is not served.
+ * All three images are read first from their saved paths under
+ * `/ai-analysis-files/` (`original_output_path`, `output_path`,
+ * `gemini_annotated_output_path`), falling back to the ai-image route where
+ * that is not served. The original falls back last to Orthanc's own
+ * `/instances/{id}/preview` (one level above the DICOMweb root) for results
+ * saved before the PACS kept the original: that one shows the full CT range,
+ * not the window the AI saw.
  *
  * Data URIs rather than object URLs: the printed report, the DOC export and the
  * sandboxed beta viewer all embed images as HTML strings.
@@ -433,6 +434,7 @@ export async function fetchFrameImages({
   instanceId,
   heatmapPath,
   annotatedPath,
+  originalPath,
   authHeaders,
   signal,
 }: {
@@ -441,6 +443,7 @@ export async function fetchFrameImages({
   instanceId: string;
   heatmapPath?: string;
   annotatedPath?: string;
+  originalPath?: string;
   authHeaders?: string;
   signal?: AbortSignal;
 }): Promise<FrameImages> {
@@ -450,8 +453,13 @@ export async function fetchFrameImages({
   const previewUrl = `${orthancRoot}instances/${encodeURIComponent(instanceId)}/preview`;
 
   const [original, heatmap, annotated] = await Promise.all([
-    fetchImageDataUrl(imageUrl('original'), authHeaders, signal).catch(() =>
-      fetchImageDataUrl(previewUrl, authHeaders, signal)
+    // The saved frame first (as the AI saw it: brain window for head CT), so
+    // "Original" and "AI marking" show the same grey levels; /preview, which
+    // stretches the full CT range, only for results saved before it existed.
+    fetchFirstImage(
+      [toAiAnalysisFileUrl(originalPath), imageUrl('original'), previewUrl],
+      authHeaders,
+      signal
     ),
     optional(
       fetchFirstImage(
