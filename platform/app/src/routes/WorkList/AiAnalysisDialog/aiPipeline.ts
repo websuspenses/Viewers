@@ -176,20 +176,31 @@ export function deriveAiState(flags: AiStudyFlags, live: AiLiveState = {}): AiSt
     error,
   });
 
-  if (live.reportReady || isYes(flags.isMedGemmaReportGenerated) || reportStatus === 'done') {
+  if (live.reportReady) {
     return state('ready');
   }
-  if (live.error) {
-    return state('reportFailed', live.error);
+  // A run started from this viewer (Regenerate) is queued, running or failed
+  // until polling sees it finish: the study's "report generated" flag and the
+  // stored progress still describe the previous report. Before, the dialog
+  // stayed "ready", loaded the previous result at once and kept it, and a
+  // failed run was hidden behind it (2026-10-31).
+  if (live.triggered || live.error) {
+    if (live.error) {
+      return state('reportFailed', live.error);
+    }
+    if (reportStatus === 'failed') {
+      return state('reportFailed', report?.message || 'Report generation failed.');
+    }
+    return state(reportStatus === 'running' ? 'generating' : 'queued');
+  }
+  if (isYes(flags.isMedGemmaReportGenerated) || reportStatus === 'done') {
+    return state('ready');
   }
   if (reportStatus === 'failed') {
     return state('reportFailed', report?.message || 'Report generation failed.');
   }
   if (reportStatus === 'running') {
     return state('generating');
-  }
-  if (live.triggered) {
-    return state('queued');
   }
   if (isYes(flags.isMedGemmaAnalysisDone) || analysisStatus === 'done') {
     return state('analyzed');

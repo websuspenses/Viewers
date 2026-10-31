@@ -54,6 +54,7 @@ export function plainDescription(description?: string): string {
 // matters: the first pattern that matches a reason names it.
 const SHORT_REASONS: [RegExp, string][] = [
   [/possible haemorrhage/i, 'possible haemorrhage'],
+  [/outside the skull/i, 'box outside the skull'],
   [/could not be measured/i, 'density not measured'],
   [/likely bone|bone read as|bone-dense|touches the skull|on skull bone/i, 'possibly bone'],
   [/not located on the image/i, 'not found on the image'],
@@ -274,12 +275,12 @@ export const FINDING_PANEL_CSS = `
   .fp-cross-v { border-left-width: 1px; width: 0; }
   .fp-pill { position: absolute; background: rgba(0, 0, 0, 0.7); color: #ffffff; font: bold 6.5pt/1.25 Arial, Helvetica, sans-serif; padding: 0.4mm 1.4mm; border-radius: 1.2mm; white-space: nowrap; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .fp-heat { position: absolute; border-radius: 50%; opacity: 0.45; background: radial-gradient(closest-side, #ff0000 0%, #ffcc00 35%, #00d0ff 70%, rgba(0, 0, 255, 0) 100%); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .fp-orient { position: absolute; color: #ffffff; font: bold 7pt/1 Arial, Helvetica, sans-serif; text-shadow: 0 0 2px #000000; }
+  .fp-orient { position: absolute; color: #ffffff; font: bold 7pt/1 Arial, Helvetica, sans-serif; background: rgba(0, 0, 0, 0.7); padding: 0.4mm 0.8mm; border-radius: 0.8mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .fp-orient-top { top: 1mm; left: 50%; transform: translateX(-50%); }
   .fp-orient-bottom { bottom: 1mm; left: 50%; transform: translateX(-50%); }
   .fp-orient-left { left: 1mm; top: 50%; transform: translateY(-50%); }
   .fp-orient-right { right: 1mm; top: 50%; transform: translateY(-50%); }
-  .fp-corner { position: absolute; color: #ffffff; font: 6pt/1.2 Arial, Helvetica, sans-serif; text-shadow: 0 0 2px #000000; max-width: 38%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .fp-corner { position: absolute; color: #ffffff; font: 6pt/1.2 Arial, Helvetica, sans-serif; background: rgba(0, 0, 0, 0.7); padding: 0.3mm 1mm; border-radius: 0.8mm; max-width: 38%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .fp-corner-bl { bottom: 1mm; left: 1mm; }
   .fp-corner-br { bottom: 1mm; right: 1mm; text-align: right; }
   .fp-caption { font-size: 6.5pt; color: #5b6b78; padding: 1.5mm 2.5mm; border-top: 1px solid #d5e1e8; line-height: 1.45; }

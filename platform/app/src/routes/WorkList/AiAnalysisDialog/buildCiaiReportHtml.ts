@@ -200,13 +200,13 @@ const REPORT_CSS = `
   .hero {
     background: linear-gradient(135deg, var(--navy) 0%, #0d3c66 100%);
     color: #ffffff;
-    padding: 10mm 12mm;
+    padding: 8mm 12mm;
     margin-bottom: 5mm;
     border-left: 3mm solid var(--teal);
   }
   .hero h1 { margin: 0; font-size: 26pt; line-height: 1.12; letter-spacing: -0.015em; }
   .hero .pipeline {
-    margin-top: 10mm;
+    margin-top: 6mm;
     font-size: 9.5pt;
     color: #cfe3f2;
     letter-spacing: 0.04em;
@@ -229,6 +229,11 @@ const REPORT_CSS = `
   .verdict .headline { font-size: 13pt; font-weight: bold; color: var(--navy); }
   .verdict .detail { font-size: 8.5pt; color: #3d4c5a; margin-top: 0.8mm; }
   .verdict.is-critical { border-left-color: #b3261e; background: #fdf0ef; }
+  /* A flagged finding rated medium or above (possible haemorrhage...) waits
+     for verification: the cover says so next to the confirmed severity. */
+  .verdict.is-verify { border-left-color: #F59E0B; background: #fff8eb; }
+  .verdict-badges { display: flex; flex-direction: column; align-items: center; gap: 1.5mm; }
+  .sev-verify { background: #F59E0B; color: #2b1a00; white-space: nowrap; }
 
   .tiles { display: flex; gap: 3mm; margin-bottom: 6mm; }
   .tile {
@@ -358,6 +363,10 @@ const REPORT_CSS = `
 
   .block + .block { margin-top: 7mm; }
   .narrative + .narrative { margin-top: 6mm; }
+  /* The narrative flows over pages. Its last section travels with the
+     footer, so the footer never lands on a page of its own (2026-10-31). */
+  .keep-with-footer { page-break-inside: avoid; break-inside: avoid; }
+  .keep-with-footer .sheet-footer { margin-top: 8mm; }
 
   /* ---- narrative ---- */
   .narrative h2 { color: var(--navy); font-size: 14pt; margin: 0 0 3mm; }
@@ -370,6 +379,10 @@ const REPORT_CSS = `
   .narrative th, .narrative td { border: 1px solid var(--line); padding: 1.6mm; text-align: left; vertical-align: top; }
   .narrative th { background: var(--panel); color: var(--navy); }
   .narrative tr { page-break-inside: avoid; break-inside: avoid; }
+  /* A short list stays together with its heading (LAKSHMI 2026-10-31: the
+     last recommendation alone on a page). */
+  .narrative ul, .narrative ol { page-break-inside: avoid; break-inside: avoid; }
+  h2.section, .section-rule { page-break-after: avoid; break-after: avoid; }
   .narrative hr { border: 0; border-top: 1px solid var(--line); margin: 4mm 0; }
 
   .signatures { display: flex; gap: 8mm; margin-top: 6mm; }
@@ -456,6 +469,19 @@ function makeSheet(body: string, sectionLabel: string, header: string) {
   `;
 }
 
+/** A sheet whose last block and footer stay together (flowing content). */
+function makeFlowingSheet(blocks: string[], sectionLabel: string, header: string) {
+  const last = blocks[blocks.length - 1] || '';
+  return `
+    <section class="sheet">
+      ${header}
+      <div class="sheet-body">${blocks.slice(0, -1).join('')}
+        <div class="keep-with-footer">${last}${sheetFooter(sectionLabel)}</div>
+      </div>
+    </section>
+  `;
+}
+
 function sectionHeading(title: string) {
   return `<h2 class="section">${escapeHtml(title)}</h2><div class="section-rule"></div>`;
 }
@@ -468,6 +494,10 @@ type CoverTotals = {
   excludedCount: number;
   lowSeverityCount: number;
 };
+
+// The AI's size wording against the marked box of a finding the checks
+// confirmed: a note, not a request to verify next to a CONFIRMED badge.
+const CONFIRMED_MISMATCH_LABEL = 'AI estimate larger than marked box';
 
 function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: CoverTotals) {
   const { payload, study, logoUrl } = options;
@@ -489,6 +519,16 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
     [String(toVerify), 'Flagged for verification'],
   ];
 
+  const analysedSeries = payload.total_series_analyzed ?? 0;
+  const studySeries = payload.total_series_in_study;
+  const seriesText =
+    typeof studySeries === 'number' && studySeries !== analysedSeries
+      ? `${analysedSeries} of ${studySeries} series analysed`
+      : `${analysedSeries} series`;
+  // At most three names; the cover has room for about two lines here.
+  const verifyNames = verifyFirst.slice(0, 3);
+  const verifyMore = verifyFirst.length - verifyNames.length;
+
   const facts: [string, string][] = [
     ['Patient', patient.patient_name || study.patientName || 'Not available'],
     [
@@ -501,7 +541,7 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
     ['Study UID', study.studyInstanceUid],
     [
       'Coverage',
-      `${payload.total_series_analyzed ?? 0} series  |  ${
+      `${seriesText}  |  ${
         payload.total_frames_processed ?? 0
       } frames  |  ${(payload.findings_summary || []).length} entries reviewed  |  ${
         totals.anomalies.length
@@ -536,8 +576,13 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
     <div class="statusbar ${options.reportStatus === 'verified' ? 'is-verified' : ''}">
       ${escapeHtml(STATUS_TEXT[options.reportStatus || 'draft'])}
     </div>
-    <div class="verdict ${worst === 'critical' ? 'is-critical' : ''}">
-      <span class="sev ${severityClass(worst)}">${escapeHtml(worst)}</span>
+    <div class="verdict ${
+      worst === 'critical' ? 'is-critical' : verifyFirst.length ? 'is-verify' : ''
+    }">
+      <div class="verdict-badges">
+        <span class="sev ${severityClass(worst)}">${escapeHtml(worst)}</span>
+        ${verifyFirst.length ? '<span class="sev sev-verify">Verify first</span>' : ''}
+      </div>
       <div>
         <div class="headline">Study result: ${
           grouped.length ? `${grouped.length} distinct findings` : 'No anomalies reported'
@@ -548,7 +593,7 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
         </div>
         ${
           verifyFirst.length
-            ? `<div class="detail"><b>To verify first:</b> ${verifyFirst
+            ? `<div class="detail"><b>To verify first:</b> ${verifyNames
                 .map(
                   finding =>
                     `${escapeHtml(finding.name)} (${escapeHtml(finding.severity || 'medium')}${
@@ -557,12 +602,16 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
                         : ''
                     })`
                 )
-                .join(', ')}</div>`
+                .join(', ')}${verifyMore ? `, and ${verifyMore} more` : ''}</div>`
             : ''
         }
         <div class="detail">
-          ${excludedCount} normal-structure and negative entries and ${lowSeverityCount} low-severity
-          findings excluded; repeat observations of the same finding across slices merged.
+          ${
+            excludedCount || lowSeverityCount
+              ? `${excludedCount} normal-structure and negative entries and ${lowSeverityCount} low-severity
+                 findings excluded; repeat observations of the same finding across slices merged.`
+              : 'Repeat observations of the same finding across slices merged.'
+          }
         </div>
       </div>
     </div>
@@ -648,7 +697,9 @@ function renderFindingsTableBody(rows: GroupedFinding[], part: number, partCount
         <td><b>${escapeHtml(finding.tier === 'measured' ? finding.imageMeasurement.display : '—')}</b></td>
         <td>${escapeHtml(finding.narrativeMeasurement.display)}${
           finding.consistency === 'mismatch'
-            ? `<div class="flag">${escapeHtml(CONSISTENCY_LABELS.mismatch)}</div>`
+            ? findingStatus(finding) === 'confirmed'
+              ? `<div class="sub">${escapeHtml(CONFIRMED_MISMATCH_LABEL)}</div>`
+              : `<div class="flag">${escapeHtml(CONSISTENCY_LABELS.mismatch)}</div>`
             : ''
         }</td>
         <td>${escapeHtml(finding.locations.join('; ') || '—')}</td>
@@ -674,8 +725,8 @@ function renderFindingsTableBody(rows: GroupedFinding[], part: number, partCount
       <thead>
         <tr>
           <th style="width:9%">Severity</th>
-          <th style="width:8%">ID</th>
-          <th style="width:39%">Finding</th>
+          <th style="width:13%">ID</th>
+          <th style="width:34%">Finding</th>
           <th style="width:9%">Evidence</th>
           <th style="width:10%">Marked box</th>
           <th style="width:11%">AI size estimate</th>
@@ -843,8 +894,16 @@ function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string
           }</td>
         <td><b>${escapeHtml(finding.imageMeasurement.display)}</b></td>
         <td>${escapeHtml(finding.narrativeMeasurement.display)}</td>
-        <td class="${finding.consistency === 'match' ? 'ok' : finding.consistency === 'mismatch' ? 'flag' : 'sub'}">${escapeHtml(
-          CONSISTENCY_LABELS[finding.consistency]
+        <td class="${
+          finding.consistency === 'match'
+            ? 'ok'
+            : finding.consistency === 'mismatch' && findingStatus(finding) !== 'confirmed'
+              ? 'flag'
+              : 'sub'
+        }">${escapeHtml(
+          finding.consistency === 'mismatch' && findingStatus(finding) === 'confirmed'
+            ? CONFIRMED_MISMATCH_LABEL
+            : CONSISTENCY_LABELS[finding.consistency]
         )}</td>
         <td>${escapeHtml(formatConfidence(finding.imageScore ?? finding.narrativeScore))}</td>
       </tr>`
@@ -868,8 +927,8 @@ function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string
     <table class="grid evidence-findings">
       <thead>
         <tr>
-          <th style="width:10%">ID</th>
-          <th style="width:40%">Finding</th>
+          <th style="width:13%">ID</th>
+          <th style="width:37%">Finding</th>
           <th style="width:13%">Marked box</th>
           <th style="width:13%">AI estimate</th>
           <th style="width:16%">Estimate vs box</th>
@@ -930,8 +989,8 @@ function renderVerificationNotesBody(rows: GroupedFinding[], part: number, partC
     <table class="grid">
       <thead>
         <tr>
-          <th style="width:10%">ID</th>
-          <th style="width:30%">Finding</th>
+          <th style="width:13%">ID</th>
+          <th style="width:27%">Finding</th>
           <th style="width:60%">Reasons</th>
         </tr>
       </thead>
@@ -1087,7 +1146,7 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
           </div>`
       );
     if (narrative.length) {
-      addSheet(narrative.join(''), 'Narrative report');
+      sheets.push(makeFlowingSheet(narrative, 'Narrative report', header));
     }
   }
 

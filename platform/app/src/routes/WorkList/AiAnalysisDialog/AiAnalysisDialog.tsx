@@ -17,6 +17,7 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import Button from '@mui/material/Button';
 import Box from '@mui/material/Box';
@@ -1334,6 +1335,23 @@ export default function AiAnalysisDialog({
   // Exports embed the frames, so they wait until every frame has settled.
   const exportsReady = hasResults && framesLoading === 0;
 
+  // Run the report again on the same image analysis, without re-uploading:
+  // after a new release, or to compare versions on the same AI findings (an
+  // upload re-runs MedGemma, which gives a different set each time). Not
+  // offered once a radiologist accepted the AI draft, which it would replace.
+  const canRegenerate = isReady && review?.current?.decision !== 'accepted';
+  const handleRegenerate = () => {
+    if (
+      !window.confirm(
+        'Generate the report again from the same image analysis? The current AI draft is replaced; the images are not analysed again.'
+      )
+    ) {
+      return;
+    }
+    setRawPayload(null);
+    onGenerateReport();
+  };
+
   const renderPipelineState = () => {
     if (isReady && isLoadingResult) {
       return (
@@ -2050,6 +2068,22 @@ export default function AiAnalysisDialog({
             >
               Refresh
             </Button>
+          </Tooltip>
+        )}
+
+        {canRegenerate && (
+          <Tooltip title="Run the report again on the same image analysis (no re-upload)">
+            <span>
+              <Button
+                variant="outlined"
+                onClick={handleRegenerate}
+                disabled={isLoadingResult}
+                startIcon={<AutorenewIcon />}
+                sx={ACTION_BUTTON_SX}
+              >
+                Regenerate
+              </Button>
+            </span>
           </Tooltip>
         )}
 

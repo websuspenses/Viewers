@@ -9,6 +9,10 @@
  * Everything is inlined — data, images, styles and behaviour — because the
  * analysis payload is streamed and never persisted anywhere the new tab could
  * fetch it from.
+ *
+ * Since 1.6.28 it shows what the PDF and the dialog show: the three panels
+ * (findingPanels.ts), CONFIRMED / PENDING VERIFICATION with the review's
+ * reasons, "verify first", and box sizes worded as the AI's box.
  */
 
 import {
@@ -16,6 +20,7 @@ import {
   CONSISTENCY_LABELS,
   EvidenceFinding,
   GroupedFinding,
+  buildAllFindingRecords,
   formatConfidence,
   formatDicomDate,
   getAnomalyFindings,
@@ -24,6 +29,14 @@ import {
   groupEvidenceFindings,
   summarizeStudySeverities,
 } from './aiReportModel';
+import {
+  FINDING_PANEL_CSS,
+  findingStatus,
+  plainDescription,
+  renderFindingPanelsHtml,
+  shortReasons,
+  verifyReasons,
+} from './findingPanels';
 import { escapeHtml } from './reportMarkdown';
 
 export type ReportViewerOptions = {
@@ -50,20 +63,37 @@ type ViewerFinding = {
   frameKey: string;
   seriesId: string;
   imageMeasurement: string;
+  imageMeasured: boolean;
   imageScore: string;
   narrativeMeasurement: string;
   narrativeScore: string;
   consistency: string;
-  consistencyOk: boolean;
+  /** 'ok', 'flag' or '' (a confirmed finding's size note is not a flag). */
+  consistencyClass: string;
   difference: string;
   isAnomaly: boolean;
   tier: string;
   occurrences: number;
   bbox: number[] | null;
+  /** 'confirmed' / 'pending' (study review). */
+  status: string;
+  /** Short reasons for the badge, and the review's full reasons (with HU). */
+  reasons: string[];
+  notes: string[];
+  /** Three-panel HTML with FRAME_TOKEN for the image ('' without original or box). */
+  panels: string;
+  /** Key of the original frame in ctx.frames (with or without panels). */
+  frameRef: string;
+  /** Server marking images, only for results without the original frame (before 1.6.22). */
   original: string;
   annotated: string;
   heatmap: string;
 };
+
+// The panels draw the frame three times; the image is stored once per frame
+// (ctx.frames) and put in when a finding is shown.
+const FRAME_TOKEN = 'data:image/png;base64,CIAI_FRAME';
+const CONFIRMED_MISMATCH_LABEL = 'AI estimate larger than marked box';
 
 /** Pulls a `##` section out of the narrative for the reading panel. */
 function extractSection(reportText: string, title: RegExp) {
@@ -81,7 +111,18 @@ function extractSection(reportText: string, title: RegExp) {
     .map(line => line.replace(/\*\*(.*?)\*\*/g, '$1'));
 }
 
-function toViewerFinding(finding: GroupedFinding): ViewerFinding {
+function toViewerFinding(finding: GroupedFinding, onFrame: GroupedFinding[]): ViewerFinding {
+  const status = findingStatus(finding);
+  // Every box on the frame, this finding's first (as the dialog's evidence view).
+  const panels = finding.originalImage
+    ? renderFindingPanelsHtml(
+        [finding, ...onFrame.filter(item => item !== finding)],
+        FRAME_TOKEN,
+        { orientation: finding.orientation, sliceLabel: finding.sliceLabel, seriesLabel: finding.seriesLabel },
+        finding.name
+      )
+    : '';
+  const confirmedMismatch = finding.consistency === 'mismatch' && status === 'confirmed';
   return {
     id: finding.findingId || finding.name,
     name: finding.name,
@@ -89,15 +130,17 @@ function toViewerFinding(finding: GroupedFinding): ViewerFinding {
     region: finding.region,
     series: finding.seriesLabel,
     location: finding.location,
-    description: finding.description,
+    description: plainDescription(finding.description),
     frameKey: finding.frameKey,
     seriesId: finding.seriesId,
     imageMeasurement: finding.imageMeasurement.display,
+    imageMeasured: finding.imageMeasurement.measurable,
     imageScore: formatConfidence(finding.imageScore),
     narrativeMeasurement: finding.narrativeMeasurement.display,
     narrativeScore: formatConfidence(finding.narrativeScore),
-    consistency: CONSISTENCY_LABELS[finding.consistency],
-    consistencyOk: finding.consistency === 'match',
+    consistency: confirmedMismatch ? CONFIRMED_MISMATCH_LABEL : CONSISTENCY_LABELS[finding.consistency],
+    consistencyClass:
+      finding.consistency === 'match' ? 'ok' : finding.consistency === 'mismatch' && !confirmedMismatch ? 'flag' : '',
     difference:
       finding.differenceMm === null
         ? 'Pending radiologist measurement'
@@ -106,9 +149,16 @@ function toViewerFinding(finding: GroupedFinding): ViewerFinding {
     tier: finding.tier,
     occurrences: finding.occurrences,
     bbox: finding.bbox,
-    original: getImageSrc(finding.originalImage),
-    annotated: getImageSrc(finding.annotatedImage || finding.heatmapImage),
-    heatmap: getImageSrc(finding.heatmapImage),
+    status,
+    reasons: status === 'pending' ? shortReasons(finding.description) : [],
+    notes: verifyReasons(finding.description),
+    panels,
+    // A frame without a box for this finding (not located) shows the original
+    // alone: the server's composite carries the label from before the review.
+    frameRef: finding.originalImage ? finding.frameKey || finding.findingId || finding.name : '',
+    original: finding.originalImage ? '' : getImageSrc(finding.originalImage),
+    annotated: finding.originalImage ? '' : getImageSrc(finding.annotatedImage || finding.heatmapImage),
+    heatmap: finding.originalImage ? '' : getImageSrc(finding.heatmapImage),
   };
 }
 
@@ -287,6 +337,32 @@ const VIEWER_CSS = `
   .list li { margin-bottom: 6px; }
   .disclaim { padding: 14px; color: var(--muted-2); font-size: 10.5px; line-height: 1.6; }
 
+  /* ---------- review status (blue confirmed, amber pending: client colours) ---------- */
+  .st { display: inline-block; margin-left: 5px; padding: 1px 6px; border-radius: 3px; font-size: 9px;
+        font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+  .st-confirmed { background: #007AFF; color: #ffffff; }
+  .st-pending { background: #F59E0B; color: #1f1300; }
+  .tile.is-confirmed, .tile.is-confirmed[aria-current="true"] { border-left-color: #007AFF; }
+  .tile.is-pending, .tile.is-pending[aria-current="true"] { border-left-color: #F59E0B; }
+  .reasons { color: #f5b94a; font-size: 11px; font-weight: 600; margin-top: 5px; line-height: 1.4; }
+  .verify-first { margin-top: 11px; padding: 8px 10px; border-left: 3px solid #F59E0B;
+                  background: rgba(245,158,11,0.10); font-size: 11.5px; line-height: 1.5; }
+  .verify-first b { display: block; color: #f5b94a; font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 2px; }
+  .note { color: var(--muted-2); font-weight: 400; font-size: 10.5px; }
+
+  /* ---------- three panels (findingPanels.ts) on the dark stage ---------- */
+  ${FINDING_PANEL_CSS}
+  .panels { width: 100%; --fp-img: 58vh; }
+  .panels.mode-compare { --fp-img: 46vh; }
+  .panels .fp-row { gap: 12px; margin: 0; }
+  .panels .fp-panel { border-color: var(--line-strong); background: var(--panel-2); }
+  .panels .fp-label { font-size: 10px; padding: 7px 10px; }
+  .panels .fp-stage { padding: 6px; }
+  .panels .fp-caption { color: var(--muted); border-top-color: var(--line); font-size: 11px; padding: 7px 10px; }
+  .panels.mode-original .fp-panel:not(:nth-child(1)),
+  .panels.mode-ai .fp-panel:not(:nth-child(2)),
+  .panels.mode-heatmap .fp-panel:not(:nth-child(3)) { display: none; }
+
   @media (max-width: 1180px) {
     .rail { width: 228px; flex-basis: 228px; }
     .report { width: 310px; flex-basis: 310px; }
@@ -300,11 +376,25 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
   // Low severity is excluded here for the same reason as the report: two thirds
   // of a study, none of it carrying a measurement recoverable from the image.
   const grouped = getReportableFindings(groupEvidenceFindings(evidence));
-  const findings = grouped.map(toViewerFinding);
+  const frames: Record<string, string> = {};
+  const findings = grouped.map(finding => {
+    const onFrame = grouped.filter(item => item.frameKey && item.frameKey === finding.frameKey);
+    const viewer = toViewerFinding(finding, onFrame);
+    if (viewer.frameRef && !frames[viewer.frameRef]) {
+      frames[viewer.frameRef] = getImageSrc(finding.originalImage);
+    }
+    return viewer;
+  });
   const withEvidence = findings.filter(finding => finding.isAnomaly);
   const studyAnomalies = getAnomalyFindings(payload.findings_summary || []);
-  // Confirmed findings only; flagged ones are counted apart (toVerify).
-  const { confirmed: counts, toVerify } = summarizeStudySeverities(grouped);
+  // The study result counts every finding, as the PDF cover does (the tiles
+  // above are only those with an image): confirmed ones by severity, flagged
+  // ones apart (toVerify), those rated medium or above named first.
+  const { confirmed: counts, toVerify, verifyFirst } = summarizeStudySeverities(
+    getReportableFindings(groupEvidenceFindings(buildAllFindingRecords(payload)))
+  );
+  const analysedSeries = payload.total_series_analyzed ?? 0;
+  const studySeries = payload.total_series_in_study;
   const patient = payload.patient_info || {};
   const studyInfo = payload.study_info || {};
   const reportText = payload.report?.report_text || '';
@@ -321,12 +411,23 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
       uid: study.studyInstanceUid,
       date: formatDicomDate(studyInfo.study_date || study.date),
       description: studyInfo.study_description || study.description || 'Medical imaging study',
-      series: payload.total_series_analyzed ?? 0,
+      series:
+        typeof studySeries === 'number' && studySeries !== analysedSeries
+          ? `${analysedSeries} of ${studySeries}`
+          : String(analysedSeries),
       frames: payload.total_frames_processed ?? 0,
       reviewed: (payload.findings_summary || []).length,
     },
     counts,
     toVerify,
+    verifyFirst: verifyFirst.slice(0, 3).map(finding => ({
+      name: finding.name,
+      severity: (finding.severity || 'medium').toLowerCase(),
+      haemorrhage: /possible haemorrhage/i.test(finding.description || ''),
+    })),
+    verifyMore: Math.max(0, verifyFirst.length - 3),
+    frames,
+    frameToken: FRAME_TOKEN,
     anomalyCount: studyAnomalies.length,
     evidenceCount: withEvidence.length,
     impression: extractSection(reportText, /^impression/i),
@@ -361,8 +462,8 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
         <div class="divider"></div>
         <div class="stat"><b id="topEvidence">—</b><small>With evidence</small></div>
         <div class="divider"></div>
-        <div class="stat"><b>${context.study.series} / ${context.study.frames
-    }</b><small>Series / frames</small></div>
+        <div class="stat"><b>${escapeHtml(context.study.series)} &middot; ${context.study.frames
+    }</b><small>Series analysed &middot; frames</small></div>
       </header>
 
       <div class="body">
@@ -381,9 +482,9 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
         <main class="stage">
           <div class="toolbar">
             <div class="seg" id="modes">
-              <button data-mode="compare" aria-pressed="true">Side by side</button>
+              <button data-mode="compare" aria-pressed="true">Three panels</button>
               <button data-mode="original" aria-pressed="false">Original</button>
-              <button data-mode="ai" aria-pressed="false">AI marked</button>
+              <button data-mode="ai" aria-pressed="false">AI marking</button>
               <button data-mode="heatmap" aria-pressed="false">Heatmap</button>
             </div>
             <div class="nav">
@@ -413,6 +514,7 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
       var SEVERITIES = ['critical', 'high', 'medium', 'low'];
       var state = {
         severity: 'all',
+        status: 'all',
         query: '',
         showNormal: false,
         mode: 'compare',
@@ -430,6 +532,7 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
         return ctx.findings.filter(function (f) {
           if (!state.showNormal && !f.isAnomaly) return false;
           if (state.severity !== 'all' && f.severity !== state.severity) return false;
+          if (state.status !== 'all' && f.status !== state.status) return false;
           if (!term) return true;
           return [f.id, f.name, f.location, f.series, f.description]
             .join(' ').toLowerCase().indexOf(term) !== -1;
@@ -457,6 +560,18 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
           var label = key === 'all' ? 'All' : key.charAt(0).toUpperCase() + key.slice(1);
           return '<button class="chip" data-sev="' + key + '" aria-pressed="' +
             (state.severity === key) + '">' + label + ' ' + (counts[key] || 0) + '</button>';
+        }).join('');
+
+        var byStatus = { confirmed: 0, pending: 0 };
+        ctx.findings.forEach(function (f) {
+          if (!state.showNormal && !f.isAnomaly) return;
+          byStatus[f.status] = (byStatus[f.status] || 0) + 1;
+        });
+        html += ['confirmed', 'pending'].map(function (key) {
+          if (!byStatus[key]) return '';
+          var on = state.status === key;
+          return '<button class="chip" data-status="' + key + '" aria-pressed="' + on + '">' +
+            (key === 'confirmed' ? 'Confirmed ' : 'Pending ') + byStatus[key] + '</button>';
         }).join('');
 
         var normalCount = ctx.findings.length - ctx.findings.filter(function (f) { return f.isAnomaly; }).length;
@@ -489,18 +604,25 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
         host.innerHTML = order.map(function (key) {
           return '<div class="series-group"><div class="series-label">' + esc(key) + '</div>' +
             groups[key].map(function (f) {
-              return '<button class="tile" data-id="' + esc(f.id) + '" aria-current="' +
+              var thumb = f.frameRef ? ctx.frames[f.frameRef] : f.annotated;
+              return '<button class="tile is-' + esc(f.status) + '" data-id="' + esc(f.id) + '" aria-current="' +
                 (active && active.id === f.id) + '">' +
-                (f.annotated ? '<img src="' + f.annotated + '" alt="" loading="lazy" />' : '') +
+                (thumb ? '<img src="' + thumb + '" alt="" loading="lazy" />' : '') +
                 '<span class="meta">' +
                   '<span class="tid">' + esc(f.id) +
                     (f.occurrences > 1 ? ' &middot; seen ' + f.occurrences + '\u00d7' : '') + '</span>' +
                   '<span class="tname">' + esc(f.name) + '</span>' +
                   '<span class="sev sev-' + esc(f.severity) + '">' + esc(f.severity) + '</span>' +
-                  (f.tier === 'measured' ? '<span class="tier">measured</span>' : '') +
+                  statusBadge(f) +
                 '</span></button>';
             }).join('') + '</div>';
         }).join('');
+      }
+
+      function statusBadge(f) {
+        return f.status === 'confirmed'
+          ? '<span class="st st-confirmed">Confirmed</span>'
+          : '<span class="st st-pending">Pending verification</span>';
       }
 
       /* ---------- centre ---------- */
@@ -524,7 +646,14 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
 
         var html;
 
-        if (state.mode === 'original') {
+        if (f.panels) {
+          // The same three panels as the PDF and the dialog; one mode shows one panel.
+          html = '<div class="panels mode-' + state.mode + '">' +
+            f.panels.split(ctx.frameToken).join(ctx.frames[f.frameRef] || '') + '</div>';
+        } else if (f.frameRef) {
+          html = view('Original DICOM', 'no box: the marking step did not locate this finding on the image',
+            ctx.frames[f.frameRef]);
+        } else if (state.mode === 'original') {
           html = view('Original diagnostic image', 'no overlay', f.original);
         } else if (state.mode === 'ai') {
           html = view('CIAI AI marking', f.imageScore, f.annotated);
@@ -548,7 +677,12 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
         var host = document.getElementById('reportScroll');
         var sevbar = SEVERITIES.filter(function (s) { return ctx.counts[s]; }).map(function (s) {
           return '<span class="sev sev-' + s + '">' + s + ' ' + ctx.counts[s] + '</span>';
-        }).join('') + (ctx.toVerify ? '<span class="sev">to verify ' + ctx.toVerify + '</span>' : '');
+        }).join('') + (ctx.toVerify ? '<span class="st st-pending">to verify ' + ctx.toVerify + '</span>' : '');
+        var verifyFirst = ctx.verifyFirst.length
+          ? '<div class="verify-first"><b>Verify first</b>' + ctx.verifyFirst.map(function (v) {
+              return esc(v.name) + ' (' + esc(v.severity) + (v.haemorrhage ? ', possible haemorrhage' : '') + ')';
+            }).join(', ') + (ctx.verifyMore ? ', and ' + ctx.verifyMore + ' more' : '') + '</div>'
+          : '';
 
         var head =
           '<div class="block">' +
@@ -563,6 +697,7 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
                 ' reviewed entries &middot; ' + ctx.evidenceCount + ' with image evidence</div></div>' +
             '</div>' +
             '<div class="sevbar">' + sevbar + '</div>' +
+            verifyFirst +
           '</div>';
 
         if (!f) {
@@ -573,12 +708,12 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
         var rows = [
           ['Finding ID', esc(f.id), ''],
           ['Severity', '<span class="sev sev-' + esc(f.severity) + '">' + esc(f.severity) + '</span>', ''],
-          ['Region', esc(f.region || '—'), ''],
           ['Localization', esc(f.location || '—'), ''],
-          ['Marked box (measured)', esc(f.imageMeasurement), ''],
+          ['Marked box', esc(f.imageMeasurement) +
+            (f.imageMeasured ? ' <span class="note">AI box, not a traced measurement</span>' : ''), ''],
           ['Image AI score', esc(f.imageScore), ''],
           ['AI size estimate', esc(f.narrativeMeasurement) + ' / ' + esc(f.narrativeScore), ''],
-          ['Estimate vs box', esc(f.consistency), f.consistencyOk ? 'ok' : 'flag'],
+          ['Estimate vs box', esc(f.consistency), f.consistencyClass],
           ['Difference', esc(f.difference), ''],
           ['Series', esc(f.series || '—'), ''],
           ['Source frame', esc(f.frameKey || '—'), ''],
@@ -592,15 +727,24 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
             items.map(function (item) { return '<li>' + esc(item) + '</li>'; }).join('') + '</ol></div>';
         };
 
+        var notes = f.notes.length
+          ? '<div class="block"><h3>Why pending verification</h3><ul class="list">' +
+              f.notes.map(function (note) { return '<li>' + esc(note) + '</li>'; }).join('') + '</ul></div>'
+          : '';
+
         host.innerHTML = head +
           '<div class="block"><h3>' + esc(f.id) + ' — ' + esc(f.name) + '</h3>' +
+            '<div>' + statusBadge(f).replace('class="st ', 'style="margin-left:0" class="st ') + '</div>' +
+            (f.reasons.length ? '<div class="reasons">' + f.reasons.map(esc).join(' &middot; ') + '</div>' : '') +
             (f.description ? '<p class="desc">' + esc(f.description) + '</p>' : '') + '</div>' +
           '<dl class="kv">' + rows + '</dl>' +
+          notes +
           list('Impression', ctx.impression) +
           list('Recommendations', ctx.recommendations) +
-          '<p class="disclaim">AI-generated decision support, not a diagnosis. Image-level and ' +
-          'narrative values are kept as separate audit fields; disagreements are flagged for ' +
-          'radiologist verification rather than reconciled automatically.</p>';
+          '<p class="disclaim">AI-generated decision support, not a diagnosis. CONFIRMED: the finding ' +
+          'passed the automated image checks; PENDING VERIFICATION: a check could not support it. Every ' +
+          'finding still needs radiologist verification. Sizes are the box the AI drew, from DICOM pixel ' +
+          'spacing, not a traced measurement; the heatmap is drawn from the box, not a model attention map.</p>';
       }
 
       function renderCounts() {
@@ -649,6 +793,9 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
         if (!chip) return;
         if (chip.hasAttribute('data-normal')) {
           state.showNormal = !state.showNormal;
+        } else if (chip.hasAttribute('data-status')) {
+          var status = chip.getAttribute('data-status');
+          state.status = state.status === status ? 'all' : status;
         } else {
           state.severity = chip.getAttribute('data-sev');
         }

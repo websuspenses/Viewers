@@ -74,6 +74,8 @@ export type AiCompletePayload = {
   series_with_findings?: any[];
   findings_summary?: AiFindingSummary[];
   total_series_analyzed?: number;
+  /** Every series in the study (plugin 1.6.27); total_series_analyzed is the ones the AI read. */
+  total_series_in_study?: number;
   total_frames_processed?: number;
   total_anomalies_found?: number;
   output_directory?: string;
