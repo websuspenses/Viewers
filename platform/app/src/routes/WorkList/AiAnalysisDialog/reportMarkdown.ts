@@ -175,8 +175,10 @@ export function splitReportSections(markdown: string) {
  * Removes the `[LOW PRIORITY]` finding blocks from the narrative's Findings
  * section, so the prose agrees with the tables rather than reintroducing the
  * severity the report excludes. Calcification blocks are kept, as in
- * isReportableFinding, and a Findings section left with no content gets the
- * normal sentence instead of an empty heading.
+ * isReportableFinding, and a Findings section left with no content says that
+ * only low-rated findings passed - never "no significant abnormality": the
+ * Impression still names them, and the AI is not validated to call a study
+ * normal (MRI radiologist feedback 2026-10-30).
  *
  * Scoped deliberately narrowly: only `###` blocks inside `## Findings`, which
  * are self-contained (heading plus its own bullets). Impression and
@@ -185,7 +187,8 @@ export function splitReportSections(markdown: string) {
  * citing.
  */
 const NORMAL_FINDINGS_SENTENCE =
-  'No significant abnormality identified by the AI analysis. Radiologist review required.';
+  'Only low-rated AI findings passed the automated checks (not detailed in this report). ' +
+  'Radiologist review required.';
 
 export function stripLowPriorityFindings(markdown: string) {
   const lines = (markdown || '').split(/\r?\n/);

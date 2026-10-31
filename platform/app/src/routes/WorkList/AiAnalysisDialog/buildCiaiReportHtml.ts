@@ -493,15 +493,19 @@ type CoverTotals = {
   reported: GroupedFinding[];
   excludedCount: number;
   lowSeverityCount: number;
+  setAsideCount: number;
 };
 
 // The AI's size wording against the marked box of a finding the checks
 // confirmed: a note, not a request to verify next to a CONFIRMED badge.
 const CONFIRMED_MISMATCH_LABEL = 'AI estimate larger than marked box';
+// The AI is not validated to call a study normal (MRI radiologist feedback
+// 2026-10-30): the narrative's own sentence, never "no anomalies".
+const NO_FINDING_HEADLINE = 'No AI finding passed the automated checks';
 
 function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: CoverTotals) {
   const { payload, study, logoUrl } = options;
-  const { grouped, measured, reported, excludedCount, lowSeverityCount } = totals;
+  const { grouped, measured, reported, excludedCount, lowSeverityCount, setAsideCount } = totals;
   const patient = payload.patient_info || {};
   const studyInfo = payload.study_info || {};
   // Severity is reported over the findings that survive grouping, not over the
@@ -510,6 +514,10 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
   // medium or above are named on their own line.
   const { confirmed: counts, toVerify, verifyFirst } = summarizeStudySeverities(grouped);
   const worst = worstSeverity(counts);
+  // worstSeverity falls back to "low" with nothing confirmed: a LOW badge
+  // beside "No AI finding passed the automated checks" read as a low-severity
+  // result on a study with a possible hyperacute infarct (2026-10-31).
+  const anyConfirmed = counts.critical + counts.high + counts.medium + counts.low > 0;
   const images = new Set(measured.map(finding => finding.frameKey).filter(Boolean)).size;
 
   const tiles: [string, string][] = [
@@ -580,12 +588,14 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
       worst === 'critical' ? 'is-critical' : verifyFirst.length ? 'is-verify' : ''
     }">
       <div class="verdict-badges">
-        <span class="sev ${severityClass(worst)}">${escapeHtml(worst)}</span>
+        <span class="sev ${severityClass(worst)}">${escapeHtml(
+          anyConfirmed ? worst : 'None confirmed'
+        )}</span>
         ${verifyFirst.length ? '<span class="sev sev-verify">Verify first</span>' : ''}
       </div>
       <div>
         <div class="headline">Study result: ${
-          grouped.length ? `${grouped.length} distinct findings` : 'No anomalies reported'
+          grouped.length ? `${grouped.length} distinct findings` : NO_FINDING_HEADLINE
         }</div>
         <div class="detail">
           <b>${measured.length}</b> marked on image &middot; <b>${reported.length}</b> not marked
@@ -597,7 +607,9 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
                 .map(
                   finding =>
                     `${escapeHtml(finding.name)} (${escapeHtml(finding.severity || 'medium')}${
-                      /possible haemorrhage/i.test(finding.description || '')
+                      /possible acute infarct/i.test(finding.description || '')
+                        ? ', possible acute infarct'
+                        : /possible haemorrhage/i.test(finding.description || '')
                         ? ', possible haemorrhage'
                         : ''
                     })`
@@ -611,6 +623,11 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
               ? `${excludedCount} normal-structure and negative entries and ${lowSeverityCount} low-severity
                  findings excluded; repeat observations of the same finding across slices merged.`
               : 'Repeat observations of the same finding across slices merged.'
+          }${
+            setAsideCount
+              ? ` ${setAsideCount} AI report${setAsideCount === 1 ? '' : 's'} set aside by the automated
+                 checks (listed with the reasons at the end).`
+              : ''
           }
         </div>
       </div>
@@ -767,14 +784,17 @@ const SHEET_BODY_BUDGET_MM = 188;
 
 type SheetBlock = { body: string; label: string };
 
-type TableSpec = {
-  rows: GroupedFinding[];
+type TableSpec<T = GroupedFinding> = {
+  rows: T[];
   descriptionColumnChars: number;
   label: string;
-  render: (rows: GroupedFinding[], part: number, partCount: number) => string;
-  /** Printed row height in mm, when the findings-row estimate does not fit the table. */
-  estimate?: (row: GroupedFinding) => number;
+  render: (rows: T[], part: number, partCount: number) => string;
+  /** Printed row height in mm; required for rows that are not findings. */
+  estimate?: (row: T) => number;
 };
+
+/** A finding the study review set aside, for the appendix that lists them. */
+type SetAsideRow = { name: string; series: string; reasons: string[] };
 
 /**
  * Flows the findings tables across sheets as one continuous run. Each table
@@ -783,20 +803,20 @@ type TableSpec = {
  * space. Here a table starts wherever the previous one ended and only breaks
  * to a new sheet when its next row would not fit.
  */
-function flowTables(tables: TableSpec[], budgetMm = SHEET_BODY_BUDGET_MM) {
-  const placed: { table: TableSpec; rows: GroupedFinding[]; sheet: number }[] = [];
+function flowTables<T = GroupedFinding>(tables: TableSpec<T>[], budgetMm = SHEET_BODY_BUDGET_MM) {
+  const placed: { table: TableSpec<T>; rows: T[]; sheet: number }[] = [];
   let sheet = 0;
   let used = 0;
 
   tables.forEach(table => {
     let index = 0;
     while (index < table.rows.length) {
-      const rows: GroupedFinding[] = [];
+      const rows: T[] = [];
       let height = TABLE_BLOCK_OVERHEAD_MM;
       while (index < table.rows.length) {
         const rowMm = table.estimate
           ? table.estimate(table.rows[index])
-          : estimateRowMm(table.rows[index], table.descriptionColumnChars);
+          : estimateRowMm(table.rows[index] as unknown as GroupedFinding, table.descriptionColumnChars);
         // A row taller than a whole sheet still has to go somewhere, so an
         // empty sheet always takes at least one.
         if (used + height + rowMm > budgetMm && (rows.length || used > 0)) {
@@ -999,6 +1019,61 @@ function renderVerificationNotesBody(rows: GroupedFinding[], part: number, partC
   `;
 }
 
+/**
+ * Findings the study review set aside (wrong sequence, one slice of one MRI
+ * sequence, bone in the box, no restriction on ADC ...). They are not part of
+ * the report; the Impression counts them and this lists them with the reasons
+ * (1.6.29). Findings merged into another one at the same spot are left out.
+ */
+function setAsideRows(payload: AiCompletePayload): SetAsideRow[] {
+  return (payload.series_with_findings || []).flatMap(series =>
+    (series?.findings || [])
+      .filter(
+        (finding: { tier?: string; flags?: string[] }) =>
+          finding?.tier === 'suppressed' && !(finding.flags || []).includes('same_spot')
+      )
+      .map((finding: { name?: string; description?: string }) => ({
+        name: finding.name || 'Unnamed finding',
+        series: series?.modality_info?.series_description || '',
+        reasons: verifyReasons(finding.description),
+      }))
+  );
+}
+
+function renderSetAsideBody(rows: SetAsideRow[], part: number, partCount: number) {
+  const body = rows
+    .map(
+      row => `
+      <tr>
+        <td><b>${escapeHtml(row.name)}</b></td>
+        <td>${escapeHtml(row.series || '—')}</td>
+        <td>${row.reasons.map(reason => `<div>${escapeHtml(reason)}</div>`).join('') || '—'}</td>
+      </tr>`
+    )
+    .join('');
+  return `
+    ${sectionHeading(`Set aside by the automated checks${partCount > 1 ? ` (${part} of ${partCount})` : ''}`)}
+    ${
+      part === 1
+        ? `<p class="note" style="margin-top:0;margin-bottom:3.5mm">
+             AI reports the study review set aside. They are not part of this report and are listed
+             so that nothing the AI reported is hidden.
+           </p>`
+        : ''
+    }
+    <table class="grid">
+      <thead>
+        <tr>
+          <th style="width:30%">Finding</th>
+          <th style="width:22%">Series</th>
+          <th style="width:48%">Reasons</th>
+        </tr>
+      </thead>
+      <tbody>${body}</tbody>
+    </table>
+  `;
+}
+
 function renderWorkflowBody() {
   return `
     ${sectionHeading('Final Team Draft - Build This Workflow')}
@@ -1072,6 +1147,7 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
         reported,
         excludedCount,
         lowSeverityCount,
+        setAsideCount: setAsideRows(payload).length,
       })}</div>
       ${sheetFooter(draftId)}
     </section>`
@@ -1166,6 +1242,30 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
               (mm, reason) => mm + Math.ceil(reason.length / 95) * 3.2,
               0
             ),
+            4
+          ) + 4.5,
+      },
+    ]).sheets.forEach(blocks => {
+      addSheet(
+        blocks.map(block => `<div class="block">${block.body}</div>`).join(''),
+        blocks.map(block => block.label).join(' · ')
+      );
+    });
+  }
+
+  const setAside = setAsideRows(payload);
+  if (setAside.length) {
+    flowTables<SetAsideRow>([
+      {
+        rows: setAside,
+        descriptionColumnChars: 70,
+        label: 'Set aside',
+        render: renderSetAsideBody,
+        // One line per reason (~70 characters a line in the reasons column).
+        estimate: row =>
+          Math.max(
+            Math.ceil(row.name.length / 34) * 3.6,
+            row.reasons.reduce((mm, reason) => mm + Math.ceil(reason.length / 70) * 3.2, 0),
             4
           ) + 4.5,
       },

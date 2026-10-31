@@ -423,7 +423,11 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
     verifyFirst: verifyFirst.slice(0, 3).map(finding => ({
       name: finding.name,
       severity: (finding.severity || 'medium').toLowerCase(),
-      haemorrhage: /possible haemorrhage/i.test(finding.description || ''),
+      urgent: /possible acute infarct/i.test(finding.description || '')
+        ? 'possible acute infarct'
+        : /possible haemorrhage/i.test(finding.description || '')
+        ? 'possible haemorrhage'
+        : '',
     })),
     verifyMore: Math.max(0, verifyFirst.length - 3),
     frames,
@@ -680,7 +684,7 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
         }).join('') + (ctx.toVerify ? '<span class="st st-pending">to verify ' + ctx.toVerify + '</span>' : '');
         var verifyFirst = ctx.verifyFirst.length
           ? '<div class="verify-first"><b>Verify first</b>' + ctx.verifyFirst.map(function (v) {
-              return esc(v.name) + ' (' + esc(v.severity) + (v.haemorrhage ? ', possible haemorrhage' : '') + ')';
+              return esc(v.name) + ' (' + esc(v.severity) + (v.urgent ? ', ' + esc(v.urgent) : '') + ')';
             }).join(', ') + (ctx.verifyMore ? ', and ' + ctx.verifyMore + ' more' : '') + '</div>'
           : '';
 
@@ -692,7 +696,7 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
             '</dl>' +
             '<div class="verdict">' +
               '<div><div class="big">Study result: ' +
-                (ctx.anomalyCount ? 'Positive' : 'No anomalies') + '</div>' +
+                (ctx.anomalyCount ? 'Positive' : 'No AI finding passed the automated checks') + '</div>' +
                 '<div class="sub">' + ctx.anomalyCount + ' anomalies from ' + ctx.study.reviewed +
                 ' reviewed entries &middot; ' + ctx.evidenceCount + ' with image evidence</div></div>' +
             '</div>' +

@@ -53,7 +53,15 @@ export function plainDescription(description?: string): string {
 // One short phrase per review reason, in plain words, for the badge. Order
 // matters: the first pattern that matches a reason names it.
 const SHORT_REASONS: [RegExp, string][] = [
+  [/possible acute infarct/i, 'possible acute infarct'],
   [/possible haemorrhage/i, 'possible haemorrhage'],
+  [/not dark on the ADC/i, 'no restriction on ADC'],
+  [/no ADC image/i, 'ADC not available'],
+  [/single slice of one MRI sequence/i, 'one slice, one sequence'],
+  [/one MRI sequence only/i, 'one sequence only'],
+  [/does not interpret on its own/i, 'sequence not read alone'],
+  [/no contrast was given/i, 'no contrast given'],
+  [/marking too loose/i, 'box too loose to judge'],
   [/outside the skull/i, 'box outside the skull'],
   [/could not be measured/i, 'density not measured'],
   [/likely bone|bone read as|bone-dense|touches the skull|on skull bone/i, 'possibly bone'],
