@@ -108,6 +108,17 @@ export default function useAiReportPipeline({
     });
   }, []);
 
+  // A report run rewrites a study's frame images under the same paths, so the
+  // images cached for the study are dropped whenever its result is requested
+  // again (K.CHINNA 2026-10-30: the PDF showed the previous run's markings).
+  const forgetFrames = useCallback((uid: string) => {
+    for (const key of [...frameCache.current.keys()]) {
+      if (key.startsWith(`${uid}:`)) {
+        frameCache.current.delete(key);
+      }
+    }
+  }, []);
+
   const generateReport = useCallback(
     async (uid: string) => {
       if (!baseUrl || !authHeaders || inFlight.current.has(`trigger:${uid}`)) {
@@ -117,6 +128,7 @@ export default function useAiReportPipeline({
       emptyPolls.current.delete(uid);
       pollFailures.current.delete(uid);
       resultCache.current.delete(uid);
+      forgetFrames(uid);
       markTriggered(uid, true);
       patchLive(uid, {
         triggered: true,
@@ -137,7 +149,7 @@ export default function useAiReportPipeline({
         inFlight.current.delete(`trigger:${uid}`);
       }
     },
-    [authHeaders, baseUrl, markTriggered, patchLive]
+    [authHeaders, baseUrl, forgetFrames, markTriggered, patchLive]
   );
 
   const loadReportResult = useCallback(
@@ -146,6 +158,7 @@ export default function useAiReportPipeline({
         return Promise.reject(new Error('The PACS URL is not configured.'));
       }
       if (force || !resultCache.current.has(uid)) {
+        forgetFrames(uid);
         const request = fetchReportResult({ baseUrl, studyInstanceUid: uid, authHeaders });
         // A failed load must not stick: the next open should try again.
         request.catch(() => resultCache.current.delete(uid));
@@ -153,7 +166,7 @@ export default function useAiReportPipeline({
       }
       return resultCache.current.get(uid) as Promise<AiCompletePayload>;
     },
-    [authHeaders, baseUrl]
+    [authHeaders, baseUrl, forgetFrames]
   );
 
   const loadFrameImages = useCallback(

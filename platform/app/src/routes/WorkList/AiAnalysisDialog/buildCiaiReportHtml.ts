@@ -28,7 +28,8 @@ import {
   getTier,
   groupEvidenceFindings,
   TIER_LABELS,
-  summarizeSeverities,
+  summarizeStudySeverities,
+  worstSeverity,
 } from './aiReportModel';
 import {
   escapeHtml,
@@ -36,6 +37,14 @@ import {
   splitReportSections,
   stripLowPriorityFindings,
 } from './reportMarkdown';
+import {
+  FINDING_PANEL_CSS,
+  findingStatus,
+  plainDescription,
+  renderFindingPanelsHtml,
+  statusBadgeHtml,
+  verifyReasons,
+} from './findingPanels';
 
 export type ReportBuildOptions = {
   payload: AiCompletePayload;
@@ -466,10 +475,11 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
   const patient = payload.patient_info || {};
   const studyInfo = payload.study_info || {};
   // Severity is reported over the findings that survive grouping, not over the
-  // raw entry list where two thirds are duplicates and background noise.
-  const counts = summarizeSeverities(grouped);
-  const worst = counts.critical ? 'critical' : counts.high ? 'high' : counts.medium ? 'medium' : 'low';
-  const toVerify = grouped.filter(finding => /^\[Verify:/.test(finding.description || '')).length;
+  // raw entry list where two thirds are duplicates and background noise. The
+  // study result is set by the confirmed findings; the flagged ones rated
+  // medium or above are named on their own line.
+  const { confirmed: counts, toVerify, verifyFirst } = summarizeStudySeverities(grouped);
+  const worst = worstSeverity(counts);
   const images = new Set(measured.map(finding => finding.frameKey).filter(Boolean)).size;
 
   const tiles: [string, string][] = [
@@ -512,14 +522,15 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
     </div>
     <div class="hero">
       <h1>CIAI TELERADIOLOGY<br />AI PART</h1>
-      <div class="pipeline">ORIGINAL IMAGE&nbsp;&nbsp;|&nbsp;&nbsp;CIAI AI MARKING&nbsp;&nbsp;|&nbsp;&nbsp;RADIOLOGIST VERIFY</div>
+      <div class="pipeline">ORIGINAL DICOM&nbsp;&nbsp;|&nbsp;&nbsp;AI MARKING &amp; MEASUREMENTS&nbsp;&nbsp;|&nbsp;&nbsp;AI HEATMAP</div>
     </div>
     <p class="cover-tagline">AI evidence should never hide the diagnostic image.</p>
     <p class="cover-lede">
-      Each marked image is presented as the original diagnostic image first, then the CIAI AI
-      marking, with every finding on that image listed above them. Every image shown is returned by
-      the analysis service; nothing is redrawn or inferred. The radiologist remains the final
-      decision-maker.
+      Each marked image is shown three times: the original frame as the AI read it, the AI's box
+      with its size, and a heatmap, with every finding on that image listed above them. The box and
+      the heatmap are drawn over the original from the AI's box: blue when the finding passed the
+      automated checks, amber when it is pending verification. Every finding still needs radiologist
+      verification; the radiologist remains the final decision-maker.
     </p>
 
     <div class="statusbar ${options.reportStatus === 'verified' ? 'is-verified' : ''}">
@@ -533,8 +544,22 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
         }</div>
         <div class="detail">
           <b>${measured.length}</b> marked on image &middot; <b>${reported.length}</b> not marked
-          &nbsp;|&nbsp; ${counts.critical} critical &middot; ${counts.high} high &middot; ${counts.medium} medium
+          &nbsp;|&nbsp; confirmed: ${counts.critical} critical &middot; ${counts.high} high &middot; ${counts.medium} medium
         </div>
+        ${
+          verifyFirst.length
+            ? `<div class="detail"><b>To verify first:</b> ${verifyFirst
+                .map(
+                  finding =>
+                    `${escapeHtml(finding.name)} (${escapeHtml(finding.severity || 'medium')}${
+                      /possible haemorrhage/i.test(finding.description || '')
+                        ? ', possible haemorrhage'
+                        : ''
+                    })`
+                )
+                .join(', ')}</div>`
+            : ''
+        }
         <div class="detail">
           ${excludedCount} normal-structure and negative entries and ${lowSeverityCount} low-severity
           findings excluded; repeat observations of the same finding across slices merged.
@@ -590,16 +615,14 @@ function occurrenceNote(finding: GroupedFinding) {
   return `<span class="occ">seen ${finding.occurrences}&times;</span>`;
 }
 
-const VERIFY_PREFIX = /^\[Verify: ([^\]]*)\]\s*/;
-
-/** Description with the study review's "[Verify: …]" note set apart as a flag. */
+/**
+ * Status badge (CONFIRMED / PENDING VERIFICATION, with the short reasons) and
+ * the finding's own description. The review's full reasons and HU numbers are
+ * in the verification notes at the end (client requirement 2026-10-30).
+ */
 function renderDescription(description: string) {
-  if (!description) {
-    return '';
-  }
-  const match = description.match(VERIFY_PREFIX);
-  const rest = match ? description.slice(match[0].length) : description;
-  return `${match ? `<div class="verify-flag">Verify: ${escapeHtml(match[1])}</div>` : ''}${
+  const rest = plainDescription(description);
+  return `<div class="badge-line">${statusBadgeHtml({ description })}</div>${
     rest ? `<div class="sub">${escapeHtml(rest)}</div>` : ''
   }`;
 }
@@ -638,10 +661,12 @@ function renderFindingsTableBody(rows: GroupedFinding[], part: number, partCount
     ${
       part === 1
         ? `<p class="note" style="margin-top:0;margin-bottom:3.5mm">
-             Most severe first. "Marked on image" findings have a locating box on a source frame and an
-             evidence page later in this report. The marked box is measured from the DICOM pixel
-             spacing; it is the box drawn around the finding, so it is an upper bound, not a traced
-             measurement. The AI size estimate is the model's own wording.
+             Most severe first. CONFIRMED: the finding passed the automated image checks; PENDING
+             VERIFICATION: a check could not support it (short reason shown; full reasons in the
+             verification notes at the end). Every finding still needs radiologist verification.
+             "Marked on image" findings have a box on a source frame and an evidence page; the box is
+             measured from the DICOM pixel spacing, so it is an upper bound, not a traced measurement.
+             The AI size estimate is the model's own wording.
            </p>`
         : ''
     }
@@ -673,12 +698,11 @@ function estimateRowMm(finding: GroupedFinding, descriptionColumnChars: number) 
   // description width fits the bold 8pt name; the 7pt flag and description
   // lines are 3.2 mm; the wrapped source-frame id under the finding id is
   // ~11 characters per 2.8 mm line.
-  const description = finding.description || '';
-  const flag = description.match(/^\[Verify: [^\]]*\]\s*/);
-  const rest = flag ? description.slice(flag[0].length) : description;
+  // The badge line replaces the review's long note (one line).
+  const rest = plainDescription(finding.description || '');
   const text =
     Math.ceil((finding.name || '').length / (descriptionColumnChars * 0.7)) * 3.6 +
-    (flag ? Math.ceil(flag[0].length / descriptionColumnChars) * 3.2 : 0) +
+    3.4 +
     (rest ? Math.ceil(rest.length / descriptionColumnChars) * 3.2 : 0);
   const id = 3.5;
   const location = Math.ceil((finding.locations.join('; ') || '-').length / 16) * 3.6;
@@ -697,6 +721,8 @@ type TableSpec = {
   descriptionColumnChars: number;
   label: string;
   render: (rows: GroupedFinding[], part: number, partCount: number) => string;
+  /** Printed row height in mm, when the findings-row estimate does not fit the table. */
+  estimate?: (row: GroupedFinding) => number;
 };
 
 /**
@@ -717,7 +743,9 @@ function flowTables(tables: TableSpec[], budgetMm = SHEET_BODY_BUDGET_MM) {
       const rows: GroupedFinding[] = [];
       let height = TABLE_BLOCK_OVERHEAD_MM;
       while (index < table.rows.length) {
-        const rowMm = estimateRowMm(table.rows[index], table.descriptionColumnChars);
+        const rowMm = table.estimate
+          ? table.estimate(table.rows[index])
+          : estimateRowMm(table.rows[index], table.descriptionColumnChars);
         // A row taller than a whole sheet still has to go somewhere, so an
         // empty sheet always takes at least one.
         if (used + height + rowMm > budgetMm && (rows.length || used > 0)) {
@@ -758,48 +786,21 @@ function flowTables(tables: TableSpec[], budgetMm = SHEET_BODY_BUDGET_MM) {
 
 
 /**
- * The verification workflow as a progress strip.
- *
- * The team asked for the full sequence — original, human/lab marking, CIAI AI,
- * heatmap, radiologist verification — to stay visible. The human marking and
- * the verification are shown as *pending stages*, not as pictures: the analysis
- * service returns no manual measurement, so the only way to render that panel
- * would be to draw the AI's own box and caption it as a person's work.
- */
-function renderStageStrip(finding: EvidenceFinding) {
-  const stages: [string, boolean, string][] = [
-    ['Original', Boolean(finding.originalImage), 'shown'],
-    ['Human / lab marking', false, 'not supplied'],
-    [
-      'CIAI AI marking',
-      Boolean(finding.annotatedImage || finding.heatmapImage),
-      finding.annotatedImage || finding.heatmapImage ? 'shown' : 'none',
-    ],
-    ['Radiologist verify', false, 'pending'],
-  ];
-
-  return `
-    <div class="stages">
-      ${stages
-        .map(
-          ([label, done, note], index) => `
-        <div class="stage-step ${done ? 'is-done' : 'is-pending'}">
-          <span class="stage-num">${index + 1}</span>
-          <span class="stage-label">${escapeHtml(label)}</span>
-          <span class="stage-note">${escapeHtml(note)}</span>
-        </div>`
-        )
-        .join('')}
-    </div>`;
-}
-
-/**
  * One evidence page per image, listing every finding marked on it. A frame
  * with several findings used to get a page per finding, repeating the same
  * pictures up to eleven times in one report.
  */
 function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string, imageNumber: number) {
   const lead = findings[0];
+  // Three panels drawn over the original frame (findingPanels.ts); results
+  // without the original or a box fall back to the analysis service's marking.
+  const panelMm = Math.max(46, 60 - Math.max(0, findings.length - 1) * 6);
+  const threePanels = renderFindingPanelsHtml(
+    findings,
+    lead.originalImage,
+    { orientation: lead.orientation, sliceLabel: lead.sliceLabel, seriesLabel: lead.seriesLabel },
+    lead.name
+  );
   // The marked scan is the second panel; the composite (scan + findings panel)
   // is only a fallback — its panel text is unreadable at this size and the
   // same details are in the table above it.
@@ -855,7 +856,7 @@ function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string
   const imageMm = Math.max(55, 88 - Math.max(0, findings.length - 1) * 16);
 
   return `
-    <div class="evidence" style="--evidence-img:${imageMm}mm">
+    <div class="evidence" style="--evidence-img:${imageMm}mm;--fp-img:${panelMm}mm">
     <h2 class="finding">Image ${imageNumber} — ${escapeHtml(
       findings.length === 1 ? lead.name : `${findings.length} findings`
     )}</h2>
@@ -863,8 +864,6 @@ function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string
       <b>Series:</b> ${escapeHtml(lead.seriesLabel || 'Not stated')}
       &nbsp;&nbsp;|&nbsp;&nbsp;<b>Location:</b> ${escapeHtml(lead.location || 'Not stated')}
     </div>
-
-    ${renderStageStrip(lead)}
 
     <table class="grid evidence-findings">
       <thead>
@@ -880,7 +879,7 @@ function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string
       <tbody>${rows}</tbody>
     </table>
 
-    <div class="panel-row">${panels.map(renderPanel).join('')}</div>
+    ${threePanels || `<div class="panel-row">${panels.map(renderPanel).join('')}</div>`}
 
     <table class="verify">
       <tbody>
@@ -901,6 +900,43 @@ function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string
       </tbody>
     </table>
     </div>
+  `;
+}
+
+/** The study review's reasons in full, for every finding pending verification. */
+function renderVerificationNotesBody(rows: GroupedFinding[], part: number, partCount: number) {
+  const body = rows
+    .map(
+      finding => `
+      <tr>
+        <td class="id">${escapeHtml(finding.findingId || '—')}</td>
+        <td><b>${escapeHtml(finding.name)}</b></td>
+        <td>${verifyReasons(finding.description)
+          .map(reason => `<div>${escapeHtml(reason)}</div>`)
+          .join('')}</td>
+      </tr>`
+    )
+    .join('');
+  return `
+    ${sectionHeading(`Verification notes${partCount > 1 ? ` (${part} of ${partCount})` : ''}`)}
+    ${
+      part === 1
+        ? `<p class="note" style="margin-top:0;margin-bottom:3.5mm">
+             Why each finding is PENDING VERIFICATION, as written by the automated study review. CT
+             densities are in Hounsfield units (HU) measured inside the AI's box.
+           </p>`
+        : ''
+    }
+    <table class="grid">
+      <thead>
+        <tr>
+          <th style="width:10%">ID</th>
+          <th style="width:30%">Finding</th>
+          <th style="width:60%">Reasons</th>
+        </tr>
+      </thead>
+      <tbody>${body}</tbody>
+    </table>
   `;
 }
 
@@ -1055,6 +1091,33 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
     }
   }
 
+  const pending = grouped.filter(finding => findingStatus(finding) === 'pending');
+  if (pending.length) {
+    flowTables([
+      {
+        rows: pending,
+        descriptionColumnChars: 70,
+        label: 'Verification notes',
+        render: renderVerificationNotesBody,
+        // One line per reason (~95 characters a line in the reasons column).
+        estimate: finding =>
+          Math.max(
+            Math.ceil((finding.name || '').length / 30) * 3.6,
+            verifyReasons(finding.description).reduce(
+              (mm, reason) => mm + Math.ceil(reason.length / 95) * 3.2,
+              0
+            ),
+            4
+          ) + 4.5,
+      },
+    ]).sheets.forEach(blocks => {
+      addSheet(
+        blocks.map(block => `<div class="block">${block.body}</div>`).join(''),
+        blocks.map(block => block.label).join(' · ')
+      );
+    });
+  }
+
   if (includeSpecificationAppendix) {
     addSheet(renderWorkflowBody(), 'Workflow specification');
   }
@@ -1066,7 +1129,7 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
     <title>CIAI AI Analysis Report — ${escapeHtml(
       payload.patient_info?.patient_name || study.patientName || study.studyInstanceUid
     )}</title>
-    <style>${REPORT_CSS}</style>
+    <style>${REPORT_CSS}${FINDING_PANEL_CSS}</style>
   </head>
   <body>
     ${sheets.join('')}

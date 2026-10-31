@@ -57,10 +57,20 @@ import {
   getTier,
   groupEvidenceFindings,
   normalizeAiPayload,
-  summarizeSeverities,
+  summarizeStudySeverities,
   withFrameImages,
 } from './aiReportModel';
 import { renderSafeReportMarkdown, stripLowPriorityFindings } from './reportMarkdown';
+import {
+  FINDING_PANEL_CSS,
+  STATUS_COLORS,
+  STATUS_LABELS as FINDING_STATUS_LABELS,
+  findingStatus,
+  plainDescription,
+  renderFindingPanelsHtml,
+  shortReasons,
+  verifyReasons,
+} from './findingPanels';
 import { buildCiaiReportHtml } from './buildCiaiReportHtml';
 import { buildReportViewerHtml } from './buildReportViewerHtml';
 import { AiStage, AiStudyState, STAGE_LABELS, describeAnalysis } from './aiPipeline';
@@ -442,6 +452,41 @@ function VerificationRow({ label, value, flag }: { label: string; value: React.R
  * original first, then the manual marking, then the CIAI AI marking, with the
  * heatmap last as supporting evidence.
  */
+/** CONFIRMED / PENDING VERIFICATION badge with the short reasons (findingPanels.ts). */
+function StatusBadge({ description }: { description?: string }) {
+  const status = findingStatus({ description });
+  const reasons = status === 'pending' ? shortReasons(description) : [];
+  return (
+    <Box
+      component="span"
+      sx={{ display: 'inline-flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap' }}
+    >
+      <Box
+        component="span"
+        sx={{
+          backgroundColor: STATUS_COLORS[status],
+          color: status === 'pending' ? '#1f1300' : '#ffffff',
+          fontSize: 10,
+          fontWeight: 900,
+          borderRadius: '3px',
+          padding: '1px 6px',
+          letterSpacing: '0.04em',
+        }}
+      >
+        {FINDING_STATUS_LABELS[status]}
+      </Box>
+      {reasons.length > 0 && (
+        <Box
+          component="span"
+          sx={{ color: '#f6c56b', fontSize: 11, fontWeight: 700 }}
+        >
+          {reasons.join(', ')}
+        </Box>
+      )}
+    </Box>
+  );
+}
+
 function EvidenceViewer({
   findings,
   index,
@@ -469,6 +514,16 @@ function EvidenceViewer({
     ? finding.imageMeasurement.display
     : finding.narrativeMeasurement.display;
   const isMismatch = finding.consistency !== 'match';
+  // Three panels over the original frame, with every box on it (this
+  // finding's first); empty for results without the original or a box.
+  const onFrame = findings.filter(item => item.frameKey && item.frameKey === finding.frameKey);
+  const threePanels = renderFindingPanelsHtml(
+    [finding, ...onFrame.filter(item => item !== finding)],
+    finding.originalImage,
+    { orientation: finding.orientation, sliceLabel: finding.sliceLabel, seriesLabel: finding.seriesLabel },
+    finding.name
+  );
+  const reviewNotes = verifyReasons(finding.description);
 
   return (
     <Box>
@@ -548,56 +603,69 @@ function EvidenceViewer({
         ))}
       </TextField>
 
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: '1fr',
-          gap: '10px',
-          marginBottom: '10px',
-        }}
-      >
-        <EvidencePanel
-          label="1. Original diagnostic image"
-          image={finding.originalImage}
-          emptyText={
-            frameLoadState[finding.frameKey] === 'loading'
-              ? 'Loading frame from the PACS…'
-              : frameLoadState[finding.frameKey] === 'failed'
-              ? 'The frame could not be loaded from the PACS.'
-              : 'Original frame was not returned by the analysis service.'
-          }
-          caption="Unmodified frame at the AI-detected location. No overlay applied."
-        />
-      </Box>
+      {threePanels ? (
+        <>
+          <style>{FINDING_PANEL_CSS}</style>
+          <Box
+            sx={{ '--fp-img': '300px', color: '#0b1720' }}
+            // Built by findingPanels.ts from escaped text and the frame's image.
+            dangerouslySetInnerHTML={{ __html: threePanels }}
+          />
+        </>
+      ) : (
+        <>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: '1fr',
+              gap: '10px',
+              marginBottom: '10px',
+            }}
+          >
+            <EvidencePanel
+              label="1. Original diagnostic image"
+              image={finding.originalImage}
+              emptyText={
+                frameLoadState[finding.frameKey] === 'loading'
+                  ? 'Loading frame from the PACS…'
+                  : frameLoadState[finding.frameKey] === 'failed'
+                  ? 'The frame could not be loaded from the PACS.'
+                  : 'Original frame was not returned by the analysis service.'
+              }
+              caption="Unmodified frame at the AI-detected location. No overlay applied."
+            />
+          </Box>
 
-      {/* The three images the analysis service returns, and nothing else. There
-          is no manual measurement in the response, so a "human marking" panel
-          could only be the AI's own box drawn over the original and captioned as
-          though a person had placed it. */}
-      <Box
-        sx={{
-          display: 'grid',
-          gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
-          gap: '10px',
-        }}
-      >
-        {!!finding.annotatedImage && (
-          <EvidencePanel
-            label="2. CIAI AI marking"
-            image={finding.annotatedImage}
-            emptyText="AI marking was not returned for this frame."
-            caption={`AI localization as returned by the analysis service. Image measurement: ${aiLabel}`}
-          />
-        )}
-        {!!finding.heatmapImage && (
-          <EvidencePanel
-            label={`${finding.annotatedImage ? '3' : '2'}. Heatmap — final evidence layer`}
-            image={finding.heatmapImage}
-            emptyText="Heatmap unavailable."
-            caption="Supports the finding. Does not replace the original DICOM image."
-          />
-        )}
-      </Box>
+          {/* The three images the analysis service returns, and nothing else. There
+              is no manual measurement in the response, so a "human marking" panel
+              could only be the AI's own box drawn over the original and captioned as
+              though a person had placed it. */}
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', md: '1fr 1fr' },
+              gap: '10px',
+            }}
+          >
+            {!!finding.annotatedImage && (
+              <EvidencePanel
+                label="2. CIAI AI marking"
+                image={finding.annotatedImage}
+                emptyText="AI marking was not returned for this frame."
+                caption={`AI localization as returned by the analysis service. Image measurement: ${aiLabel}`}
+              />
+            )}
+            {!!finding.heatmapImage && (
+              <EvidencePanel
+                label={`${finding.annotatedImage ? '3' : '2'}. Heatmap — final evidence layer`}
+                image={finding.heatmapImage}
+                emptyText="Heatmap unavailable."
+                caption="Supports the finding. Does not replace the original DICOM image."
+              />
+            )}
+          </Box>
+        </>
+      )}
 
       <Box
         sx={{
@@ -673,9 +741,18 @@ function EvidenceViewer({
         </Box>
       </Box>
 
-      {finding.description && (
-        <Box sx={{ color: '#a6cbd6', fontSize: 12, marginTop: '10px' }}>
-          <strong style={{ color: '#dff6ff' }}>AI description:</strong> {finding.description}
+      <Box sx={{ marginTop: '10px' }}>
+        <StatusBadge description={finding.description} />
+      </Box>
+      {plainDescription(finding.description) && (
+        <Box sx={{ color: '#a6cbd6', fontSize: 12, marginTop: '6px' }}>
+          <strong style={{ color: '#dff6ff' }}>AI description:</strong>{' '}
+          {plainDescription(finding.description)}
+        </Box>
+      )}
+      {reviewNotes.length > 0 && (
+        <Box sx={{ color: '#7f9aa8', fontSize: 11, marginTop: '6px' }}>
+          Review notes: {reviewNotes.join('; ')}
         </Box>
       )}
     </Box>
@@ -872,7 +949,12 @@ function FindingsTable({
                       </Box>
                     )}
                   </Stack>
-                  <Box sx={{ color: '#8fb4c0', fontSize: 11 }}>{finding.description}</Box>
+                  <StatusBadge description={finding.description} />
+                  {plainDescription(finding.description) && (
+                    <Box sx={{ color: '#8fb4c0', fontSize: 11 }}>
+                      {plainDescription(finding.description)}
+                    </Box>
+                  )}
                 </td>
                 <td style={{ whiteSpace: 'nowrap' }}>
                   {finding.tier === 'measured'
@@ -1089,7 +1171,9 @@ export default function AiAnalysisDialog({
   const measuredFindings = useMemo(() => getTier(grouped, 'measured'), [grouped]);
   const reportedFindings = useMemo(() => getTier(grouped, 'reported'), [grouped]);
 
-  const severityCounts = useMemo(() => summarizeSeverities(grouped), [grouped]);
+  // Confirmed findings only; the flagged ones are counted apart.
+  const studySeverities = useMemo(() => summarizeStudySeverities(grouped), [grouped]);
+  const severityCounts = studySeverities.confirmed;
   const mismatchCount = useMemo(
     () => measuredFindings.filter(finding => finding.consistency !== 'match').length,
     [measuredFindings]
@@ -1680,7 +1764,7 @@ export default function AiAnalysisDialog({
                     sx={{ marginBottom: '16px' }}
                   >
                     <Box sx={{ color: '#8bbfd0', fontSize: 11, fontWeight: 800, alignSelf: 'center' }}>
-                      ANOMALIES BY SEVERITY
+                      CONFIRMED BY SEVERITY
                     </Box>
                     {(['critical', 'high', 'medium', 'low'] as const).map(severity => (
                       <Chip
@@ -1695,6 +1779,18 @@ export default function AiAnalysisDialog({
                         }}
                       />
                     ))}
+                    {studySeverities.toVerify > 0 && (
+                      <Chip
+                        size="small"
+                        label={`TO VERIFY ${studySeverities.toVerify}`}
+                        sx={{
+                          backgroundColor: SEVERITY_PASTELS.medium.bg,
+                          color: SEVERITY_PASTELS.medium.fg,
+                          fontWeight: 900,
+                          fontSize: 11,
+                        }}
+                      />
+                    )}
                   </Stack>
 
                   <Box sx={{ fontSize: 14, fontWeight: 900, marginBottom: '2px' }}>

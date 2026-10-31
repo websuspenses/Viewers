@@ -22,7 +22,7 @@ import {
   getImageSrc,
   getReportableFindings,
   groupEvidenceFindings,
-  summarizeSeverities,
+  summarizeStudySeverities,
 } from './aiReportModel';
 import { escapeHtml } from './reportMarkdown';
 
@@ -303,7 +303,8 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
   const findings = grouped.map(toViewerFinding);
   const withEvidence = findings.filter(finding => finding.isAnomaly);
   const studyAnomalies = getAnomalyFindings(payload.findings_summary || []);
-  const counts = summarizeSeverities(grouped);
+  // Confirmed findings only; flagged ones are counted apart (toVerify).
+  const { confirmed: counts, toVerify } = summarizeStudySeverities(grouped);
   const patient = payload.patient_info || {};
   const studyInfo = payload.study_info || {};
   const reportText = payload.report?.report_text || '';
@@ -325,6 +326,7 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
       reviewed: (payload.findings_summary || []).length,
     },
     counts,
+    toVerify,
     anomalyCount: studyAnomalies.length,
     evidenceCount: withEvidence.length,
     impression: extractSection(reportText, /^impression/i),
@@ -546,7 +548,7 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
         var host = document.getElementById('reportScroll');
         var sevbar = SEVERITIES.filter(function (s) { return ctx.counts[s]; }).map(function (s) {
           return '<span class="sev sev-' + s + '">' + s + ' ' + ctx.counts[s] + '</span>';
-        }).join('');
+        }).join('') + (ctx.toVerify ? '<span class="sev">to verify ' + ctx.toVerify + '</span>' : '');
 
         var head =
           '<div class="block">' +

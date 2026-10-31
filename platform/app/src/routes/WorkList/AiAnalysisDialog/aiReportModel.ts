@@ -38,6 +38,11 @@ export type AiHeatmap = {
   gemini_annotated_output_path?: string;
   /** The frame as the AI saw it (head CT: brain window), saved by the PACS plugin. */
   original_output_path?: string;
+  /** Patient direction at each image edge, from DICOM orientation (ai-analysis 1.6.25+). */
+  orientation_labels?: { top?: string; bottom?: string; left?: string; right?: string };
+  /** Anatomical slice number of the frame in its series, and the series length (plugin 1.6.25+). */
+  slice_number?: number;
+  total_slices?: number;
   analysis_json_path?: string;
   /** Attached during collection so a heatmap can name its own series. */
   seriesId?: string;
@@ -121,6 +126,12 @@ export type EvidenceFinding = {
   /** |image - narrative| in mm, when both layers measured. */
   differenceMm: number | null;
   bbox: number[] | null;
+  /** Width and height of the marked box in mm (DICOM pixel spacing), or null. */
+  boxMm: number[] | null;
+  /** Patient direction at each image edge, or null when unknown or oblique. */
+  orientation: { top?: string; bottom?: string; left?: string; right?: string } | null;
+  /** "Image 128/257" (anatomical order), or "" when unknown. */
+  sliceLabel: string;
   originalImage: string;
   heatmapImage: string;
   annotatedImage: string;
@@ -918,6 +929,16 @@ export function buildEvidenceFindings(
       consistency,
       differenceMm,
       bbox: Array.isArray(region?.bbox) && region?.bbox.length === 4 ? region.bbox : null,
+      boxMm: imageMeasurement.measurable ? (region?.extent_mm as number[]) : null,
+      orientation:
+        heatmap?.orientation_labels &&
+        ['top', 'bottom', 'left', 'right'].every(edge => heatmap.orientation_labels?.[edge])
+          ? heatmap.orientation_labels
+          : null,
+      sliceLabel:
+        heatmap?.slice_number && heatmap?.total_slices
+          ? `Image ${heatmap.slice_number}/${heatmap.total_slices}`
+          : '',
       originalImage: heatmap?.original_image_b64 || '',
       heatmapImage: heatmap?.heatmap_image_b64 || '',
       annotatedImage: heatmap?.gemini_annotated_image_b64 || '',
@@ -944,6 +965,35 @@ export function buildEvidenceFindings(
 /** Findings the image layer actually measured — the report's headline count. */
 export function getImageSupportedFindings(evidence: EvidenceFinding[]) {
   return evidence.filter(finding => finding.imageMeasurement.measurable);
+}
+
+/** A finding the study review flagged for verification (description starts "[Verify: …]"). */
+export function isFlaggedFinding(finding: { description?: string }) {
+  return /^\[Verify:/.test(finding.description || '');
+}
+
+const RAISED_SEVERITIES = ['critical', 'high', 'medium'];
+
+/**
+ * The study result counts confirmed findings only; findings flagged for
+ * verification are counted apart (radiologist feedback 2026-10-30: unconfirmed
+ * findings made a study read MEDIUM, while a possible haemorrhage awaiting
+ * verification did not show on a LOW cover). `verifyFirst`: flagged findings
+ * rated medium or above, to name on the cover.
+ */
+export function summarizeStudySeverities<T extends { severity?: string; description?: string }>(findings: T[]) {
+  const flagged = findings.filter(isFlaggedFinding);
+  return {
+    confirmed: summarizeSeverities(findings.filter(finding => !isFlaggedFinding(finding))),
+    toVerify: flagged.length,
+    verifyFirst: flagged.filter(finding =>
+      RAISED_SEVERITIES.includes((finding.severity || 'low').toLowerCase())
+    ),
+  };
+}
+
+export function worstSeverity(counts: SeverityCounts) {
+  return counts.critical ? 'critical' : counts.high ? 'high' : counts.medium ? 'medium' : 'low';
 }
 
 export function summarizeSeverities(findings: { severity?: string }[]): SeverityCounts {
