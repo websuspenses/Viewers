@@ -58,6 +58,7 @@ const SHORT_REASONS: [RegExp, string][] = [
   [/not dark on the ADC/i, 'no restriction on ADC'],
   [/no ADC image/i, 'ADC not available'],
   [/single slice of one MRI sequence/i, 'one slice, one sequence'],
+  [/white-matter signal on one slice/i, 'one slice, one sequence'],
   [/one MRI sequence only/i, 'one sequence only'],
   [/does not interpret on its own/i, 'sequence not read alone'],
   [/no contrast was given/i, 'no contrast given'],

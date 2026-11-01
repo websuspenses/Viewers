@@ -494,7 +494,14 @@ type CoverTotals = {
   excludedCount: number;
   lowSeverityCount: number;
   setAsideCount: number;
+  /** Low-rated findings pending verification: not in the table, listed at the end. */
+  lowPendingCount: number;
 };
+
+/** "1 finding" / "2 findings". */
+function plural(count: number, one: string, many: string) {
+  return `${count} ${count === 1 ? one : many}`;
+}
 
 // The AI's size wording against the marked box of a finding the checks
 // confirmed: a note, not a request to verify next to a CONFIRMED badge.
@@ -505,7 +512,7 @@ const NO_FINDING_HEADLINE = 'No AI finding passed the automated checks';
 
 function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: CoverTotals) {
   const { payload, study, logoUrl } = options;
-  const { grouped, measured, reported, excludedCount, lowSeverityCount, setAsideCount } = totals;
+  const { grouped, measured, reported, excludedCount, lowSeverityCount, setAsideCount, lowPendingCount } = totals;
   const patient = payload.patient_info || {};
   const studyInfo = payload.study_info || {};
   // Severity is reported over the findings that survive grouping, not over the
@@ -524,7 +531,8 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
     [String(measured.length), `Marked on ${images} image${images === 1 ? '' : 's'}`],
     [String(reported.length), 'Not marked on an image'],
     [getMeasurementRange(measured), 'Marked box sizes'],
-    [String(toVerify), 'Flagged for verification'],
+    // Low-rated pending findings too: the Impression lists them under verification.
+    [String(toVerify + lowPendingCount), 'Flagged for verification'],
   ];
 
   const analysedSeries = payload.total_series_analyzed ?? 0;
@@ -549,11 +557,13 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
     ['Study UID', study.studyInstanceUid],
     [
       'Coverage',
-      `${seriesText}  |  ${
-        payload.total_frames_processed ?? 0
-      } frames  |  ${(payload.findings_summary || []).length} entries reviewed  |  ${
-        totals.anomalies.length
-      } anomalies  |  ${grouped.length} after merging duplicates`,
+      `${seriesText}  |  ${payload.total_frames_processed ?? 0} frames  |  ${plural(
+        (payload.findings_summary || []).length,
+        'entry reviewed',
+        'entries reviewed'
+      )}  |  ${plural(totals.anomalies.length, 'anomaly', 'anomalies')}  |  ${
+        grouped.length
+      } in the findings table (duplicates merged)`,
     ],
   ];
 
@@ -595,7 +605,7 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
       </div>
       <div>
         <div class="headline">Study result: ${
-          grouped.length ? `${grouped.length} distinct findings` : NO_FINDING_HEADLINE
+          grouped.length ? plural(grouped.length, 'distinct finding', 'distinct findings') : NO_FINDING_HEADLINE
         }</div>
         <div class="detail">
           <b>${measured.length}</b> marked on image &middot; <b>${reported.length}</b> not marked
@@ -618,15 +628,21 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
             : ''
         }
         <div class="detail">
-          ${
-            excludedCount || lowSeverityCount
-              ? `${excludedCount} normal-structure and negative entries and ${lowSeverityCount} low-severity
-                 findings excluded; repeat observations of the same finding across slices merged.`
-              : 'Repeat observations of the same finding across slices merged.'
-          }${
+          ${[
+            excludedCount
+              ? `${plural(excludedCount, 'normal-structure or negative entry', 'normal-structure and negative entries')} excluded`
+              : '',
+            lowSeverityCount
+              ? `${plural(lowSeverityCount, 'low-severity finding', 'low-severity findings')} kept out of the table (listed at the end)`
+              : '',
+            'repeat observations of the same finding across slices merged.',
+          ]
+            .filter(Boolean)
+            .join('; ')
+            .replace(/^./, first => first.toUpperCase())}${
             setAsideCount
-              ? ` ${setAsideCount} AI report${setAsideCount === 1 ? '' : 's'} set aside by the automated
-                 checks (listed with the reasons at the end).`
+              ? ` ${plural(setAsideCount, 'AI report', 'AI reports')} set aside by the automated checks
+                 (listed with the reasons at the end).`
               : ''
           }
         </div>
@@ -793,8 +809,12 @@ type TableSpec<T = GroupedFinding> = {
   estimate?: (row: T) => number;
 };
 
-/** A finding the study review set aside, for the appendix that lists them. */
-type SetAsideRow = { name: string; series: string; reasons: string[] };
+/**
+ * An AI report that is not in the findings table, for the appendix that lists
+ * them: a low-rated finding (isReportableFinding) or one the study review set
+ * aside.
+ */
+type SetAsideRow = { name: string; location: string; series: string; status: string; reasons: string[] };
 
 /**
  * Flows the findings tables across sheets as one continuous run. Each table
@@ -1032,11 +1052,37 @@ function setAsideRows(payload: AiCompletePayload): SetAsideRow[] {
         (finding: { tier?: string; flags?: string[] }) =>
           finding?.tier === 'suppressed' && !(finding.flags || []).includes('same_spot')
       )
-      .map((finding: { name?: string; description?: string }) => ({
+      .map((finding: { name?: string; location?: string; description?: string }) => ({
         name: finding.name || 'Unnamed finding',
+        location: finding.location || '',
         series: series?.modality_info?.series_description || '',
+        status: 'Set aside',
         reasons: verifyReasons(finding.description),
       }))
+  );
+}
+
+/**
+ * Findings rated low, kept out of the findings table (isReportableFinding) but
+ * counted or named in the Impression: listed at the end so the reader can see
+ * them (MRI 2026-10-31: a pending "white matter lesions" was only a count).
+ */
+const LOW_PENDING_STATUS = 'Pending verification, rated low';
+
+function lowRatedRows(payload: AiCompletePayload): SetAsideRow[] {
+  return (payload.series_with_findings || []).flatMap(series =>
+    getAnomalyFindings(
+      (series?.findings || []).filter(
+        (finding: { tier?: string; severity?: string; name?: string }) =>
+          (finding?.tier === 'verify' || finding?.tier === 'confirmed') && !isReportableFinding(finding)
+      )
+    ).map((finding: { name?: string; location?: string; description?: string; tier?: string }) => ({
+      name: finding.name || 'Unnamed finding',
+      location: finding.location || '',
+      series: series?.modality_info?.series_description || '',
+      status: finding.tier === 'verify' ? LOW_PENDING_STATUS : 'Confirmed, rated low',
+      reasons: finding.tier === 'verify' ? verifyReasons(finding.description) : [],
+    }))
   );
 }
 
@@ -1045,28 +1091,32 @@ function renderSetAsideBody(rows: SetAsideRow[], part: number, partCount: number
     .map(
       row => `
       <tr>
-        <td><b>${escapeHtml(row.name)}</b></td>
+        <td><b>${escapeHtml(row.name)}</b>${
+          row.location ? `<div class="note" style="margin:0">${escapeHtml(row.location)}</div>` : ''
+        }</td>
         <td>${escapeHtml(row.series || '—')}</td>
+        <td>${escapeHtml(row.status)}</td>
         <td>${row.reasons.map(reason => `<div>${escapeHtml(reason)}</div>`).join('') || '—'}</td>
       </tr>`
     )
     .join('');
   return `
-    ${sectionHeading(`Set aside by the automated checks${partCount > 1 ? ` (${part} of ${partCount})` : ''}`)}
+    ${sectionHeading(`AI reports not in the findings table${partCount > 1 ? ` (${part} of ${partCount})` : ''}`)}
     ${
       part === 1
         ? `<p class="note" style="margin-top:0;margin-bottom:3.5mm">
-             AI reports the study review set aside. They are not part of this report and are listed
-             so that nothing the AI reported is hidden.
+             Findings rated low (kept out of the findings table) and the AI reports the study review
+             set aside (not part of this report), listed so that nothing the AI reported is hidden.
            </p>`
         : ''
     }
     <table class="grid">
       <thead>
         <tr>
-          <th style="width:30%">Finding</th>
-          <th style="width:22%">Series</th>
-          <th style="width:48%">Reasons</th>
+          <th style="width:26%">Finding</th>
+          <th style="width:18%">Series</th>
+          <th style="width:16%">Status</th>
+          <th style="width:40%">Reasons</th>
         </tr>
       </thead>
       <tbody>${body}</tbody>
@@ -1148,6 +1198,7 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
         excludedCount,
         lowSeverityCount,
         setAsideCount: setAsideRows(payload).length,
+        lowPendingCount: lowRatedRows(payload).filter(row => row.status === LOW_PENDING_STATUS).length,
       })}</div>
       ${sheetFooter(draftId)}
     </section>`
@@ -1253,19 +1304,19 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
     });
   }
 
-  const setAside = setAsideRows(payload);
+  const setAside = [...lowRatedRows(payload), ...setAsideRows(payload)];
   if (setAside.length) {
     flowTables<SetAsideRow>([
       {
         rows: setAside,
-        descriptionColumnChars: 70,
-        label: 'Set aside',
+        descriptionColumnChars: 58,
+        label: 'Not in the findings table',
         render: renderSetAsideBody,
-        // One line per reason (~70 characters a line in the reasons column).
+        // One line per reason (~58 characters a line in the reasons column).
         estimate: row =>
           Math.max(
-            Math.ceil(row.name.length / 34) * 3.6,
-            row.reasons.reduce((mm, reason) => mm + Math.ceil(reason.length / 70) * 3.2, 0),
+            Math.ceil(row.name.length / 30) * 3.6 + (row.location ? Math.ceil(row.location.length / 34) * 3.2 : 0),
+            row.reasons.reduce((mm, reason) => mm + Math.ceil(reason.length / 58) * 3.2, 0),
             4
           ) + 4.5,
       },
