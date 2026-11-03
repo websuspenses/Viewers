@@ -65,6 +65,18 @@ export type AiFindingSummary = {
   marked_box?: string;
   description?: string;
   frame_key?: string;
+  /**
+   * One lesion reported on several slices (ai-analysis 1.6.33 study review):
+   * the frame where its largest box was drawn, when that is not frame_key.
+   */
+  largest_view?: {
+    frame_key?: string;
+    name?: string;
+    bbox?: number[];
+    extent_mm?: number[];
+    slice_number?: number;
+    total_slices?: number;
+  } | null;
 };
 
 export type AiCompletePayload = {
@@ -140,7 +152,44 @@ export type EvidenceFinding = {
   summary: string;
   /** False for normal-structure entries the models emit alongside findings. */
   isAnomaly: boolean;
+  /** The same lesion's largest box, on another frame (second evidence image). */
+  largestView?: LargestView | null;
 };
+
+export type LargestView = {
+  originalImage: string;
+  bbox: number[];
+  boxMm: number[] | null;
+  sliceLabel: string;
+  orientation: { top?: string; bottom?: string; left?: string; right?: string } | null;
+  /** The name the box was drawn for on that frame. */
+  regionName: string;
+  seriesLabel: string;
+};
+
+function orientationOf(heatmap?: AiHeatmap) {
+  return heatmap?.orientation_labels &&
+    ['top', 'bottom', 'left', 'right'].every(edge => heatmap.orientation_labels?.[edge])
+    ? heatmap.orientation_labels
+    : null;
+}
+
+function largestViewOf(finding: AiFindingSummary, heatmapsByFrame: Map<string, AiHeatmap>): LargestView | null {
+  const view = finding.largest_view;
+  const heatmap = view?.frame_key ? heatmapsByFrame.get(view.frame_key) : undefined;
+  if (!view || !heatmap || !Array.isArray(view.bbox) || view.bbox.length !== 4) {
+    return null;
+  }
+  return {
+    originalImage: heatmap.original_image_b64 || '',
+    bbox: view.bbox,
+    boxMm: Array.isArray(view.extent_mm) && view.extent_mm.length === 2 ? view.extent_mm : null,
+    sliceLabel: view.slice_number && view.total_slices ? `Image ${view.slice_number}/${view.total_slices}` : '',
+    orientation: orientationOf(heatmap),
+    regionName: view.name || '',
+    seriesLabel: heatmap.seriesLabel || '',
+  };
+}
 
 export type SeverityCounts = {
   critical: number;
@@ -946,6 +995,7 @@ export function buildEvidenceFindings(
       annotatedImage: heatmap?.gemini_annotated_image_b64 || '',
       summary: heatmap?.summary || '',
       isAnomaly: isAnomalyFinding(finding),
+      largestView: largestViewOf(finding, heatmapsByFrame),
     });
   });
 

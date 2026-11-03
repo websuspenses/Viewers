@@ -270,9 +270,30 @@ export function renderFindingPanelsHtml(
     </div>`;
 }
 
+/**
+ * One marked frame (the AI marking panel alone), small, for the narrative's
+ * Findings section: the finding's image next to its text (2026-11-03).
+ */
+export function renderMarkingThumbHtml(
+  finding: PanelFinding,
+  originalImage: string,
+  meta: PanelMeta,
+  altText: string
+) {
+  if (!originalImage || !validBox(finding.bbox)) {
+    return '';
+  }
+  const image = `<img src="${escapeHtml(getImageSrc(originalImage))}" alt="${escapeHtml(altText)}" />`;
+  return `<div class="fp-thumb"><div class="fp-frame">${image}${markingHtml(finding, true)}${orientationHtml(
+    meta
+  )}${cornersHtml(meta)}</div></div>`;
+}
+
 /** Styles for the panels and badges (print and screen). */
 export const FINDING_PANEL_CSS = `
   .fp-row { display: flex; gap: 2.5mm; margin-bottom: 3mm; }
+  .fp-thumb { display: inline-block; background: #000000; padding: 1mm; line-height: 0; }
+  .fp-thumb .fp-frame img { max-height: var(--fp-thumb, 42mm); }
   .fp-panel { flex: 1 1 0; min-width: 0; border: 1px solid #d5e1e8; break-inside: avoid; page-break-inside: avoid; }
   .fp-label { background: #0b2a4a; color: #ffffff; font-size: 7pt; font-weight: bold; letter-spacing: 0.06em; text-transform: uppercase; padding: 1.8mm 2.5mm; }
   .fp-stage { background: #000000; display: flex; align-items: center; justify-content: center; padding: 1.5mm; min-height: calc(var(--fp-img, 58mm) + 3mm); }

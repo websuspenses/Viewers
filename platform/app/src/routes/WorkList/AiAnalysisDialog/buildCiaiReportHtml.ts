@@ -42,6 +42,7 @@ import {
   findingStatus,
   plainDescription,
   renderFindingPanelsHtml,
+  renderMarkingThumbHtml,
   statusBadgeHtml,
   verifyReasons,
 } from './findingPanels';
@@ -83,6 +84,92 @@ export type ReportBuildOptions = {
  * avoid printing ~200 rows of normal anatomy.
  */
 const REPLACED_NARRATIVE_SECTIONS = [/^all findings/i];
+
+/** A finding with an evidence page: its name, the page's image number, its marked frame. */
+type NarrativeImage = { name: string; number: number; thumb: string };
+
+const IMAGE_TOKEN = /@@AIIMG(\d+)@@/g;
+const REF_TOKEN = /\s*@@AIREF(\d+)@@/g;
+
+function imageFor(text: string, images: NarrativeImage[]) {
+  // The longest name the text starts with ("Right frontal lobe mass" before
+  // "Right frontal lobe").
+  const lower = text.trim().toLowerCase();
+  return images
+    .filter(image => image.name && lower.startsWith(image.name.toLowerCase()))
+    .sort((left, right) => right.name.length - left.name.length)[0];
+}
+
+/**
+ * Marks, in the narrative markdown, where each finding with an evidence page is
+ * named: after a Findings block ("### [PRIORITY] Name") its marked frame, and
+ * after an Impression item or verification entry "(Image N)". The tokens are
+ * plain text, so they pass through the markdown renderer unchanged.
+ */
+function markImageReferences(title: string, body: string, images: NarrativeImage[]) {
+  if (!images.length) {
+    return body;
+  }
+  if (/^findings$/i.test(title.trim())) {
+    const out: string[] = [];
+    let pending: NarrativeImage | undefined;
+    const flush = () => {
+      if (pending) {
+        out.push('', `@@AIIMG${pending.number}@@`, '');
+        pending = undefined;
+      }
+    };
+    body.split(/\r?\n/).forEach(line => {
+      const heading = line.match(/^###\s+(?:\[[^\]]*\]\s*)?(.+?)\s*$/);
+      if (heading) {
+        flush();
+        pending = imageFor(heading[1], images);
+        out.push(heading[1] && pending ? `${line} @@AIREF${pending.number}@@` : line);
+        return;
+      }
+      out.push(line);
+    });
+    flush();
+    return out.join('\n');
+  }
+  if (/^impression/i.test(title.trim())) {
+    return body
+      .split(/\r?\n/)
+      .map(line => {
+        const item = line.match(/^(\s*\d+\.\s+)(.*)$/);
+        if (!item) {
+          return line;
+        }
+        const parts = item[2].split('; ').map(part => {
+          const name = part.replace(/^(Findings needing radiologist verification:\s*|and\s+)/i, '');
+          const image = imageFor(name, images);
+          if (!image) {
+            return part;
+          }
+          return part.endsWith('.')
+            ? `${part.slice(0, -1)} @@AIREF${image.number}@@.`
+            : `${part} @@AIREF${image.number}@@`;
+        });
+        return `${item[1]}${parts.join('; ')}`;
+      })
+      .join('\n');
+  }
+  return body;
+}
+
+/** Replaces the tokens with the link to the image page and the marked frame. */
+function withImageLinks(html: string, images: NarrativeImage[]) {
+  const thumbs = new Map(images.map(image => [image.number, image.thumb]));
+  return html
+    .replace(/<p>\s*@@AIIMG(\d+)@@\s*<\/p>/g, (_, number) => {
+      const thumb = thumbs.get(Number(number));
+      return thumb
+        ? `<div class="narrative-thumb">${thumb}<a class="img-ref" href="#ai-image-${number}">Image ${number}</a></div>`
+        : '';
+    })
+    .replace(IMAGE_TOKEN, '')
+    .replace(REF_TOKEN, (_, number) => ` <a class="img-ref" href="#ai-image-${number}">(Image ${number})</a>`);
+}
 
 const WORKFLOW_STAGES: [string, string][] = [
   [
@@ -373,6 +460,8 @@ const REPORT_CSS = `
   .narrative h3 { color: var(--navy); font-size: 12pt; margin: 0 0 3mm; }
   .narrative h4 { color: var(--navy); font-size: 9.5pt; margin: 4mm 0 1.5mm; padding-left: 2.5mm; border-left: 0.8mm solid var(--teal); }
   .narrative p { margin: 2mm 0; }
+  .narrative-thumb { display: flex; align-items: flex-end; gap: 3mm; margin: 2mm 0 3mm; break-inside: avoid; page-break-inside: avoid; --fp-thumb: 38mm; }
+  a.img-ref { color: var(--teal); font-weight: bold; text-decoration: none; white-space: nowrap; }
   .narrative ul, .narrative ol { margin: 2mm 0; padding-left: 6mm; }
   .narrative li { margin: 1mm 0; }
   .narrative table { width: 100%; border-collapse: collapse; font-size: 7.5pt; margin: 3mm 0; }
@@ -883,9 +972,12 @@ function flowTables<T = GroupedFinding>(tables: TableSpec<T>[], budgetMm = SHEET
  */
 function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string, imageNumber: number) {
   const lead = findings[0];
+  // One lesion seen on several slices: its largest box, drawn on another
+  // frame, is the second image (ai-analysis 1.6.33 groups the slices).
+  const view = findings.length === 1 && lead.largestView?.originalImage ? lead.largestView : null;
   // Three panels drawn over the original frame (findingPanels.ts); results
   // without the original or a box fall back to the analysis service's marking.
-  const panelMm = Math.max(46, 60 - Math.max(0, findings.length - 1) * 6);
+  const panelMm = view ? 40 : Math.max(46, 60 - Math.max(0, findings.length - 1) * 6);
   const threePanels = renderFindingPanelsHtml(
     findings,
     lead.originalImage,
@@ -950,13 +1042,33 @@ function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string
     )
     .join('');
 
+  const largestPanels = view
+    ? renderFindingPanelsHtml(
+        [{ ...lead, bbox: view.bbox, boxMm: view.boxMm }],
+        view.originalImage,
+        { orientation: view.orientation, sliceLabel: view.sliceLabel, seriesLabel: view.seriesLabel },
+        `${lead.name} — largest extent`
+      )
+    : '';
+  const largestNote = view
+    ? `<div class="finding-meta"><b>Largest extent of this finding:</b> ${escapeHtml(
+        [view.sliceLabel, view.boxMm ? `${view.boxMm.map(value => +value.toFixed(1)).join(' × ')} mm` : '']
+          .filter(Boolean)
+          .join(', ')
+      )}${
+        view.regionName && view.regionName !== lead.name
+          ? ` (marked there as "${escapeHtml(view.regionName)}")`
+          : ''
+      }</div>`
+    : '';
+
   // Each extra finding row takes ~14 mm, so the images shrink to keep the
   // page to one sheet (2 findings on one image used to spill a blank page).
   const imageMm = Math.max(55, 88 - Math.max(0, findings.length - 1) * 16);
 
   return `
     <div class="evidence" style="--evidence-img:${imageMm}mm;--fp-img:${panelMm}mm">
-    <h2 class="finding">Image ${imageNumber} — ${escapeHtml(
+    <h2 class="finding" id="ai-image-${imageNumber}">Image ${imageNumber} — ${escapeHtml(
       findings.length === 1 ? lead.name : `${findings.length} findings`
     )}</h2>
     <div class="finding-meta">
@@ -979,6 +1091,7 @@ function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string
     </table>
 
     ${threePanels || `<div class="panel-row">${panels.map(renderPanel).join('')}</div>`}
+    ${largestPanels ? `${largestNote}${largestPanels}` : ''}
 
     <table class="verify">
       <tbody>
@@ -1242,12 +1355,28 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
     const key = finding.frameKey || finding.findingId || finding.name;
     byFrame.set(key, [...(byFrame.get(key) || []), finding]);
   });
-  Array.from(byFrame.values()).forEach((findings, index) =>
+  // The narrative's Findings and Impression point at these pages ("Image N")
+  // and show each finding's marked frame (2026-11-03: the images sat on their
+  // own pages with nothing in the text leading to them).
+  const imageLinks: NarrativeImage[] = [];
+  Array.from(byFrame.values()).forEach((findings, index) => {
+    findings.forEach(finding =>
+      imageLinks.push({
+        name: finding.name,
+        number: index + 1,
+        thumb: renderMarkingThumbHtml(
+          finding,
+          finding.originalImage,
+          { orientation: finding.orientation, sliceLabel: finding.sliceLabel },
+          finding.name
+        ),
+      })
+    );
     addSheet(
       renderEvidenceBody(findings, study.studyInstanceUid, index + 1),
       `Image ${index + 1} · ${findings.map(finding => finding.findingId || finding.name).join(', ')}`
-    )
-  );
+    );
+  });
 
   if (includeNarrative && payload.report?.report_text) {
     // One flowing sheet: a page per section printed one-sentence sections such
@@ -1269,7 +1398,10 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
         section => `
           <div class="narrative">
             ${section.title ? sectionHeading(section.title) : ''}
-            ${renderSafeReportMarkdown(section.body)}
+            ${withImageLinks(
+              renderSafeReportMarkdown(markImageReferences(section.title || '', section.body, imageLinks)),
+              imageLinks
+            )}
           </div>`
       );
     if (narrative.length) {
