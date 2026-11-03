@@ -62,6 +62,8 @@ export type StudyHeader = {
   modalities: string;
   accession: string;
   referringPhysician: string;
+  /** DICOM InstitutionName: the lab name when the session has none. */
+  institution?: string;
 };
 
 const encode = encodeURIComponent;
@@ -131,7 +133,7 @@ export async function saveReportVersion(
 export async function getStudyHeader(pacsBaseUrl: string, authHeaders: string, studyUid: string): Promise<StudyHeader | null> {
   const base = pacsBaseUrl.replace(/\/?$/, '/');
   const response = await fetch(
-    `${base}studies?StudyInstanceUID=${encode(studyUid)}&includefield=00101010,00101040,00081030,00100040,00080090,00080061`,
+    `${base}studies?StudyInstanceUID=${encode(studyUid)}&includefield=00101010,00101040,00081030,00100040,00080090,00080061,00080080`,
     { headers: { Authorization: authHeaders, Accept: 'application/json' } }
   );
   if (!response.ok) {
@@ -158,6 +160,7 @@ export async function getStudyHeader(pacsBaseUrl: string, authHeaders: string, s
     modalities: (study['00080061']?.Value || []).join('/') || value('00080060'),
     accession: value('00080050'),
     referringPhysician: value('00080090').replace(/\^/g, ' ').trim(),
+    institution: value('00080080'),
   };
 }
 
@@ -207,4 +210,34 @@ export async function writeLegacyReport(pacsBaseUrl: string, authHeaders: string
   await post('update_status', { status: 'Report Generated' });
   sessionStorage.setItem('stuID', studyUid);
   sessionStorage.setItem('isReportGenerated', 'true');
+}
+
+/** Report workflow events kept for the audit trail (teleapp POST /audit/events). */
+export type ReportEventType = 'report_viewed' | 'report_printed' | 'report_downloaded_pdf' | 'report_downloaded_docx';
+
+/**
+ * Records a report action, fire-and-forget: never blocks or fails the UI. The
+ * user and the lab come from the token on the server, never from here; edits
+ * (report_edited) and accept / reject (/audit/review) are recorded by their own calls.
+ */
+export function sendReportEvent(
+  api: ReviewApi,
+  studyUid: string,
+  eventType: ReportEventType,
+  details: { file_name?: string; format?: 'pdf' | 'docx'; version?: number | null; draft?: boolean } = {}
+) {
+  if (!studyUid || !api.authHeaders) {
+    return;
+  }
+  try {
+    const eventId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : undefined;
+    fetch(`${api.nodeAppHost}/audit/events`, {
+      method: 'POST',
+      keepalive: true,
+      headers: teleappHeaders(api),
+      body: JSON.stringify({ event_type: eventType, study_id: studyUid, event_id: eventId, details }),
+    }).catch(() => {});
+  } catch {
+    // never affects the UI
+  }
 }

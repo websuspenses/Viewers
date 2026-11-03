@@ -5,6 +5,7 @@
  */
 import { renderSafeReportMarkdown } from '../../routes/WorkList/AiAnalysisDialog/reportMarkdown';
 import type { AiDraftSection, StudyHeader } from './reportsApi';
+import { formatStudyDate, formatTimestamp, patientRows, reportTitle } from './reportExport';
 
 export const DEFAULT_SECTIONS = ['Clinical Indication', 'Technique', 'Findings', 'Impression', 'Recommendations'];
 
@@ -195,49 +196,48 @@ export function clearLocalDraft(studyUid: string) {
 
 // ---- printable document (PDF via the browser's print dialog) ----
 
-const formatDicomDate = (value: string) =>
-  /^\d{8}$/.test(value || '') ? `${value.slice(6, 8)}-${value.slice(4, 6)}-${value.slice(0, 4)}` : value || '';
-
 /**
- * A4 report page: CIAI header, patient/study table, the report, and a DRAFT mark
- * on every page until the report is finalised (sign-off comes in §10.6).
+ * A4 report page, the same for every modality and for the Word export
+ * (reportExport.ts): header with the lab's logo, lab name, generated time and
+ * study date; the patient table; the title ("MRI BRAIN – REPORT"); the report;
+ * a DRAFT mark on every page until the report is accepted. Calibri. The window
+ * title is the file name, so "Save as PDF" proposes it.
  */
 export function buildPrintableReport({
   header,
   bodyHtml,
   isDraft,
   versionLabel,
+  lab,
+  logoUrl,
+  fileTitle,
+  generatedAt = new Date(),
 }: {
   header: StudyHeader | null;
   bodyHtml: string;
   isDraft: boolean;
   versionLabel: string;
+  lab: string;
+  logoUrl: string;
+  fileTitle: string;
+  generatedAt?: Date;
 }) {
-  const rows: [string, string][] = header
-    ? [
-        ['Patient', header.patientName],
-        ['Patient ID', header.patientId],
-        ['Age / Sex', [header.patientAge, header.patientSex].filter(Boolean).join(' / ')],
-        ['Study', header.description],
-        ['Modality', header.modalities],
-        ['Study date', formatDicomDate(header.studyDate)],
-        ['Accession', header.accession],
-        ['Referred by', header.referringPhysician],
-      ].filter(([, value]) => value) as [string, string][]
-    : [];
-  const printed = new Date().toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
-  return `<!doctype html><html><head><meta charset="utf-8"><title>Radiology report${header?.patientName ? ` — ${escapeHtml(header.patientName)}` : ''}</title>
+  const rows = patientRows(header, generatedAt);
+  return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(fileTitle)}</title>
 <style>
   @page { size: A4; margin: 18mm 16mm 20mm; }
   * { box-sizing: border-box; }
-  body { font: 11pt/1.5 "Segoe UI", Arial, sans-serif; color: #111; margin: 0; }
-  .head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid #0a7c6c; padding-bottom: 6px; margin-bottom: 12px; }
-  .brand { font-size: 16pt; font-weight: 800; color: #0a7c6c; letter-spacing: .02em; }
-  .brand small { display: block; font-size: 9pt; font-weight: 600; color: #4b5b63; letter-spacing: 0; }
-  .meta { font-size: 9pt; color: #4b5b63; text-align: right; }
-  table.study { width: 100%; border-collapse: collapse; margin-bottom: 14px; font-size: 10pt; }
-  table.study th { text-align: left; width: 22%; color: #4b5b63; font-weight: 600; padding: 3px 8px 3px 0; vertical-align: top; }
-  table.study td { padding: 3px 0; }
+  body { font: 11pt/1.5 Calibri, Carlito, "Segoe UI", Arial, sans-serif; color: #111; margin: 0; }
+  .head { display: flex; justify-content: space-between; align-items: center; gap: 12px; border-bottom: 2px solid #0a7c6c; padding-bottom: 6px; margin-bottom: 10px; }
+  .head img { height: 14mm; max-width: 70mm; object-fit: contain; }
+  .lab { text-align: right; }
+  .lab b { display: block; font-size: 15pt; color: #0a7c6c; }
+  .lab span { display: block; font-size: 9pt; color: #4b5b63; }
+  table.patient { width: 100%; border-collapse: collapse; margin: 8px 0 4px; font-size: 10pt; }
+  table.patient th { background: #d9d9d9; text-align: left; width: 17%; padding: 3px 6px; border: 1px solid #bfbfbf; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  table.patient td { width: 33%; padding: 3px 6px; border: 1px solid #bfbfbf; }
+  h1.title { text-align: center; font-size: 14pt; text-decoration: underline; margin: 12px 0 8px; }
+  .draft { text-align: center; color: #c81e1e; font-weight: bold; margin: 0 0 6px; }
   .report h2 { font-size: 12pt; text-transform: uppercase; letter-spacing: .04em; color: #0a5c51; border-bottom: 1px solid #d6e4e1; padding-bottom: 2px; margin: 16px 0 6px; page-break-after: avoid; }
   .report h3, .report h4 { font-size: 11pt; margin: 10px 0 4px; page-break-after: avoid; }
   .report p, .report li { orphans: 3; widows: 3; }
@@ -247,9 +247,14 @@ export function buildPrintableReport({
   .foot { margin-top: 22px; padding-top: 6px; border-top: 1px solid #d6e4e1; font-size: 8.5pt; color: #5f6e74; }
 </style></head><body>
 ${isDraft ? '<div class="draft-mark">DRAFT · NOT SIGNED</div>' : ''}
-<div class="head"><div class="brand">CIAI Teleradiology<small>Radiology report</small></div>
-<div class="meta">${escapeHtml(versionLabel)}<br>Printed ${escapeHtml(printed)}</div></div>
-${rows.length ? `<table class="study">${rows.map(([k, v]) => `<tr><th>${escapeHtml(k)}</th><td>${escapeHtml(v)}</td></tr>`).join('')}</table>` : ''}
+<div class="head">${logoUrl ? `<img src="${escapeHtml(logoUrl)}" alt="Logo">` : '<span></span>'}
+<div class="lab"><b>${escapeHtml(lab || 'Radiology report')}</b><span>Generated: ${escapeHtml(formatTimestamp(generatedAt))}</span>
+<span>Study date: ${escapeHtml(formatStudyDate(header?.studyDate) || 'Not recorded')}</span>${versionLabel ? `<span>${escapeHtml(versionLabel)}</span>` : ''}</div></div>
+<table class="patient">${rows
+    .map(([l1, v1, l2, v2]) => `<tr><th>${escapeHtml(l1)}</th><td>${escapeHtml(v1)}</td><th>${escapeHtml(l2)}</th><td>${escapeHtml(v2)}</td></tr>`)
+    .join('')}</table>
+<h1 class="title">${escapeHtml(reportTitle(header))}</h1>
+${isDraft ? '<p class="draft">DRAFT · NOT SIGNED</p>' : ''}
 <div class="report">${bodyHtml}</div>
 <div class="foot">${isDraft
     ? 'Draft — not signed. Prepared with AI assistance; to be verified and signed by a qualified radiologist.'

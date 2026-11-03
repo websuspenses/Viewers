@@ -18,11 +18,14 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import HistoryIcon from '@mui/icons-material/History';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import PrintIcon from '@mui/icons-material/Print';
+import DescriptionIcon from '@mui/icons-material/Description';
 import SaveIcon from '@mui/icons-material/Save';
 import SendIcon from '@mui/icons-material/Send';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
 import AiReviewBar from '../../routes/WorkList/AiAnalysisDialog/AiReviewBar';
+import PatientHistoryPanel from '../PatientHistory/PatientHistoryPanel';
 import getHeaderMenuOptions from '../../utils/getHeaderMenuOptions';
 import { UnsavedChangesDialog, useUnsavedChangesGuard } from '../common/useUnsavedChangesGuard';
 import {
@@ -48,8 +51,21 @@ import {
   getReports,
   getStudyHeader,
   saveReportVersion,
+  sendReportEvent,
   writeLegacyReport,
 } from './reportsApi';
+import {
+  ReportLogo,
+  buildReportDocx,
+  downloadBlob,
+  formatStudyDate,
+  formatTimestamp,
+  labName,
+  loadReportLogo,
+  patientRows,
+  reportFileName,
+  reportTitle,
+} from './reportExport';
 import {
   aiDraftToHtml,
   buildPrintableReport,
@@ -72,7 +88,8 @@ type FrameView = { loading: boolean; original?: string; marked?: string; error?:
 const EDITOR_OPTIONS = {
   minHeight: '520px',
   height: 'auto',
-  defaultStyle: 'font-family: "Segoe UI", Arial, sans-serif; font-size: 15px; line-height: 1.55; color: #111;',
+  // The report's font in the editor, the PDF and the Word file (2026-11-03).
+  defaultStyle: 'font-family: Calibri, Carlito, "Segoe UI", Arial, sans-serif; font-size: 11pt; line-height: 1.5; color: #111;',
   formats: ['p', 'h2', 'h3', 'h4', 'blockquote'],
   buttonList: [
     ['undo', 'redo'],
@@ -149,6 +166,8 @@ export default function AiReportEditor() {
   const [header, setHeader] = useState<StudyHeader | null>(null);
   const [aiPayload, setAiPayload] = useState<AiCompletePayload | null>(null);
   const [review, setReview] = useState<AiReview | null>(null);
+  const [logo, setLogo] = useState<ReportLogo | null>(null);
+  const viewedSent = useRef(false);
 
   // ---- editing state ----
   const editorRef = useRef<any>(null);
@@ -215,6 +234,13 @@ export default function AiReportEditor() {
       setAiPayload(normalizeAiPayload(payload));
       setReview(currentReview);
       setLocked(reportsState.finalised);
+      if (!viewedSent.current) {
+        viewedSent.current = true;
+        sendReportEvent(api, studyUid, 'report_viewed', {
+          version: reportsState.latest_version,
+          draft: !(currentReview?.decision === 'accepted' || reportsState.finalised),
+        });
+      }
 
       // Starting text: latest saved version → AI draft (unless rejected) → lab template → blank.
       let html = '';
@@ -258,6 +284,14 @@ export default function AiReportEditor() {
   useEffect(() => {
     load();
   }, [load]);
+
+  useEffect(() => {
+    let alive = true;
+    loadReportLogo().then(result => alive && setLogo(result));
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   // ---- editor wiring ----
   const setEditorHtml = (html: string) => {
@@ -493,13 +527,65 @@ export default function AiReportEditor() {
     setDiffHtml(wordDiffHtml(htmlToText(aiBaselineHtml), htmlToText(contentRef.current)));
   };
 
-  const downloadPdf = () => {
+  // ---- print / PDF / Word (2026-11-03) ----
+  // Accepted: the radiologist accepted the AI report, or the report was
+  // submitted. Otherwise the file name and the document say DRAFT.
+  const accepted = review?.decision === 'accepted' || locked;
+  const exportLabel = () => {
     const latest = reports?.versions?.[0];
-    const label = dirty || !latest ? 'Draft · unsaved changes' : `Draft · ${versionLabel(latest)}`;
-    const ok = printReport(buildPrintableReport({ header, bodyHtml: contentRef.current, isDraft: !locked, versionLabel: label }));
+    const state = accepted ? (locked ? 'Final' : 'Accepted') : 'Draft';
+    return dirty || !latest ? `${state} · unsaved changes` : `${state} · ${versionLabel(latest)}`;
+  };
+
+  /** Print, or PDF through the print dialog ("Save as PDF" proposes the file name). */
+  const printOrPdf = (kind: 'print' | 'pdf') => {
+    const fileName = reportFileName(header, accepted, 'pdf');
+    const ok = printReport(
+      buildPrintableReport({
+        header,
+        bodyHtml: contentRef.current,
+        isDraft: !accepted,
+        versionLabel: exportLabel(),
+        lab: labName(header),
+        logoUrl: logo?.dataUrl || '',
+        fileTitle: fileName.replace(/\.pdf$/, ''),
+      })
+    );
     if (!ok) {
-      setToast({ severity: 'warning', text: 'Allow pop-ups for this site to download the PDF' });
+      setToast({ severity: 'warning', text: `Allow pop-ups for this site to ${kind === 'pdf' ? 'save the PDF' : 'print'}` });
+      return;
     }
+    sendReportEvent(api, studyUid, kind === 'pdf' ? 'report_downloaded_pdf' : 'report_printed', {
+      file_name: fileName,
+      format: 'pdf',
+      version: reports?.latest_version ?? null,
+      draft: !accepted,
+    });
+  };
+
+  const downloadWord = () => {
+    const fileName = reportFileName(header, accepted, 'docx');
+    try {
+      const blob = buildReportDocx({
+        header,
+        bodyHtml: contentRef.current,
+        isDraft: !accepted,
+        lab: labName(header),
+        logo,
+        generatedAt: new Date(),
+        versionLabel: exportLabel(),
+      });
+      downloadBlob(blob, fileName);
+    } catch {
+      setToast({ severity: 'error', text: 'The Word file could not be created' });
+      return;
+    }
+    sendReportEvent(api, studyUid, 'report_downloaded_docx', {
+      file_name: fileName,
+      format: 'docx',
+      version: reports?.latest_version ?? null,
+      draft: !accepted,
+    });
   };
 
   // ---- header: settings menu (theme switch lives inside it) ----
@@ -608,15 +694,45 @@ export default function AiReportEditor() {
               </Button>
             </span>
           </Tooltip>
-          <Button
-            size="small"
-            variant="outlined"
-            startIcon={<PictureAsPdfIcon />}
-            onClick={downloadPdf}
-            disabled={loading || initialHtml === null}
-          >
-            PDF
-          </Button>
+          <Tooltip title="Print the report (A4)">
+            <span>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<PrintIcon />}
+                onClick={() => printOrPdf('print')}
+                disabled={loading || initialHtml === null}
+              >
+                Print
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title={`Save as PDF (A4): ${reportFileName(header, accepted, 'pdf')}`}>
+            <span>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<PictureAsPdfIcon />}
+                onClick={() => printOrPdf('pdf')}
+                disabled={loading || initialHtml === null}
+              >
+                PDF
+              </Button>
+            </span>
+          </Tooltip>
+          <Tooltip title={`Download Word (A4): ${reportFileName(header, accepted, 'docx')}`}>
+            <span>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<DescriptionIcon />}
+                onClick={downloadWord}
+                disabled={loading || initialHtml === null}
+              >
+                Word
+              </Button>
+            </span>
+          </Tooltip>
           <Button
             size="small"
             variant="text"
@@ -727,6 +843,22 @@ export default function AiReportEditor() {
           <div className="are-main">
             {/* ---- AI evidence ---- */}
             <aside className="are-evidence" aria-label="AI evidence">
+              {/* Longitudinal history (teleapp, PostgreSQL), loaded when the study opens. */}
+              <details className="are-history" open>
+                <summary>Patient Clinical History</summary>
+                {header?.patientId ? (
+                  <PatientHistoryPanel
+                    api={api}
+                    patientId={header.patientId}
+                    patientName={header.patientName}
+                    patientAge={header.patientAge}
+                    patientSex={header.patientSex}
+                    studyId={studyUid}
+                  />
+                ) : (
+                  <p className="are-muted">This study has no patient ID, so no history can be kept.</p>
+                )}
+              </details>
               <div className="are-evidence__head">
                 <h2>AI findings <span>{findings.length}</span></h2>
                 {flagged.length > 0 && (
@@ -840,6 +972,29 @@ export default function AiReportEditor() {
                 </div>
               ) : null}
               <div className={`are-paper${diffHtml !== null ? ' is-hidden' : ''}`}>
+                {/* The page as it prints: A4, the same header and table for every modality. */}
+                <div className="are-sheet-head">
+                  {logo?.dataUrl ? <img src={logo.dataUrl} alt="Logo" /> : <span />}
+                  <div className="are-sheet-lab">
+                    <b>{labName(header) || 'Radiology report'}</b>
+                    <span>Generated: {formatTimestamp(new Date())}</span>
+                    <span>Study date: {formatStudyDate(header?.studyDate) || 'Not recorded'}</span>
+                  </div>
+                </div>
+                <table className="are-sheet-patient">
+                  <tbody>
+                    {patientRows(header, new Date()).map(([l1, v1, l2, v2]) => (
+                      <tr key={l1}>
+                        <th>{l1}</th>
+                        <td>{v1}</td>
+                        <th>{l2}</th>
+                        <td>{v2}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <h1 className="are-sheet-title">{reportTitle(header)}</h1>
+                {!accepted && <p className="are-sheet-draft">DRAFT · NOT SIGNED</p>}
                 {initialHtml !== null && (
                   <SunEditor
                     key={editorKey}

@@ -17,6 +17,10 @@ import CloseIcon from '@mui/icons-material/Close';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import MuiIconButton from '@mui/material/IconButton';
+import MuiTooltip from '@mui/material/Tooltip';
+import MedicalInformationOutlinedIcon from '@mui/icons-material/MedicalInformationOutlined';
+import PatientHistoryDialog from '../../components/PatientHistory/PatientHistoryDialog';
 const dotenv = require('dotenv');
 import SubscriptionFeaturesModal from '../../components/AdminPanel/SubscriptionFeaturesModal';
 import AiAnalysisDialog from './AiAnalysisDialog/AiAnalysisDialog';
@@ -140,6 +144,8 @@ function WorkList({
   const [mDropDowns, setMDropDowns] = useState('');
   const [subscriptionFeatures, setSubscriptionFeatures] = useState();
   const [aiAnalysisStudy, setAiAnalysisStudy] = useState<any>(null);
+  // Patient clinical history dialog (history button next to the patient name).
+  const [historyPatient, setHistoryPatient] = useState<{ patientId: string; patientName: string; studyId: string } | null>(null);
 
   const [rolesInfo, setRolesData] = useState(); // State to store fetched data
   const [authHeaders, setAuthHeaders] = useState('');
@@ -904,6 +910,21 @@ function WorkList({
             <div className="wl-primary">
               {emergency && <span className="wl-stat">STAT</span>}
               <CopyableText text={patientName} />
+              {mrn && (
+                <MuiTooltip title="Patient clinical history">
+                  <MuiIconButton
+                    size="small"
+                    className="wl-history-btn"
+                    aria-label={`Clinical history of ${patientName || mrn}`}
+                    onClick={event => {
+                      event.stopPropagation();
+                      setHistoryPatient({ patientId: mrn, patientName, studyId: studyInstanceUid });
+                    }}
+                  >
+                    <MedicalInformationOutlinedIcon fontSize="inherit" />
+                  </MuiIconButton>
+                </MuiTooltip>
+              )}
             </div>
             {description && (
               <div
@@ -1186,6 +1207,16 @@ function WorkList({
           userRolesInfo={userInfoData}
           subscriptionFeaturesInfo={subscriptionFeatures}
           isActive={isActive}
+        />
+      )}
+      {historyPatient && (
+        <PatientHistoryDialog
+          open={!!historyPatient}
+          onClose={() => setHistoryPatient(null)}
+          api={reviewApi}
+          patientId={historyPatient.patientId}
+          patientName={historyPatient.patientName}
+          studyId={historyPatient.studyId}
         />
       )}
       {aiAnalysisStudy && (

@@ -354,18 +354,85 @@
 .are-report {
   min-width: 0;
 }
+/* The report page as it prints: A4 (210 x 297 mm), page margins 18 / 16 / 20 mm
+   (as % of the width, so it scales with the screen), Calibri (2026-11-03).
+   A longer report makes the page taller, never clipped. */
 .are-paper {
-  border-radius: 8px;
-  overflow: hidden;
+  width: min(100%, 210mm);
+  aspect-ratio: 210 / 297;
+  margin: 0 auto;
+  padding: 8.57% 7.62% 9.52%;
+  border-radius: 2px;
   background: var(--are-paper);
   color: var(--are-ink);
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
+  font-family: Calibri, Carlito, 'Segoe UI', Arial, sans-serif;
+}
+.are-sheet-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 6px;
+  margin-bottom: 10px;
+  border-bottom: 2px solid #0a7c6c;
+}
+.are-sheet-head img {
+  height: 14mm;
+  max-width: 45%;
+  object-fit: contain;
+}
+.are-sheet-lab {
+  text-align: right;
+  font-size: 9pt;
+  color: #4b5b63;
+}
+.are-sheet-lab b {
+  display: block;
+  font-size: 15pt;
+  color: #0a7c6c;
+}
+.are-sheet-lab span {
+  display: block;
+}
+.are-sheet-patient {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 10pt;
+}
+.are-sheet-patient th {
+  width: 17%;
+  padding: 3px 6px;
+  text-align: left;
+  background: #d9d9d9;
+  border: 1px solid #bfbfbf;
+}
+.are-sheet-patient td {
+  width: 33%;
+  padding: 3px 6px;
+  border: 1px solid #bfbfbf;
+}
+.are-sheet-title {
+  margin: 12px 0 8px;
+  text-align: center;
+  font-size: 14pt;
+  font-weight: 700;
+  text-decoration: underline;
+}
+.are-sheet-draft {
+  margin: 0 0 6px;
+  text-align: center;
+  color: #c81e1e;
+  font-weight: 700;
 }
 .are-paper.is-hidden {
   display: none;
 }
 .are-paper .sun-editor {
   border: 0;
+}
+.are-paper .sun-editor .se-wrapper .se-wrapper-inner {
+  padding: 8px 0;
 }
 .are-paper .sun-editor .se-wrapper-inner h2 {
   margin: 18px 0 6px;
@@ -458,4 +525,18 @@
     transition: none !important;
     animation: none !important;
   }
+}
+
+/* ---- patient clinical history (2026-11-03) ---- */
+.are-history {
+  margin-bottom: 14px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--are-line);
+}
+.are-history > summary {
+  cursor: pointer;
+  margin-bottom: 8px;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
 }
