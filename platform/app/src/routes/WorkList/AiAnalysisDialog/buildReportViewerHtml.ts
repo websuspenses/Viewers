@@ -27,6 +27,7 @@ import {
   getImageSrc,
   getReportableFindings,
   groupEvidenceFindings,
+  studyHeadline,
   summarizeStudySeverities,
 } from './aiReportModel';
 import {
@@ -390,9 +391,8 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
   // The study result counts every finding, as the PDF cover does (the tiles
   // above are only those with an image): confirmed ones by severity, flagged
   // ones apart (toVerify), those rated medium or above named first.
-  const { confirmed: counts, toVerify, verifyFirst } = summarizeStudySeverities(
-    getReportableFindings(groupEvidenceFindings(buildAllFindingRecords(payload)))
-  );
+  const tableRows = getReportableFindings(groupEvidenceFindings(buildAllFindingRecords(payload)));
+  const { confirmed: counts, toVerify, verifyFirst } = summarizeStudySeverities(tableRows);
   const analysedSeries = payload.total_series_analyzed ?? 0;
   const studySeries = payload.total_series_in_study;
   const patient = payload.patient_info || {};
@@ -433,6 +433,8 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
     frames,
     frameToken: FRAME_TOKEN,
     anomalyCount: studyAnomalies.length,
+    // As the PDF cover (1.6.37: was "Positive" for any AI report).
+    headline: studyHeadline(payload, tableRows),
     evidenceCount: withEvidence.length,
     impression: extractSection(reportText, /^impression/i),
     recommendations: extractSection(reportText, /^recommendation/i),
@@ -696,7 +698,7 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
             '</dl>' +
             '<div class="verdict">' +
               '<div><div class="big">Study result: ' +
-                (ctx.anomalyCount ? 'Positive' : 'No AI finding passed the automated checks') + '</div>' +
+                esc(ctx.headline) + '</div>' +
                 '<div class="sub">' + ctx.anomalyCount + ' anomalies from ' + ctx.study.reviewed +
                 ' reviewed entries &middot; ' + ctx.evidenceCount + ' with image evidence</div></div>' +
             '</div>' +

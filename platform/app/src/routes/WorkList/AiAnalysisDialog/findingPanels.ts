@@ -21,16 +21,22 @@
 import { getImageSrc } from './aiReportModel';
 import { escapeHtml } from './reportMarkdown';
 
-export const STATUS_COLORS = { confirmed: '#007AFF', pending: '#F59E0B' } as const;
+// physiological (ai-analysis 1.6.37): a normal calcification the study review
+// lists as an observation (radiologist 2026-11-10), never a finding to verify.
+export const STATUS_COLORS = { confirmed: '#007AFF', pending: '#F59E0B', physiological: '#64748B' } as const;
 export type FindingStatus = keyof typeof STATUS_COLORS;
 export const STATUS_LABELS: Record<FindingStatus, string> = {
   confirmed: 'CONFIRMED',
   pending: 'PENDING VERIFICATION',
+  physiological: 'PHYSIOLOGICAL',
 };
 
 const VERIFY_PREFIX = /^\[Verify: ([^\]]*)\]\s*/;
 
-export function findingStatus(finding: { description?: string }): FindingStatus {
+export function findingStatus(finding: { description?: string; reviewTier?: string }): FindingStatus {
+  if (finding.reviewTier === 'physiological') {
+    return 'physiological';
+  }
   return VERIFY_PREFIX.test(finding.description || '') ? 'pending' : 'confirmed';
 }
 
@@ -53,8 +59,27 @@ export function plainDescription(description?: string): string {
 // One short phrase per review reason, in plain words, for the badge. Order
 // matters: the first pattern that matches a reason names it.
 const SHORT_REASONS: [RegExp, string][] = [
+  // 1.6.39: head CT screen findings, measured from the CT numbers (not a model reading).
+  [/not read by a model: blood density/i, 'measured: blood along the skull'],
+  [/not read by a model: air inside/i, 'measured: air inside the skull'],
+  [/not read by a model: scalp/i, 'measured: scalp swelling'],
+  [/not read by a model: air pockets/i, 'measured: air under the skin'],
   [/possible acute infarct/i, 'possible acute infarct'],
   [/possible haemorrhage/i, 'possible haemorrhage'],
+  // 1.6.36: head CT readings in the bone / subdural windows, faint spots, contrast.
+  [/possible pneumocephalus/i, 'possible pneumocephalus'],
+  // 1.6.38: blood inside the skull along the inner table (thin collection).
+  [/possible thin extra-axial/i, 'possible extra-axial blood'],
+  [/faint dense spot/i, 'faint density, no blood patch'],
+  [/contrast-enhanced scan/i, 'contrast scan'],
+  [/open sutures and fontanelles/i, 'sutures in a young child'],
+  [/head-injury reading/i, 'new head-injury reading'],
+  // 1.6.34: MRI deep structures, paired anatomy, unplaced reports, children.
+  [/deep or midline structure/i, 'deep structure, one slice'],
+  [/paired anatomy/i, 'likely normal paired anatomy'],
+  [/never shown on an image/i, 'never shown on an image'],
+  [/in a child under 10/i, 'calcification in a child'],
+  [/uncommon under 10 years/i, 'unsupported in a child'],
   [/not dark on the ADC/i, 'no restriction on ADC'],
   [/no ADC image/i, 'ADC not available'],
   [/single slice of one MRI sequence/i, 'one slice, one sequence'],
@@ -103,7 +128,7 @@ export function shortReasons(description?: string): string[] {
 }
 
 /** Status badge plus, for a pending finding, its short reasons. */
-export function statusBadgeHtml(finding: { description?: string }) {
+export function statusBadgeHtml(finding: { description?: string; reviewTier?: string }) {
   const status = findingStatus(finding);
   const reasons = status === 'pending' ? shortReasons(finding.description) : [];
   return `<span class="fp-status fp-status-${status}">${STATUS_LABELS[status]}</span>${
@@ -114,6 +139,8 @@ export function statusBadgeHtml(finding: { description?: string }) {
 export type PanelFinding = {
   name: string;
   description?: string;
+  /** Study review tier (ai-analysis 1.6.37 "physiological" draws the box grey). */
+  reviewTier?: string;
   /** Normalised [y_min, x_min, y_max, x_max] on the original image. */
   bbox: number[] | null;
   /** Width and height of the box in mm (DICOM pixel spacing), or null. */
@@ -318,6 +345,7 @@ export const FINDING_PANEL_CSS = `
   .fp-status { display: inline-block; padding: 0.4mm 1.6mm; border-radius: 1mm; font-size: 6.5pt; font-weight: bold; letter-spacing: 0.04em; color: #ffffff; white-space: nowrap; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .fp-status-confirmed { background: #007AFF; }
   .fp-status-pending { background: #F59E0B; color: #1f1300; }
+  .fp-status-physiological { background: #64748B; }
   .fp-reason { font-size: 7pt; font-weight: bold; color: #9a5b00; }
   .badge-line { margin-top: 0.6mm; }
 `;

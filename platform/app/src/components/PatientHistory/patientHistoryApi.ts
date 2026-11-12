@@ -73,6 +73,27 @@ export async function savePatientHistory(api: ReviewApi, patientId: string, inpu
   return response.json();
 }
 
+/** Notes older than this are not the current presentation. */
+const CURRENT_NOTES_DAYS = 30;
+
+/**
+ * The clinical notes sent with an AI report request (1.6.39): the notes entered
+ * for this study, else the latest notes if entered in the last 30 days. Only
+ * the current presentation - an old "fall" in the past history must not turn
+ * the head-injury reading on - so the background fields are not sent.
+ */
+export function clinicalHistoryText(history: PatientHistory, studyId?: string): string {
+  const entries = (history?.entries || []).filter(entry => (entry.clinical_notes || '').trim());
+  const own = entries.filter(entry => studyId && entry.study_id === studyId);
+  const latest = [...entries].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
+  const recent =
+    latest && Date.now() - Date.parse(latest.created_at) <= CURRENT_NOTES_DAYS * 24 * 3600 * 1000 ? [latest] : [];
+  return (own.length ? own : recent)
+    .map(entry => (entry.clinical_notes || '').trim())
+    .join(' ')
+    .slice(0, 1500);
+}
+
 /** "B.SRINIVASA RAO 47Y/M" and "b. srinivasa rao" compare equal: age / sex suffix and punctuation ignored. */
 export function sameName(left?: string | null, right?: string | null) {
   const key = (value?: string | null) =>

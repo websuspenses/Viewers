@@ -25,6 +25,11 @@ type Options = {
   authHeaders?: string;
   /** Ask the PACS for a report as soon as a study's image analysis finishes. */
   autoGenerate?: boolean;
+  /**
+   * The patient's clinical history (teleapp) for a study, sent with every
+   * report request; "" when there is none or it cannot be read.
+   */
+  clinicalHistory?: (studyInstanceUid: string) => Promise<string>;
   pollIntervalMs?: number;
 };
 
@@ -65,6 +70,7 @@ export default function useAiReportPipeline({
   authHeaders,
   autoGenerate = true,
   pollIntervalMs = 25000,
+  clinicalHistory,
 }: Options) {
   const [live, setLive] = useState<Record<string, AiLiveState>>({});
   const [triggered, setTriggered] = useState<Set<string>>(readTriggered);
@@ -119,8 +125,10 @@ export default function useAiReportPipeline({
     }
   }, []);
 
+  // headInjury: the AI dialog's "Head injury" box (sent to the plugin; leaving
+  // it out lets the plugin decide from the DICOM request alone).
   const generateReport = useCallback(
-    async (uid: string) => {
+    async (uid: string, { headInjury }: { headInjury?: boolean } = {}) => {
       if (!baseUrl || !authHeaders || inFlight.current.has(`trigger:${uid}`)) {
         return;
       }
@@ -138,7 +146,15 @@ export default function useAiReportPipeline({
       });
 
       try {
-        await triggerReportGeneration({ baseUrl, studyInstanceUid: uid, authHeaders });
+        // A history that cannot be read does not hold the report back.
+        const history = clinicalHistory ? await clinicalHistory(uid).catch(() => '') : '';
+        await triggerReportGeneration({
+          baseUrl,
+          studyInstanceUid: uid,
+          authHeaders,
+          headInjury,
+          clinicalHistory: history,
+        });
       } catch (error) {
         patchLive(uid, {
           triggered: false,
@@ -149,7 +165,7 @@ export default function useAiReportPipeline({
         inFlight.current.delete(`trigger:${uid}`);
       }
     },
-    [authHeaders, baseUrl, forgetFrames, markTriggered, patchLive]
+    [authHeaders, baseUrl, clinicalHistory, forgetFrames, markTriggered, patchLive]
   );
 
   const loadReportResult = useCallback(

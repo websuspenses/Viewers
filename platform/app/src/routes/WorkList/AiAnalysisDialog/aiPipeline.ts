@@ -318,12 +318,31 @@ async function fetchMetadataValue(key: string, options: RequestOptions) {
   return body && typeof body === 'object' && key in body ? body[key] : body;
 }
 
-export async function triggerReportGeneration(options: RequestOptions) {
+/**
+ * Starts a report run. headInjury (plugin 1.6.37): the "Head injury" box - the
+ * plugin then reads head CT images in the bone window for fractures and writes
+ * the trauma checklist, even when the DICOM request records no injury.
+ */
+export async function triggerReportGeneration(
+  options: RequestOptions & { headInjury?: boolean; clinicalHistory?: string }
+) {
   const url = studyUrl(options.baseUrl, options.studyInstanceUid, 'generate-report');
+  // clinical_history (plugin 1.6.39): the patient's history from teleapp; injury
+  // words in it ("RTA", "fall", "head injury") turn the head-injury reading on.
+  const body: Record<string, unknown> = {};
+  if (options.headInjury !== undefined) {
+    body.head_injury = options.headInjury;
+  }
+  if (options.clinicalHistory) {
+    body.clinical_history = options.clinicalHistory;
+  }
   try {
     return await pacsRequest(url, options.authHeaders, {
       method: 'POST',
       signal: options.signal,
+      ...(Object.keys(body).length
+        ? { headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }
+        : {}),
     });
   } catch (error) {
     // Some deployments expose the trigger as GET only.

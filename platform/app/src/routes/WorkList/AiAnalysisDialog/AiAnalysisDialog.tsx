@@ -34,6 +34,7 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import Switch from '@mui/material/Switch';
+import Checkbox from '@mui/material/Checkbox';
 import Tooltip from '@mui/material/Tooltip';
 
 import {
@@ -107,7 +108,8 @@ type Props = {
   };
   /** Pipeline state for this study, kept current by the worklist poller. */
   aiState: AiStudyState;
-  onGenerateReport: () => void;
+  /** headInjury: the "Treat as head injury" box (CT studies only; undefined: the PACS decides). */
+  onGenerateReport: (options?: { headInjury?: boolean }) => void;
   loadResult: (options?: { force?: boolean }) => Promise<AiCompletePayload>;
   /** Original, heatmap and AI-marking images for a heatmap `frame_key`, as data URIs. */
   loadFrameImages: (
@@ -454,8 +456,8 @@ function VerificationRow({ label, value, flag }: { label: string; value: React.R
  * heatmap last as supporting evidence.
  */
 /** CONFIRMED / PENDING VERIFICATION badge with the short reasons (findingPanels.ts). */
-function StatusBadge({ description }: { description?: string }) {
-  const status = findingStatus({ description });
+function StatusBadge({ description, reviewTier }: { description?: string; reviewTier?: string }) {
+  const status = findingStatus({ description, reviewTier });
   const reasons = status === 'pending' ? shortReasons(description) : [];
   return (
     <Box
@@ -743,7 +745,10 @@ function EvidenceViewer({
       </Box>
 
       <Box sx={{ marginTop: '10px' }}>
-        <StatusBadge description={finding.description} />
+        <StatusBadge
+          description={finding.description}
+          reviewTier={finding.reviewTier}
+        />
       </Box>
       {plainDescription(finding.description) && (
         <Box sx={{ color: '#a6cbd6', fontSize: 12, marginTop: '6px' }}>
@@ -950,7 +955,10 @@ function FindingsTable({
                       </Box>
                     )}
                   </Stack>
-                  <StatusBadge description={finding.description} />
+                  <StatusBadge
+          description={finding.description}
+          reviewTier={finding.reviewTier}
+        />
                   {plainDescription(finding.description) && (
                     <Box sx={{ color: '#8fb4c0', fontSize: 11 }}>
                       {plainDescription(finding.description)}
@@ -1098,6 +1106,46 @@ export default function AiAnalysisDialog({
     () => withFrameImages(normalizedPayload, frameImages),
     [normalizedPayload, frameImages]
   );
+
+  // "Treat as head injury" (plugin 1.6.37; 1.6.39 an override only, decided
+  // 2026-11-11): fractures are reported only after an injury, which the AI
+  // takes from the DICOM request, the clinical history or the head CT screen.
+  // Ticked, the report also gets the bone-window fracture reading and the
+  // trauma checklist. When the AI already found the injury, the box says so
+  // and is disabled. Starts as the last run had it.
+  const isCtStudy = (study.modalities || '').toUpperCase().split(/[^A-Z]+/).includes('CT');
+  const lastStudyInfo = (rawPayload as { study_info?: Record<string, unknown> } | null)?.study_info;
+  const viewerInjury = lastStudyInfo?.head_injury_source === 'selected in the viewer';
+  const foundInjury =
+    lastStudyInfo?.head_injury === true && !viewerInjury ? String(lastStudyInfo?.head_injury_source || '') : '';
+  const [headInjury, setHeadInjury] = useState(false);
+  useEffect(() => {
+    setHeadInjury(viewerInjury);
+  }, [viewerInjury]);
+  const startReport = () => onGenerateReport(isCtStudy ? { headInjury } : {});
+  const headInjuryControl = isCtStudy ? (
+    <Tooltip
+      title={
+        foundInjury
+          ? `The AI already treats this study as a head injury (${foundInjury})`
+          : 'Use when the AI did not detect a head injury: its bone-window fracture reading and the trauma checklist are added to the report. A head injury in the DICOM request, the clinical history or the head CT images is used without this box.'
+      }
+    >
+      <FormControlLabel
+        control={
+          <Checkbox
+            size="small"
+            checked={headInjury || Boolean(foundInjury)}
+            disabled={Boolean(foundInjury)}
+            onChange={event => setHeadInjury(event.target.checked)}
+            sx={{ color: '#8be0f8', '&.Mui-checked': { color: '#8be0f8' } }}
+          />
+        }
+        label="Treat as head injury"
+        sx={{ color: '#dff6ff', marginRight: 1, '& .MuiFormControlLabel-label': { fontSize: 13 } }}
+      />
+    </Tooltip>
+  ) : null;
 
   useEffect(() => {
     const pending = getFramesMissingImages(normalizedPayload);
@@ -1343,13 +1391,16 @@ export default function AiAnalysisDialog({
   const handleRegenerate = () => {
     if (
       !window.confirm(
-        'Generate the report again from the same image analysis? The current AI draft is replaced; the images are not analysed again.'
+        'Generate the report again from the same image analysis? The current AI draft is replaced; the images are not analysed again.' +
+          (isCtStudy && headInjury && !foundInjury
+            ? ' With "Treat as head injury", the bone-window fracture reading and the trauma checklist are added.'
+            : '')
       )
     ) {
       return;
     }
     setRawPayload(null);
-    onGenerateReport();
+    startReport();
   };
 
   const renderPipelineState = () => {
@@ -1396,13 +1447,19 @@ export default function AiAnalysisDialog({
           <Alert
             severity="info"
             action={
-              <Button
-                color="inherit"
-                size="small"
-                onClick={onGenerateReport}
+              <Stack
+                direction="row"
+                alignItems="center"
               >
-                Generate report
-              </Button>
+                {headInjuryControl}
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={startReport}
+                >
+                  Generate report
+                </Button>
+              </Stack>
             }
           >
             Image analysis is complete. The report has not been generated yet.
@@ -1413,13 +1470,19 @@ export default function AiAnalysisDialog({
           <Alert
             severity="error"
             action={
-              <Button
-                color="inherit"
-                size="small"
-                onClick={onGenerateReport}
+              <Stack
+                direction="row"
+                alignItems="center"
               >
-                Try again
-              </Button>
+                {headInjuryControl}
+                <Button
+                  color="inherit"
+                  size="small"
+                  onClick={startReport}
+                >
+                  Try again
+                </Button>
+              </Stack>
             }
           >
             {aiState.error || 'Report generation failed.'}
@@ -2071,6 +2134,7 @@ export default function AiAnalysisDialog({
           </Tooltip>
         )}
 
+        {canRegenerate && headInjuryControl}
         {canRegenerate && (
           <Tooltip title="Run the report again on the same image analysis (no re-upload)">
             <span>

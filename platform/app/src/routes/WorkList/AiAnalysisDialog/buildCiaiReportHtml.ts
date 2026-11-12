@@ -28,6 +28,7 @@ import {
   getTier,
   groupEvidenceFindings,
   TIER_LABELS,
+  studyHeadline,
   summarizeStudySeverities,
   worstSeverity,
 } from './aiReportModel';
@@ -315,6 +316,7 @@ const REPORT_CSS = `
   }
   .verdict .headline { font-size: 13pt; font-weight: bold; color: var(--navy); }
   .verdict .detail { font-size: 8.5pt; color: #3d4c5a; margin-top: 0.8mm; }
+  .verdict .limitation { color: #7a1f1f; font-weight: bold; border-left: 2px solid #b42318; padding-left: 2mm; margin-top: 1.5mm; }
   .verdict.is-critical { border-left-color: #b3261e; background: #fdf0ef; }
   /* A flagged finding rated medium or above (possible haemorrhage...) waits
      for verification: the cover says so next to the confirmed severity. */
@@ -595,9 +597,19 @@ function plural(count: number, one: string, many: string) {
 // The AI's size wording against the marked box of a finding the checks
 // confirmed: a note, not a request to verify next to a CONFIRMED badge.
 const CONFIRMED_MISMATCH_LABEL = 'AI estimate larger than marked box';
-// The AI is not validated to call a study normal (MRI radiologist feedback
-// 2026-10-30): the narrative's own sentence, never "no anomalies".
-const NO_FINDING_HEADLINE = 'No AI finding passed the automated checks';
+
+/**
+ * What this AI version does not detect in the study (ai-analysis >= 1.6.34:
+ * brain MRI, head CT), the Impression's limitation lines. On the cover, so the
+ * study result is never read as normal (radiologist feedback 2026-11-06: a
+ * head injury with an extradural haematoma read "No AI finding passed").
+ */
+function renderLimitations(payload: AiCompletePayload) {
+  const lines = (payload.limitations || []).filter(Boolean);
+  return lines.length
+    ? `<div class="detail limitation">${lines.map(line => escapeHtml(line)).join('<br/>')}</div>`
+    : '';
+}
 
 function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: CoverTotals) {
   const { payload, study, logoUrl } = options;
@@ -615,6 +627,7 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
   // result on a study with a possible hyperacute infarct (2026-10-31).
   const anyConfirmed = counts.critical + counts.high + counts.medium + counts.low > 0;
   const images = new Set(measured.map(finding => finding.frameKey).filter(Boolean)).size;
+  const headline = studyHeadline(payload, grouped);
 
   const tiles: [string, string][] = [
     [String(measured.length), `Marked on ${images} image${images === 1 ? '' : 's'}`],
@@ -693,9 +706,7 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
         ${verifyFirst.length ? '<span class="sev sev-verify">Verify first</span>' : ''}
       </div>
       <div>
-        <div class="headline">Study result: ${
-          grouped.length ? plural(grouped.length, 'distinct finding', 'distinct findings') : NO_FINDING_HEADLINE
-        }</div>
+        <div class="headline">Study result: ${escapeHtml(headline)}</div>
         <div class="detail">
           <b>${measured.length}</b> marked on image &middot; <b>${reported.length}</b> not marked
           &nbsp;|&nbsp; confirmed: ${counts.critical} critical &middot; ${counts.high} high &middot; ${counts.medium} medium
@@ -706,10 +717,15 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
                 .map(
                   finding =>
                     `${escapeHtml(finding.name)} (${escapeHtml(finding.severity || 'medium')}${
-                      /possible acute infarct/i.test(finding.description || '')
+                      // The review's label already says it (1.6.36 "Possible acute haemorrhage - ...").
+                      /^possible /i.test(finding.name || '')
+                        ? ''
+                        : /possible acute infarct/i.test(finding.description || '')
                         ? ', possible acute infarct'
                         : /possible haemorrhage/i.test(finding.description || '')
                         ? ', possible haemorrhage'
+                        : /possible pneumocephalus/i.test(finding.description || '')
+                        ? ', possible pneumocephalus'
                         : ''
                     })`
                 )
@@ -735,6 +751,7 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
               : ''
           }
         </div>
+        ${renderLimitations(payload)}
       </div>
     </div>
 
@@ -791,9 +808,9 @@ function occurrenceNote(finding: GroupedFinding) {
  * the finding's own description. The review's full reasons and HU numbers are
  * in the verification notes at the end (client requirement 2026-10-30).
  */
-function renderDescription(description: string) {
+function renderDescription(description: string, reviewTier?: string) {
   const rest = plainDescription(description);
-  return `<div class="badge-line">${statusBadgeHtml({ description })}</div>${
+  return `<div class="badge-line">${statusBadgeHtml({ description, reviewTier })}</div>${
     rest ? `<div class="sub">${escapeHtml(rest)}</div>` : ''
   }`;
 }
@@ -811,7 +828,7 @@ function renderFindingsTableBody(rows: GroupedFinding[], part: number, partCount
         <td class="id">${escapeHtml(finding.findingId || '—')}</td>
         <td>
           <b>${escapeHtml(finding.name)}</b> ${occurrenceNote(finding)}
-          ${renderDescription(finding.description)}
+          ${renderDescription(finding.description, finding.reviewTier)}
         </td>
         <td class="${finding.tier === 'measured' ? 'ok' : 'sub'}">${escapeHtml(
           TIER_LABELS[finding.tier]
@@ -1018,7 +1035,7 @@ function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string
         <td class="id">${escapeHtml(finding.findingId || '—')}</td>
         <td><span class="sev ${severityClass(finding.severity)}">${escapeHtml(finding.severity)}</span>
           <b>${escapeHtml(finding.name)}</b>
-          ${renderDescription(finding.description)}
+          ${renderDescription(finding.description, finding.reviewTier)}
           ${
             finding.imageRegionName && finding.imageRegionName !== finding.name
               ? `<div class="sub">Marked as: ${escapeHtml(finding.imageRegionName)}</div>`

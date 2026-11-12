@@ -57,6 +57,18 @@ export type AiFindingSummary = {
   series?: string;
   modality?: string;
   name?: string;
+  /**
+   * Display name set by the study review (ai-analysis 1.6.36), e.g. a
+   * haemorrhage the model called a "mass"; `name` stays the key to the images.
+   */
+  label?: string;
+  /**
+   * Study review tier (ai-analysis 1.6.36): confirmed / verify / physiological
+   * (1.6.37, a normal calcification listed as an observation).
+   */
+  tier?: string;
+  /** Stated on its own in the Impression (ai-analysis 1.6.36): always gets a table row. */
+  key_finding?: boolean;
   severity?: string;
   confidence?: number;
   location?: string;
@@ -88,6 +100,8 @@ export type AiCompletePayload = {
   total_series_analyzed?: number;
   /** Every series in the study (plugin 1.6.27); total_series_analyzed is the ones the AI read. */
   total_series_in_study?: number;
+  /** What this AI version does not detect in the study (ai-analysis 1.6.34; brain MRI, head CT). */
+  limitations?: string[];
   total_frames_processed?: number;
   total_anomalies_found?: number;
   output_directory?: string;
@@ -154,6 +168,10 @@ export type EvidenceFinding = {
   isAnomaly: boolean;
   /** The same lesion's largest box, on another frame (second evidence image). */
   largestView?: LargestView | null;
+  /** Study review tier of the summary row (AiFindingSummary.tier). */
+  reviewTier?: string;
+  /** Stated in the Impression (AiFindingSummary.key_finding). */
+  keyFinding?: boolean;
 };
 
 export type LargestView = {
@@ -392,13 +410,62 @@ const CALCIFICATION = /calcif/i;
  * requires them to be reported, and the analysis rates physiological ones
  * (pineal, choroid plexus) "low" on purpose.
  */
-export function isReportableFinding(finding: { severity?: string; name?: string }) {
+export function isReportableFinding(finding: {
+  severity?: string;
+  name?: string;
+  keyFinding?: boolean;
+  key_finding?: boolean;
+}) {
+  // A finding the Impression states always has its row and evidence page
+  // (1.6.37; LAKSHMI: a stated low-rated small-vessel change had neither).
   return (
-    (finding.severity || 'low').toLowerCase() !== 'low' || CALCIFICATION.test(finding.name || '')
+    finding.keyFinding === true ||
+    finding.key_finding === true ||
+    (finding.severity || 'low').toLowerCase() !== 'low' ||
+    CALCIFICATION.test(finding.name || '')
   );
 }
 
-export function getReportableFindings<T extends { severity?: string; name?: string }>(
+/** A normal calcification the study review lists as an observation (ai-analysis 1.6.37). */
+export function isPhysiological(finding: { reviewTier?: string }) {
+  return finding.reviewTier === 'physiological';
+}
+
+// The AI is not validated to call a study normal (MRI radiologist feedback
+// 2026-10-30): the narrative's own sentence, never "no anomalies".
+export const NO_FINDING_HEADLINE = 'No AI finding passed the automated checks';
+
+/**
+ * The study result line (PDF cover, beta report page): what the Impression
+ * states (ai-analysis 1.6.36 key_finding; before it, every row of the table),
+ * then the low-priority rest and the physiological calcifications, which are
+ * observations, not findings (1.6.37; B. SUJATHA, normal, read "6 distinct
+ * findings"). grouped: the findings table rows.
+ */
+export function studyHeadline(
+  payload: AiCompletePayload | null,
+  grouped: { reviewTier?: string; keyFinding?: boolean }[]
+) {
+  const keyed = (payload?.findings_summary || []).some(row => typeof row?.key_finding === 'boolean');
+  const findingsOnly = grouped.filter(finding => !isPhysiological(finding));
+  const stated = keyed ? findingsOnly.filter(finding => finding.keyFinding) : findingsOnly;
+  const count = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
+  const lowPriority = findingsOnly.length - stated.length;
+  const physiological = grouped.length - findingsOnly.length;
+  return [
+    stated.length
+      ? count(stated.length, 'finding stated in the Impression', 'findings stated in the Impression')
+      : NO_FINDING_HEADLINE,
+    lowPriority ? count(lowPriority, 'low-priority report listed', 'low-priority reports listed') : '',
+    physiological
+      ? count(physiological, 'physiological calcification noted', 'physiological calcifications noted')
+      : '',
+  ]
+    .filter(Boolean)
+    .join('; ');
+}
+
+export function getReportableFindings<T extends { severity?: string; name?: string; keyFinding?: boolean }>(
   findings: T[]
 ): T[] {
   return findings.filter(isReportableFinding);
@@ -523,7 +590,17 @@ export function groupEvidenceFindings(evidence: EvidenceFinding[]): GroupedFindi
 
     if (betterTier || sameTierUnflagged || sameTierMoreSevere) {
       const { occurrences, frameKeys, seriesLabels, locations } = existing;
-      groups.set(key, { ...finding, tier, occurrences, frameKeys, seriesLabels, locations });
+      groups.set(key, {
+        ...finding,
+        tier,
+        occurrences,
+        frameKeys,
+        seriesLabels,
+        locations,
+        keyFinding: Boolean(existing.keyFinding || finding.keyFinding),
+      });
+    } else if (finding.keyFinding) {
+      existing.keyFinding = true;
     }
   });
 
@@ -963,7 +1040,8 @@ export function buildEvidenceFindings(
 
     evidence.push({
       findingId: finding.finding_id || '',
-      name: finding.name || 'Unnamed finding',
+      // The review's label when there is one; the region was found by name above.
+      name: finding.label || finding.name || 'Unnamed finding',
       region: finding.region || '',
       severity: (finding.severity || 'low').toLowerCase(),
       modality: finding.modality || heatmap?.modality || '',
@@ -996,6 +1074,8 @@ export function buildEvidenceFindings(
       summary: heatmap?.summary || '',
       isAnomaly: isAnomalyFinding(finding),
       largestView: largestViewOf(finding, heatmapsByFrame),
+      reviewTier: finding.tier || '',
+      keyFinding: finding.key_finding === true,
     });
   });
 
@@ -1033,10 +1113,15 @@ const RAISED_SEVERITIES = ['critical', 'high', 'medium'];
  * verification did not show on a LOW cover). `verifyFirst`: flagged findings
  * rated medium or above, to name on the cover.
  */
-export function summarizeStudySeverities<T extends { severity?: string; description?: string }>(findings: T[]) {
+export function summarizeStudySeverities<
+  T extends { severity?: string; description?: string; reviewTier?: string }
+>(findings: T[]) {
   const flagged = findings.filter(isFlaggedFinding);
   return {
-    confirmed: summarizeSeverities(findings.filter(finding => !isFlaggedFinding(finding))),
+    // Physiological calcifications are not findings (1.6.37): not counted.
+    confirmed: summarizeSeverities(
+      findings.filter(finding => !isFlaggedFinding(finding) && !isPhysiological(finding))
+    ),
     toVerify: flagged.length,
     verifyFirst: flagged.filter(finding =>
       RAISED_SEVERITIES.includes((finding.severity || 'low').toLowerCase())

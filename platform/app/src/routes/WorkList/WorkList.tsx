@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import classnames from 'classnames';
 import PropTypes, { element, func } from 'prop-types';
 import { useHref, useNavigate } from 'react-router-dom';
@@ -21,6 +21,7 @@ import MuiIconButton from '@mui/material/IconButton';
 import MuiTooltip from '@mui/material/Tooltip';
 import MedicalInformationOutlinedIcon from '@mui/icons-material/MedicalInformationOutlined';
 import PatientHistoryDialog from '../../components/PatientHistory/PatientHistoryDialog';
+import { clinicalHistoryText, getPatientHistory } from '../../components/PatientHistory/patientHistoryApi';
 const dotenv = require('dotenv');
 import SubscriptionFeaturesModal from '../../components/AdminPanel/SubscriptionFeaturesModal';
 import AiAnalysisDialog from './AiAnalysisDialog/AiAnalysisDialog';
@@ -149,17 +150,31 @@ function WorkList({
 
   const [rolesInfo, setRolesData] = useState(); // State to store fetched data
   const [authHeaders, setAuthHeaders] = useState('');
+  // Radiologist decisions on AI reports, per study (docs §8.1): absent = not
+  // loaded yet, null = not reviewed. Loaded for the visible rows only.
+  const [aiReviews, setAiReviews] = useState<Record<string, AiReview | null>>({});
+  const reviewApi = useMemo(() => ({ nodeAppHost, authHeaders }), [nodeAppHost, authHeaders]);
+
+  // The patient's clinical history (teleapp), sent with each AI report request:
+  // "RTA", "fall", "head injury" there turn the head-injury reading on (1.6.39).
+  const clinicalHistory = useCallback(
+    async (studyInstanceUid: string) => {
+      const patientId = (studies || []).find(study => study.studyInstanceUid === studyInstanceUid)?.mrn;
+      if (!patientId || !nodeAppHost) {
+        return '';
+      }
+      return clinicalHistoryText(await getPatientHistory(reviewApi, patientId), studyInstanceUid);
+    },
+    [studies, reviewApi, nodeAppHost]
+  );
+
   const aiPipeline = useAiReportPipeline({
     studies,
     baseUrl: hostNameurl,
     authHeaders,
     autoGenerate: appConfig.aiReportAutoGenerate !== false,
+    clinicalHistory,
   });
-
-  // Radiologist decisions on AI reports, per study (docs §8.1): absent = not
-  // loaded yet, null = not reviewed. Loaded for the visible rows only.
-  const [aiReviews, setAiReviews] = useState<Record<string, AiReview | null>>({});
-  const reviewApi = useMemo(() => ({ nodeAppHost, authHeaders }), [nodeAppHost, authHeaders]);
   const canReviewAi =
     Array.isArray(rolesInfo) &&
     (rolesInfo as string[]).includes(appConfig.aiReviewRole || DEFAULT_REVIEW_ROLE);
@@ -1225,7 +1240,9 @@ function WorkList({
           onClose={handleCloseAiAnalysis}
           study={aiAnalysisStudy}
           aiState={aiPipeline.getState(aiAnalysisStudy.studyInstanceUid)}
-          onGenerateReport={() => aiPipeline.generateReport(aiAnalysisStudy.studyInstanceUid)}
+          onGenerateReport={options =>
+            aiPipeline.generateReport(aiAnalysisStudy.studyInstanceUid, options)
+          }
           loadResult={options =>
             aiPipeline.loadReportResult(aiAnalysisStudy.studyInstanceUid, options)
           }
