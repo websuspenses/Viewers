@@ -194,7 +194,9 @@ export default function useAiReportPipeline({
       if (!baseUrl) {
         return Promise.reject(new Error('The PACS URL is not configured.'));
       }
-      const key = `${studyInstanceUid}:${instanceId}`;
+      // One instance can be marked by several series (brain, subdural and bone
+      // windows, head CT screen), each with images of its own (1.6.42).
+      const key = `${studyInstanceUid}:${instanceId}:${paths.originalPath || ''}:${paths.heatmapPath || ''}`;
       if (!frameCache.current.has(key)) {
         const request = fetchFrameImages({
           baseUrl,

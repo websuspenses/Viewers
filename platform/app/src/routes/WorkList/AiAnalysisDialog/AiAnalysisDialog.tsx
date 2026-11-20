@@ -48,8 +48,9 @@ import {
   TIER_LABELS,
   buildAllFindingRecords,
   buildEvidenceFindings,
-  formatConfidence,
   formatDicomDate,
+  formatFindingScore,
+  frameImageKey,
   getAnomalyFindings,
   getFramesMissingImages,
   getImageSrc,
@@ -519,7 +520,9 @@ function EvidenceViewer({
   const isMismatch = finding.consistency !== 'match';
   // Three panels over the original frame, with every box on it (this
   // finding's first); empty for results without the original or a box.
-  const onFrame = findings.filter(item => item.frameKey && item.frameKey === finding.frameKey);
+  const onFrame = findings.filter(
+    item => item.frameKey && frameImageKey(item) === frameImageKey(finding)
+  );
   const threePanels = renderFindingPanelsHtml(
     [finding, ...onFrame.filter(item => item !== finding)],
     finding.originalImage,
@@ -629,9 +632,9 @@ function EvidenceViewer({
               label="1. Original diagnostic image"
               image={finding.originalImage}
               emptyText={
-                frameLoadState[finding.frameKey] === 'loading'
+                frameLoadState[frameImageKey(finding)] === 'loading'
                   ? 'Loading frame from the PACS…'
-                  : frameLoadState[finding.frameKey] === 'failed'
+                  : frameLoadState[frameImageKey(finding)] === 'failed'
                   ? 'The frame could not be loaded from the PACS.'
                   : 'Original frame was not returned by the analysis service.'
               }
@@ -703,11 +706,12 @@ function EvidenceViewer({
           />
           <VerificationRow
             label="Image AI score"
-            value={formatConfidence(finding.imageScore)}
+            value={formatFindingScore(finding, finding.imageScore)}
           />
           <VerificationRow
             label="AI size estimate"
-            value={`${finding.narrativeMeasurement.display} / ${formatConfidence(
+            value={`${finding.narrativeMeasurement.display} / ${formatFindingScore(
+              finding,
               finding.narrativeScore
             )}`}
           />
@@ -1156,19 +1160,20 @@ export default function AiAnalysisDialog({
     let cancelled = false;
     const queue = [...pending];
     setFrameLoadState(
-      Object.fromEntries(pending.map(frame => [frame.frameKey, 'loading' as const]))
+      Object.fromEntries(pending.map(frame => [frame.imageKey, 'loading' as const]))
     );
 
     const worker = async () => {
       while (!cancelled && queue.length) {
         const {
-          frameKey: key,
+          imageKey: key,
+          frameKey,
           heatmapPath,
           annotatedPath,
           originalPath,
         } = queue.shift() as FrameImageRequest;
         try {
-          const images = await loadFrameImages(key, { heatmapPath, annotatedPath, originalPath });
+          const images = await loadFrameImages(frameKey, { heatmapPath, annotatedPath, originalPath });
           if (!cancelled) {
             setFrameImages(current => ({ ...current, [key]: images }));
             setFrameLoadState(({ [key]: _done, ...rest }) => rest);
@@ -1954,10 +1959,10 @@ export default function AiAnalysisDialog({
                               </Box>
                             </td>
                             <td>{finding.imageMeasurement.display}</td>
-                            <td>{formatConfidence(finding.imageScore)}</td>
+                            <td>{formatFindingScore(finding, finding.imageScore)}</td>
                             <td>
                               {finding.narrativeMeasurement.display} /{' '}
-                              {formatConfidence(finding.narrativeScore)}
+                              {formatFindingScore(finding, finding.narrativeScore)}
                             </td>
                             <td
                               style={{

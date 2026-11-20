@@ -69,6 +69,9 @@ export type AiFindingSummary = {
   tier?: string;
   /** Stated on its own in the Impression (ai-analysis 1.6.36): always gets a table row. */
   key_finding?: boolean;
+  /** Head CT screen findings (ai-analysis 1.6.41): measured thickness and top-to-bottom extent in mm. */
+  measured_thickness_mm?: number | null;
+  measured_extent_mm?: number | null;
   severity?: string;
   confidence?: number;
   location?: string;
@@ -77,6 +80,8 @@ export type AiFindingSummary = {
   marked_box?: string;
   description?: string;
   frame_key?: string;
+  /** The series the row's finding belongs to (ai-analysis 1.6.42): tells apart frames shared by several series. */
+  series_id?: string;
   /**
    * One lesion reported on several slices (ai-analysis 1.6.33 study review):
    * the frame where its largest box was drawn, when that is not frame_key.
@@ -172,6 +177,10 @@ export type EvidenceFinding = {
   reviewTier?: string;
   /** Stated in the Impression (AiFindingSummary.key_finding). */
   keyFinding?: boolean;
+  /** Measured by the head CT screen, not read by a model (no model score). */
+  measured?: boolean;
+  /** Its measured thickness in mm (null for air, measured by its spread). */
+  measuredMm?: number | null;
 };
 
 export type LargestView = {
@@ -192,9 +201,9 @@ function orientationOf(heatmap?: AiHeatmap) {
     : null;
 }
 
-function largestViewOf(finding: AiFindingSummary, heatmapsByFrame: Map<string, AiHeatmap>): LargestView | null {
+function largestViewOf(finding: AiFindingSummary, heatmapsByFrame: Map<string, AiHeatmap[]>): LargestView | null {
   const view = finding.largest_view;
-  const heatmap = view?.frame_key ? heatmapsByFrame.get(view.frame_key) : undefined;
+  const heatmap = heatmapOf(heatmapsByFrame, view?.frame_key, { series_id: finding.series_id, name: view?.name });
   if (!view || !heatmap || !Array.isArray(view.bbox) || view.bbox.length !== 4) {
     return null;
   }
@@ -614,6 +623,11 @@ export function groupEvidenceFindings(evidence: EvidenceFinding[]): GroupedFindi
     if (bySeverity !== 0) {
       return bySeverity;
     }
+    // Head CT screen findings: the largest first, as in the Impression (1.6.41).
+    const byMeasured = (right.measuredMm ?? 0) - (left.measuredMm ?? 0);
+    if (byMeasured !== 0) {
+      return byMeasured;
+    }
 
     return left.findingId.localeCompare(right.findingId);
   });
@@ -638,6 +652,15 @@ export function formatConfidence(confidence?: number | null) {
   const value = Number(confidence);
   const percent = value <= 1 ? value * 100 : value;
   return `${Math.round(percent)}%`;
+}
+
+/**
+ * A finding's score for display. Head CT screen findings (ai-analysis 1.6.39)
+ * are measured from the CT numbers and have no model score: "Measured", not
+ * the 100% their placeholder confidence would show (1.6.41).
+ */
+export function formatFindingScore(finding: { measured?: boolean }, confidence?: number | null) {
+  return finding.measured ? 'Measured' : formatConfidence(confidence);
 }
 
 /** Detects the encoding so JPEG originals are not mislabelled as PNG. */
@@ -773,8 +796,49 @@ export function normalizeAiPayload(payload: AiCompletePayload | null): AiComplet
   return derived.length ? { ...payload, findings_summary: derived } : payload;
 }
 
+/**
+ * The key of a frame's images and markings. One instance is read in several
+ * windows (brain, subdural, bone) and measured by the head CT screen, each a
+ * series of its own with the same frame_key (the instance ID): the series tells
+ * them apart (1.6.42; R. Gagan Babu: the screen's left frontal collection was
+ * shown with the brain series' calcification box on image 70). Results from
+ * before 1.6.42 carry no series on the heatmaps listed outside a series.
+ */
+export function frameImageKey(item: { seriesId?: string; frame_key?: string; frameKey?: string }) {
+  const frame = item.frame_key || item.frameKey || '';
+  return item.seriesId && frame ? `${item.seriesId}|${frame}` : frame;
+}
+
+/**
+ * The marking a finding points at: its own series' (series_id, ai-analysis
+ * 1.6.42), else the one with the finding's own box, else one it was sent for
+ * marking with, else the first.
+ */
+function heatmapOf(
+  heatmapsByFrame: Map<string, AiHeatmap[]>,
+  frameKey: string | undefined,
+  finding: { series_id?: string; name?: string }
+): AiHeatmap | undefined {
+  const candidates = (frameKey && heatmapsByFrame.get(frameKey)) || [];
+  if (candidates.length <= 1) {
+    return candidates[0];
+  }
+  const key = normalizeFindingKey(finding.name);
+  return (
+    (finding.series_id && candidates.find(heatmap => heatmap.seriesId === finding.series_id)) ||
+    candidates.find(heatmap =>
+      (heatmap.anomaly_regions || []).some(region => normalizeFindingKey(region.name) === key)
+    ) ||
+    candidates.find(heatmap => attemptedNames(heatmap).some(name => normalizeFindingKey(name) === key)) ||
+    candidates[0]
+  );
+}
+
 /** A frame to fetch images for, with the saved paths of its AI layers. */
 export type FrameImageRequest = {
+  /** frameImageKey: where the fetched images are kept. */
+  imageKey: string;
+  /** The Orthanc instance ID. */
   frameKey: string;
   heatmapPath?: string;
   annotatedPath?: string;
@@ -788,8 +852,10 @@ export function getFramesMissingImages(payload: AiCompletePayload | null): Frame
     .filter(heatmap => heatmap.frame_key && !heatmap.original_image_b64)
     .forEach(heatmap => {
       const frameKey = heatmap.frame_key as string;
-      const known = frames.get(frameKey);
-      frames.set(frameKey, {
+      const imageKey = frameImageKey(heatmap);
+      const known = frames.get(imageKey);
+      frames.set(imageKey, {
+        imageKey,
         frameKey,
         heatmapPath: known?.heatmapPath || heatmap.output_path || '',
         annotatedPath: known?.annotatedPath || heatmap.gemini_annotated_output_path || '',
@@ -813,8 +879,8 @@ export function withFrameImages(
     return payload;
   }
 
-  const fill = (heatmap: AiHeatmap) => {
-    const fetched = heatmap?.frame_key ? images[heatmap.frame_key] : undefined;
+  const fill = (heatmap: AiHeatmap, seriesId?: string) => {
+    const fetched = heatmap?.frame_key ? images[frameImageKey({ ...heatmap, seriesId })] : undefined;
     if (!fetched) {
       return heatmap;
     }
@@ -828,9 +894,13 @@ export function withFrameImages(
 
   return {
     ...payload,
-    heatmaps: Array.isArray(payload.heatmaps) ? payload.heatmaps.map(fill) : payload.heatmaps,
+    heatmaps: Array.isArray(payload.heatmaps)
+      ? payload.heatmaps.map(heatmap => fill(heatmap))
+      : payload.heatmaps,
     series_with_findings: (payload.series_with_findings || []).map(series =>
-      Array.isArray(series?.heatmaps) ? { ...series, heatmaps: series.heatmaps.map(fill) } : series
+      Array.isArray(series?.heatmaps)
+        ? { ...series, heatmaps: series.heatmaps.map(heatmap => fill(heatmap, series?.series_id || '')) }
+        : series
     ),
   };
 }
@@ -888,7 +958,13 @@ function findOwnRegion(
   if (containing.length === 1) {
     return containing[0];
   }
-  return regions.length === 1 && attemptedNames(heatmap).length <= 1 ? regions[0] : undefined;
+  // The frame's only region, when this finding was the only one sent for
+  // marking (Gemini renamed it): not when another finding was.
+  const attempted = attemptedNames(heatmap);
+  return regions.length === 1 &&
+    (!attempted.length || (attempted.length === 1 && normalizeFindingKey(attempted[0]) === key))
+    ? regions[0]
+    : undefined;
 }
 
 function nameSimilarity(left?: string, right?: string) {
@@ -1004,10 +1080,11 @@ export function buildEvidenceFindings(
   }
 
   const heatmaps = collectHeatmaps(payload, { requireImage: false });
-  const heatmapsByFrame = new Map<string, AiHeatmap>();
+  // Every marking of a frame: several series can mark one (frameImageKey).
+  const heatmapsByFrame = new Map<string, AiHeatmap[]>();
   heatmaps.forEach(heatmap => {
-    if (heatmap.frame_key && !heatmapsByFrame.has(heatmap.frame_key)) {
-      heatmapsByFrame.set(heatmap.frame_key, heatmap);
+    if (heatmap.frame_key) {
+      heatmapsByFrame.set(heatmap.frame_key, [...(heatmapsByFrame.get(heatmap.frame_key) || []), heatmap]);
     }
   });
 
@@ -1015,7 +1092,7 @@ export function buildEvidenceFindings(
   const evidence: EvidenceFinding[] = [];
 
   summaries.forEach(finding => {
-    const heatmap = finding.frame_key ? heatmapsByFrame.get(finding.frame_key) : undefined;
+    const heatmap = heatmapOf(heatmapsByFrame, finding.frame_key, finding);
 
     // The findings table has to account for every reported anomaly, including
     // the majority that never resolve to a frame; the evidence pages and the
@@ -1076,6 +1153,10 @@ export function buildEvidenceFindings(
       largestView: largestViewOf(finding, heatmapsByFrame),
       reviewTier: finding.tier || '',
       keyFinding: finding.key_finding === true,
+      measured:
+        typeof finding.measured_thickness_mm === 'number' ||
+        typeof finding.measured_extent_mm === 'number',
+      measuredMm: typeof finding.measured_thickness_mm === 'number' ? finding.measured_thickness_mm : null,
     });
   });
 
@@ -1083,6 +1164,10 @@ export function buildEvidenceFindings(
     const bySeverity = compareSeverity(left.severity, right.severity);
     if (bySeverity !== 0) {
       return bySeverity;
+    }
+    const byMeasured = (right.measuredMm ?? 0) - (left.measuredMm ?? 0);
+    if (byMeasured !== 0) {
+      return byMeasured;
     }
 
     const byScore = (right.imageScore ?? 0) - (left.imageScore ?? 0);

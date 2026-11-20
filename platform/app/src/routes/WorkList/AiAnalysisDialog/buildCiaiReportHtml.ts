@@ -18,8 +18,9 @@ import {
   EvidenceFinding,
   GroupedFinding,
   buildAllFindingRecords,
-  formatConfidence,
   formatDicomDate,
+  formatFindingScore,
+  frameImageKey,
   getAnomalyFindings,
   getImageSrc,
   getMeasurementRange,
@@ -90,48 +91,68 @@ const REPLACED_NARRATIVE_SECTIONS = [/^all findings/i];
 type NarrativeImage = { name: string; number: number; thumb: string };
 
 const IMAGE_TOKEN = /@@AIIMG(\d+)@@/g;
+const BLOCK_START = '@@AIBLOCK@@';
+const BLOCK_END = '@@AIEND@@';
 const REF_TOKEN = /\s*@@AIREF(\d+)@@/g;
 
 function imageFor(text: string, images: NarrativeImage[]) {
   // The longest name the text starts with ("Right frontal lobe mass" before
-  // "Right frontal lobe").
-  const lower = text.trim().toLowerCase();
+  // "Right frontal lobe"). A pending finding is written "Possible <name>"
+  // (ai-analysis narrative): the word is left out on both sides (1.6.42; only
+  // names that began with it, "Possible acute haemorrhage ...", were linked).
+  const bare = (value: string) => value.trim().toLowerCase().replace(/^possible\s+/, '');
+  const lower = bare(text);
   return images
-    .filter(image => image.name && lower.startsWith(image.name.toLowerCase()))
+    .filter(image => image.name && lower.startsWith(bare(image.name)))
     .sort((left, right) => right.name.length - left.name.length)[0];
 }
 
 /**
  * Marks, in the narrative markdown, where each finding with an evidence page is
  * named: after a Findings block ("### [PRIORITY] Name") its marked frame, and
- * after an Impression item or verification entry "(Image N)". The tokens are
- * plain text, so they pass through the markdown renderer unchanged.
+ * after an Impression item or verification entry "(Image N)". Each Findings
+ * block is enclosed in block tokens, so its heading, list and frame print on
+ * one page (2026-11-12). The tokens are plain text, so they pass through the
+ * markdown renderer unchanged.
  */
 function markImageReferences(title: string, body: string, images: NarrativeImage[]) {
-  if (!images.length) {
-    return body;
-  }
   if (/^findings$/i.test(title.trim())) {
     const out: string[] = [];
     let pending: NarrativeImage | undefined;
-    const flush = () => {
+    let open = false;
+    const close = () => {
       if (pending) {
-        out.push('', `@@AIIMG${pending.number}@@`, '');
+        // The entry, not the image number: two findings on one image each
+        // show their own box (2026-11-12; both showed the last one's).
+        out.push('', `@@AIIMG${images.indexOf(pending)}@@`, '');
         pending = undefined;
+      }
+      if (open) {
+        out.push('', BLOCK_END, '');
+        open = false;
       }
     };
     body.split(/\r?\n/).forEach(line => {
       const heading = line.match(/^###\s+(?:\[[^\]]*\]\s*)?(.+?)\s*$/);
       if (heading) {
-        flush();
+        close();
         pending = imageFor(heading[1], images);
+        out.push('', BLOCK_START, '');
+        open = true;
         out.push(heading[1] && pending ? `${line} @@AIREF${pending.number}@@` : line);
         return;
       }
+      // A paragraph after the last block ("**Observations:** ...") is not part of it.
+      if (open && /^\*\*/.test(line.trim())) {
+        close();
+      }
       out.push(line);
     });
-    flush();
+    close();
     return out.join('\n');
+  }
+  if (!images.length) {
+    return body;
   }
   if (/^impression/i.test(title.trim())) {
     return body
@@ -160,12 +181,13 @@ function markImageReferences(title: string, body: string, images: NarrativeImage
 
 /** Replaces the tokens with the link to the image page and the marked frame. */
 function withImageLinks(html: string, images: NarrativeImage[]) {
-  const thumbs = new Map(images.map(image => [image.number, image.thumb]));
   return html
-    .replace(/<p>\s*@@AIIMG(\d+)@@\s*<\/p>/g, (_, number) => {
-      const thumb = thumbs.get(Number(number));
-      return thumb
-        ? `<div class="narrative-thumb">${thumb}<a class="img-ref" href="#ai-image-${number}">Image ${number}</a></div>`
+    .replace(/<p>\s*@@AIBLOCK@@\s*<\/p>/g, '<div class="finding-block">')
+    .replace(/<p>\s*@@AIEND@@\s*<\/p>/g, '</div>')
+    .replace(/<p>\s*@@AIIMG(\d+)@@\s*<\/p>/g, (_, index) => {
+      const image = images[Number(index)];
+      return image?.thumb
+        ? `<div class="narrative-thumb">${image.thumb}<a class="img-ref" href="#ai-image-${image.number}">Image ${image.number}</a></div>`
         : '';
     })
     .replace(IMAGE_TOKEN, '')
@@ -303,6 +325,19 @@ const REPORT_CSS = `
   }
   .cover-tagline { color: var(--navy); font-size: 16pt; font-weight: bold; margin: 0 0 2.5mm; }
   .cover-lede { margin: 0 0 4mm; font-size: 9pt; color: #3d4c5a; }
+  /* A cover with limitation lines: a lower banner, so the disclaimer stays on
+     the cover (2026-11-12; three head CT lines pushed it onto a page of its own). */
+  .hero.is-compact { padding: 4mm 12mm; margin-bottom: 4mm; }
+  .hero.is-compact h1 { font-size: 19pt; }
+  .hero.is-compact .pipeline { margin-top: 3mm; padding-top: 2.5mm; font-size: 8.5pt; }
+  .cover-tagline.is-compact { font-size: 13pt; margin-bottom: 1.5mm; }
+  .cover-lede.is-compact { font-size: 8.5pt; margin-bottom: 2mm; }
+  .cover-brand.is-compact { padding: 3mm 0 3mm; }
+  .cover-brand.is-compact img { height: 11mm; }
+  .tiles.is-compact { margin-bottom: 3mm; }
+  .facts.is-compact { margin-bottom: 2mm; }
+  .verdict .detail.limitation { font-size: 8pt; line-height: 1.4; }
+  .disclaimer.is-compact { margin-top: 3mm; }
 
   .verdict {
     display: flex;
@@ -460,6 +495,9 @@ const REPORT_CSS = `
   /* ---- narrative ---- */
   .narrative h2 { color: var(--navy); font-size: 14pt; margin: 0 0 3mm; }
   .narrative h3 { color: var(--navy); font-size: 12pt; margin: 0 0 3mm; }
+  /* A finding's heading, its list and its marked frame stay on one page
+     (2026-11-12: a heading alone at the foot of a page, a frame alone at the top). */
+  .finding-block { break-inside: avoid; page-break-inside: avoid; }
   .narrative h4 { color: var(--navy); font-size: 9.5pt; margin: 4mm 0 1.5mm; padding-left: 2.5mm; border-left: 0.8mm solid var(--teal); }
   .narrative p { margin: 2mm 0; }
   .narrative-thumb { display: flex; align-items: flex-end; gap: 3mm; margin: 2mm 0 3mm; break-inside: avoid; page-break-inside: avoid; --fp-thumb: 38mm; }
@@ -626,7 +664,7 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
   // beside "No AI finding passed the automated checks" read as a low-severity
   // result on a study with a possible hyperacute infarct (2026-10-31).
   const anyConfirmed = counts.critical + counts.high + counts.medium + counts.low > 0;
-  const images = new Set(measured.map(finding => finding.frameKey).filter(Boolean)).size;
+  const images = new Set(measured.filter(finding => finding.frameKey).map(frameImageKey)).size;
   const headline = studyHeadline(payload, grouped);
 
   const tiles: [string, string][] = [
@@ -669,8 +707,9 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
     ],
   ];
 
+  const compact = (payload.limitations || []).filter(Boolean).length ? ' is-compact' : '';
   return `
-    <div class="cover-brand">
+    <div class="cover-brand${compact}">
       <img src="${logoUrl}" alt="CIAI Teleradiology" />
       <div class="stamp">
         <b>AI ANALYSIS REPORT</b>
@@ -680,12 +719,12 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
         ${escapeHtml(draftId)}
       </div>
     </div>
-    <div class="hero">
-      <h1>CIAI TELERADIOLOGY<br />AI PART</h1>
+    <div class="hero${compact}">
+      <h1>CIAI TELERADIOLOGY${compact ? ' ' : '<br />'}AI PART</h1>
       <div class="pipeline">ORIGINAL DICOM&nbsp;&nbsp;|&nbsp;&nbsp;AI MARKING &amp; MEASUREMENTS&nbsp;&nbsp;|&nbsp;&nbsp;AI HEATMAP</div>
     </div>
-    <p class="cover-tagline">AI evidence should never hide the diagnostic image.</p>
-    <p class="cover-lede">
+    <p class="cover-tagline${compact}">AI evidence should never hide the diagnostic image.</p>
+    <p class="cover-lede${compact}">
       Each marked image is shown three times: the original frame as the AI read it, the AI's box
       with its size, and a heatmap, with every finding on that image listed above them. The box and
       the heatmap are drawn over the original from the AI's box: blue when the finding passed the
@@ -755,7 +794,7 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
       </div>
     </div>
 
-    <div class="tiles">
+    <div class="tiles${compact}">
       ${tiles
         .map(
           ([value, label]) => `
@@ -767,7 +806,7 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
         .join('')}
     </div>
 
-    <div class="facts">
+    <div class="facts${compact}">
       ${facts
         .map(
           ([key, value]) =>
@@ -778,7 +817,7 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
         .join('')}
     </div>
 
-    <div class="disclaimer">
+    <div class="disclaimer${compact}">
       This document is AI-generated decision support, not a diagnosis. Every measurement, marking and
       impression requires radiologist verification before clinical use. Marked-box sizes are
       measured from DICOM pixel spacing around the AI's box and are upper bounds; AI size estimates
@@ -1054,7 +1093,7 @@ function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string
             ? CONFIRMED_MISMATCH_LABEL
             : CONSISTENCY_LABELS[finding.consistency]
         )}</td>
-        <td>${escapeHtml(formatConfidence(finding.imageScore ?? finding.narrativeScore))}</td>
+        <td>${escapeHtml(formatFindingScore(finding, finding.imageScore ?? finding.narrativeScore))}</td>
       </tr>`
     )
     .join('');
@@ -1369,7 +1408,9 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
   // One evidence page per image, in order of each image's most severe finding.
   const byFrame = new Map<string, GroupedFinding[]>();
   measured.forEach(finding => {
-    const key = finding.frameKey || finding.findingId || finding.name;
+    // One page per image of one series: the windows and the head CT screen
+    // share frame keys (frameImageKey).
+    const key = (finding.frameKey && frameImageKey(finding)) || finding.findingId || finding.name;
     byFrame.set(key, [...(byFrame.get(key) || []), finding]);
   });
   // The narrative's Findings and Impression point at these pages ("Image N")

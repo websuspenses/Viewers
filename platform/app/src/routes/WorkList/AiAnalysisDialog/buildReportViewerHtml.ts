@@ -21,8 +21,9 @@ import {
   EvidenceFinding,
   GroupedFinding,
   buildAllFindingRecords,
-  formatConfidence,
   formatDicomDate,
+  formatFindingScore,
+  frameImageKey,
   getAnomalyFindings,
   getImageSrc,
   getReportableFindings,
@@ -136,9 +137,9 @@ function toViewerFinding(finding: GroupedFinding, onFrame: GroupedFinding[]): Vi
     seriesId: finding.seriesId,
     imageMeasurement: finding.imageMeasurement.display,
     imageMeasured: finding.imageMeasurement.measurable,
-    imageScore: formatConfidence(finding.imageScore),
+    imageScore: formatFindingScore(finding, finding.imageScore),
     narrativeMeasurement: finding.narrativeMeasurement.display,
-    narrativeScore: formatConfidence(finding.narrativeScore),
+    narrativeScore: formatFindingScore(finding, finding.narrativeScore),
     consistency: confirmedMismatch ? CONFIRMED_MISMATCH_LABEL : CONSISTENCY_LABELS[finding.consistency],
     consistencyClass:
       finding.consistency === 'match' ? 'ok' : finding.consistency === 'mismatch' && !confirmedMismatch ? 'flag' : '',
@@ -156,7 +157,7 @@ function toViewerFinding(finding: GroupedFinding, onFrame: GroupedFinding[]): Vi
     panels,
     // A frame without a box for this finding (not located) shows the original
     // alone: the server's composite carries the label from before the review.
-    frameRef: finding.originalImage ? finding.frameKey || finding.findingId || finding.name : '',
+    frameRef: finding.originalImage ? (finding.frameKey && frameImageKey(finding)) || finding.findingId || finding.name : '',
     original: finding.originalImage ? '' : getImageSrc(finding.originalImage),
     annotated: finding.originalImage ? '' : getImageSrc(finding.annotatedImage || finding.heatmapImage),
     heatmap: finding.originalImage ? '' : getImageSrc(finding.heatmapImage),
@@ -379,7 +380,7 @@ export function buildReportViewerHtml(options: ReportViewerOptions) {
   const grouped = getReportableFindings(groupEvidenceFindings(evidence));
   const frames: Record<string, string> = {};
   const findings = grouped.map(finding => {
-    const onFrame = grouped.filter(item => item.frameKey && item.frameKey === finding.frameKey);
+    const onFrame = grouped.filter(item => item.frameKey && frameImageKey(item) === frameImageKey(finding));
     const viewer = toViewerFinding(finding, onFrame);
     if (viewer.frameRef && !frames[viewer.frameRef]) {
       frames[viewer.frameRef] = getImageSrc(finding.originalImage);

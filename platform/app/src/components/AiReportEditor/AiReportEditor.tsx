@@ -110,6 +110,9 @@ const verifyReason = (description?: string) => {
 };
 const cleanDescription = (description?: string) => (description || '').replace(/^\[Verify:[^\]]*\]\s*/, '');
 const findingKey = (finding: AiFindingSummary) => finding.finding_id || `${finding.name}|${finding.frame_key}`;
+/** Where a finding's frame images are kept: per series, as several series can mark one instance (1.6.42). */
+const frameViewKey = (finding: AiFindingSummary) =>
+  finding.series_id ? `${finding.series_id}|${finding.frame_key}` : finding.frame_key || '';
 const versionLabel = (v?: ReportVersionMeta | null) =>
   !v ? '' : v.kind === 'ai_draft' ? `AI draft v${v.version}` : `v${v.version}${v.status !== 'draft' ? ` (${v.status})` : ''}`;
 const formatTime = (iso?: string) => {
@@ -360,20 +363,25 @@ export default function AiReportEditor() {
         decision: findingStates[findingKey(f)].decision,
       }));
 
-  // ---- evidence images (lazy, cached per frame) ----
+  // ---- evidence images (lazy, cached per frame of a series) ----
+  // One instance can be marked by several series (brain / subdural / bone
+  // windows, head CT screen; ai-analysis 1.6.42): the finding's own series,
+  // else the marking with its box, else the first.
   const heatmapPaths = useCallback(
-    (frameKey: string) => {
-      for (const series of aiPayload?.series_with_findings || []) {
-        const heatmap = (series.heatmaps || []).find((h: any) => h.frame_key === frameKey);
-        if (heatmap) {
-          return {
+    (finding: AiFindingSummary) => {
+      const candidates = (aiPayload?.series_with_findings || [])
+        .filter((series: any) => !finding.series_id || series.series_id === finding.series_id)
+        .flatMap((series: any) => (series.heatmaps || []).filter((h: any) => h.frame_key === finding.frame_key));
+      const heatmap =
+        candidates.find((h: any) => (h.anomaly_regions || []).some((r: any) => r.name === finding.name)) ||
+        candidates[0];
+      return heatmap
+        ? {
             heatmapPath: heatmap.output_path,
             annotatedPath: heatmap.gemini_annotated_output_path,
             originalPath: heatmap.original_output_path,
-          };
-        }
-      }
-      return {};
+          }
+        : {};
     },
     [aiPayload]
   );
@@ -382,18 +390,19 @@ export default function AiReportEditor() {
     const key = findingKey(finding);
     setSelected(key === selected ? '' : key);
     const frameKey = finding.frame_key;
-    if (!frameKey || frames[frameKey]) {
+    const viewKey = frameViewKey(finding);
+    if (!frameKey || frames[viewKey]) {
       return;
     }
-    setFrames(current => ({ ...current, [frameKey]: { loading: true } }));
-    fetchFrameImages({ baseUrl: pacsBase, studyInstanceUid: studyUid, instanceId: frameKey, authHeaders, ...heatmapPaths(frameKey) })
+    setFrames(current => ({ ...current, [viewKey]: { loading: true } }));
+    fetchFrameImages({ baseUrl: pacsBase, studyInstanceUid: studyUid, instanceId: frameKey, authHeaders, ...heatmapPaths(finding) })
       .then(images =>
         setFrames(current => ({
           ...current,
-          [frameKey]: { loading: false, original: images.original, marked: images.heatmap || images.annotated },
+          [viewKey]: { loading: false, original: images.original, marked: images.heatmap || images.annotated },
         }))
       )
-      .catch(() => setFrames(current => ({ ...current, [frameKey]: { loading: false, error: true } })));
+      .catch(() => setFrames(current => ({ ...current, [viewKey]: { loading: false, error: true } })));
   };
 
   // ---- save / submit ----
@@ -624,7 +633,7 @@ export default function AiReportEditor() {
   const submitBlocked = usesAiDraft && undecidedFlagged.length > 0;
   const currentFrame = (() => {
     const finding = findings.find(f => findingKey(f) === selected);
-    return finding?.frame_key ? { finding, view: frames[finding.frame_key] } : null;
+    return finding?.frame_key ? { finding, view: frames[frameViewKey(finding)] } : null;
   })();
 
   return (
