@@ -12,6 +12,7 @@ import {
   FrameImages,
   fetchReportProgress,
   fetchReportResult,
+  isAnalysisIncomplete,
   normalizeStatus,
   triggerReportGeneration,
 } from './aiPipeline';
@@ -236,7 +237,10 @@ export default function useAiReportPipeline({
       if (slots <= 0) {
         break;
       }
-      if (state.stage === 'analyzed' && !triggered.has(uid)) {
+      // Not after an incomplete analysis (1.6.43): a report built from the images
+      // that were read would read as complete; "Generate" stays available, and
+      // the plugin reads the missing images again first.
+      if (state.stage === 'analyzed' && !isAnalysisIncomplete(state.analysis) && !triggered.has(uid)) {
         slots -= 1;
         generateReport(uid);
       }

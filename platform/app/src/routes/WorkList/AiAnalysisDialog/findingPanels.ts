@@ -23,12 +23,20 @@ import { escapeHtml } from './reportMarkdown';
 
 // physiological (ai-analysis 1.6.37): a normal calcification the study review
 // lists as an observation (radiologist 2026-11-10), never a finding to verify.
-export const STATUS_COLORS = { confirmed: '#007AFF', pending: '#F59E0B', physiological: '#64748B' } as const;
+// candidate (ai-analysis 1.6.43): a head CT screen measurement with no head
+// injury recorded - listed apart from the findings, never stated.
+export const STATUS_COLORS = {
+  confirmed: '#007AFF',
+  pending: '#F59E0B',
+  physiological: '#64748B',
+  candidate: '#7C3AED',
+} as const;
 export type FindingStatus = keyof typeof STATUS_COLORS;
 export const STATUS_LABELS: Record<FindingStatus, string> = {
   confirmed: 'CONFIRMED',
   pending: 'PENDING VERIFICATION',
   physiological: 'PHYSIOLOGICAL',
+  candidate: 'CANDIDATE - NOT VALIDATED',
 };
 
 const VERIFY_PREFIX = /^\[Verify: ([^\]]*)\]\s*/;
@@ -36,6 +44,9 @@ const VERIFY_PREFIX = /^\[Verify: ([^\]]*)\]\s*/;
 export function findingStatus(finding: { description?: string; reviewTier?: string }): FindingStatus {
   if (finding.reviewTier === 'physiological') {
     return 'physiological';
+  }
+  if (finding.reviewTier === 'candidate') {
+    return 'candidate';
   }
   return VERIFY_PREFIX.test(finding.description || '') ? 'pending' : 'confirmed';
 }
@@ -70,7 +81,7 @@ const SHORT_REASONS: [RegExp, string][] = [
   [/possible pneumocephalus/i, 'possible pneumocephalus'],
   // 1.6.38: blood inside the skull along the inner table (thin collection).
   [/possible thin extra-axial/i, 'possible extra-axial blood'],
-  [/faint dense spot/i, 'faint density, no blood patch'],
+  [/faint dense spot/i, 'faint density, too little blood'],
   [/contrast-enhanced scan/i, 'contrast scan'],
   [/open sutures and fontanelles/i, 'sutures in a young child'],
   [/head-injury reading/i, 'new head-injury reading'],
@@ -270,13 +281,16 @@ export function renderFindingPanelsHtml(
       <div class="fp-caption">${caption}</div>
     </div>`;
   const statuses = new Set(boxed.map(findingStatus));
-  const legend = (['confirmed', 'pending'] as const)
+  const legendText = {
+    confirmed: 'confirmed by the automated checks',
+    pending: 'pending verification',
+    candidate: 'candidate, not validated',
+  };
+  const legend = (['confirmed', 'pending', 'candidate'] as const)
     .filter(status => statuses.has(status))
     .map(
       status =>
-        `<span class="fp-swatch" style="border-color:${STATUS_COLORS[status]}"></span>${
-          status === 'confirmed' ? 'confirmed by the automated checks' : 'pending verification'
-        }`
+        `<span class="fp-swatch" style="border-color:${STATUS_COLORS[status]}"></span>${legendText[status]}`
     )
     .join(' &nbsp; ');
   return `
@@ -346,6 +360,7 @@ export const FINDING_PANEL_CSS = `
   .fp-status-confirmed { background: #007AFF; }
   .fp-status-pending { background: #F59E0B; color: #1f1300; }
   .fp-status-physiological { background: #64748B; }
+  .fp-status-candidate { background: #7C3AED; }
   .fp-reason { font-size: 7pt; font-weight: bold; color: #9a5b00; }
   .badge-line { margin-top: 0.6mm; }
 `;

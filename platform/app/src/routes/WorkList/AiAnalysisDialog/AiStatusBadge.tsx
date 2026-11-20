@@ -63,7 +63,10 @@ function getBadgeContent(state: AiStudyState) {
         detail: describeAnalysis(state.analysis) || 'Ready for report generation',
       };
     case 'ready':
-      return { label: 'AI report ready', detail: 'Open the AI report' };
+      // Some images were not read (1.6.43): the report says so, and so does the badge.
+      return isAnalysisIncomplete(state.analysis)
+        ? { label: 'AI report ready - analysis incomplete', detail: describeAnalysis(state.analysis) || 'Some images were not read' }
+        : { label: 'AI report ready', detail: 'Open the AI report' };
     case 'analysisFailed':
     case 'reportFailed':
       return { label: STAGE_LABELS[state.stage], detail: state.error || 'Open for details' };

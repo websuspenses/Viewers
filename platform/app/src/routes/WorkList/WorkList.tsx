@@ -159,11 +159,13 @@ function WorkList({
   // "RTA", "fall", "head injury" there turn the head-injury reading on (1.6.39).
   const clinicalHistory = useCallback(
     async (studyInstanceUid: string) => {
-      const patientId = (studies || []).find(study => study.studyInstanceUid === studyInstanceUid)?.mrn;
+      const study = (studies || []).find(item => item.studyInstanceUid === studyInstanceUid);
+      const patientId = study?.mrn;
       if (!patientId || !nodeAppHost) {
         return '';
       }
-      return clinicalHistoryText(await getPatientHistory(reviewApi, patientId), studyInstanceUid);
+      // The study's patient name: another study's notes are used only for the same patient (1.6.43).
+      return clinicalHistoryText(await getPatientHistory(reviewApi, patientId), studyInstanceUid, study?.patientName);
     },
     [studies, reviewApi, nodeAppHost]
   );

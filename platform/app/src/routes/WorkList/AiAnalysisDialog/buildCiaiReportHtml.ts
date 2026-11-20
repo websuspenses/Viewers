@@ -18,6 +18,7 @@ import {
   EvidenceFinding,
   GroupedFinding,
   buildAllFindingRecords,
+  buildEvidenceFindings,
   formatDicomDate,
   formatFindingScore,
   frameImageKey,
@@ -338,6 +339,16 @@ const REPORT_CSS = `
   .facts.is-compact { margin-bottom: 2mm; }
   .verdict .detail.limitation { font-size: 8pt; line-height: 1.4; }
   .disclaimer.is-compact { margin-top: 3mm; }
+  /* A long verdict box (four or more limitation lines, names to verify first):
+     smaller limitation text and tighter tables; at the longest the paragraph on
+     the three panels goes (each image page's captions say the same). Above
+     about 297 mm the footer lands on a page of its own (1.6.45: L. Durga's
+     cover was 309 mm, P. Mastani's 319 mm). */
+  .verdict.is-tight .detail.limitation { font-size: 7.5pt; line-height: 1.3; }
+  .tiles.is-tight .tile { padding: 2.2mm 2mm; }
+  .facts.is-tight .key, .facts.is-tight .val { padding-top: 1.3mm; padding-bottom: 1.3mm; }
+  .disclaimer.is-tight { margin-top: 2mm; padding: 2mm 3mm; line-height: 1.4; }
+  .cover-lede.is-tightest { display: none; }
 
   .verdict {
     display: flex;
@@ -452,7 +463,10 @@ const REPORT_CSS = `
   /* A finding's evidence fits one printed page: the three images sit side by
      side (original first), so the verification panel no longer continues
      overleaf onto a page carrying nothing else. */
-  .evidence { break-inside: avoid; page-break-inside: avoid; }
+  /* No break-inside: avoid on the whole image block: it starts its own page
+     anyway, and when it is taller than a page the browser pushed it to the
+     next one and left the page header alone (1.6.46 print check). Panels and
+     table rows keep themselves together. */
   .evidence h2.finding { font-size: 15pt; margin-bottom: 1.5mm; }
   .evidence .finding-meta { margin-bottom: 3mm; }
   .evidence .stages { margin-bottom: 3mm; }
@@ -472,8 +486,8 @@ const REPORT_CSS = `
   .verify-flag { color: #ad2d45; font-size: 7pt; font-weight: bold; margin-top: 0.6mm; }
   table.grid .flag, .flag { color: #ad2d45; font-size: 7pt; font-weight: bold; }
   .evidence .panel .caption { padding: 1.5mm 2.5mm; font-size: 6.5pt; }
-  .evidence table.verify { font-size: 7.5pt; }
-  .evidence table.verify th, .evidence table.verify td { padding: 1.4mm 2.5mm; }
+  table.verify.signoff { font-size: 7.5pt; }
+  table.verify.signoff th, table.verify.signoff td { padding: 1.4mm 2.5mm; }
   .evidence .note { margin-top: 2.5mm; }
 
 
@@ -491,6 +505,11 @@ const REPORT_CSS = `
      footer, so the footer never lands on a page of its own (2026-10-31). */
   .keep-with-footer { page-break-inside: avoid; break-inside: avoid; }
   .keep-with-footer .sheet-footer { margin-top: 8mm; }
+  /* A sheet's last small block and its footer (makeSheet with a tail). */
+  .sheet-body.has-tail { display: flex; flex-direction: column; }
+  .sheet-tail { flex: 1 0 auto; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
+  .sheet-tail-gap { flex: 1 0 auto; min-height: 4mm; }
+  .sheet-tail .sheet-footer { margin-top: 0; }
 
   /* ---- narrative ---- */
   .narrative h2 { color: var(--navy); font-size: 14pt; margin: 0 0 3mm; }
@@ -588,12 +607,30 @@ function sheetFooter(sectionLabel: string) {
   `;
 }
 
-function makeSheet(body: string, sectionLabel: string, header: string) {
-  return `
-    <section class="sheet">
+/**
+ * A sheet. Its tail, when given (an image page's sign-off table, the cover's
+ * disclaimer), stays with the footer: content that runs past one page takes
+ * them both onto the next page, so the footer never prints on a page of its
+ * own, whatever the study (1.6.45-1.6.46: Durga's cover, K. Venkata Ramana's
+ * image page with its largest-extent row). On a page that fits, the footer
+ * stays at the bottom.
+ */
+function makeSheet(body: string, sectionLabel: string, header: string, tail = '', sheetClass = '') {
+  if (!tail) {
+    return `
+    <section class="sheet${sheetClass}">
       ${header}
       <div class="sheet-body">${body}</div>
       ${sheetFooter(sectionLabel)}
+    </section>
+  `;
+  }
+  return `
+    <section class="sheet${sheetClass}">
+      ${header}
+      <div class="sheet-body has-tail">${body}
+        <div class="sheet-tail">${tail}<div class="sheet-tail-gap"></div>${sheetFooter(sectionLabel)}</div>
+      </div>
     </section>
   `;
 }
@@ -642,6 +679,13 @@ const CONFIRMED_MISMATCH_LABEL = 'AI estimate larger than marked box';
  * study result is never read as normal (radiologist feedback 2026-11-06: a
  * head injury with an extradural haematoma read "No AI finding passed").
  */
+// About this many characters fill a printed line of the cover's verdict box.
+const COVER_LINE_CHARS = 104;
+// Verdict-box lines (limitations and names to verify first) from which the
+// cover is set tighter, and from which the paragraph on the panels goes.
+const COVER_TIGHT_LINES = 9;
+const COVER_TIGHTEST_LINES = 14;
+
 function renderLimitations(payload: AiCompletePayload) {
   const lines = (payload.limitations || []).filter(Boolean);
   return lines.length
@@ -649,7 +693,11 @@ function renderLimitations(payload: AiCompletePayload) {
     : '';
 }
 
-function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: CoverTotals) {
+function renderCoverBody(
+  options: ReportBuildOptions,
+  draftId: string,
+  totals: CoverTotals
+): { body: string; tail: string } {
   const { payload, study, logoUrl } = options;
   const { grouped, measured, reported, excludedCount, lowSeverityCount, setAsideCount, lowPendingCount } = totals;
   const patient = payload.patient_info || {};
@@ -684,6 +732,12 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
   // At most three names; the cover has room for about two lines here.
   const verifyNames = verifyFirst.slice(0, 3);
   const verifyMore = verifyFirst.length - verifyNames.length;
+  // Printed lines of the verdict box's text that varies by study.
+  const verdictLines =
+    (payload.limitations || [])
+      .filter(Boolean)
+      .reduce((sum, line) => sum + Math.ceil(line.length / COVER_LINE_CHARS), 0) +
+    Math.ceil(verifyNames.map(finding => `${finding.name} (medium)`).join(', ').length / COVER_LINE_CHARS);
 
   const facts: [string, string][] = [
     ['Patient', patient.patient_name || study.patientName || 'Not available'],
@@ -708,7 +762,13 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
   ];
 
   const compact = (payload.limitations || []).filter(Boolean).length ? ' is-compact' : '';
-  return `
+  const tight =
+    verdictLines >= COVER_TIGHTEST_LINES
+      ? ' is-tight is-tightest'
+      : verdictLines >= COVER_TIGHT_LINES
+        ? ' is-tight'
+        : '';
+  const body = `
     <div class="cover-brand${compact}">
       <img src="${logoUrl}" alt="CIAI Teleradiology" />
       <div class="stamp">
@@ -724,7 +784,7 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
       <div class="pipeline">ORIGINAL DICOM&nbsp;&nbsp;|&nbsp;&nbsp;AI MARKING &amp; MEASUREMENTS&nbsp;&nbsp;|&nbsp;&nbsp;AI HEATMAP</div>
     </div>
     <p class="cover-tagline${compact}">AI evidence should never hide the diagnostic image.</p>
-    <p class="cover-lede${compact}">
+    <p class="cover-lede${compact}${tight}">
       Each marked image is shown three times: the original frame as the AI read it, the AI's box
       with its size, and a heatmap, with every finding on that image listed above them. The box and
       the heatmap are drawn over the original from the AI's box: blue when the finding passed the
@@ -737,7 +797,7 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
     </div>
     <div class="verdict ${
       worst === 'critical' ? 'is-critical' : verifyFirst.length ? 'is-verify' : ''
-    }">
+    }${tight}">
       <div class="verdict-badges">
         <span class="sev ${severityClass(worst)}">${escapeHtml(
           anyConfirmed ? worst : 'None confirmed'
@@ -794,7 +854,7 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
       </div>
     </div>
 
-    <div class="tiles${compact}">
+    <div class="tiles${compact}${tight}">
       ${tiles
         .map(
           ([value, label]) => `
@@ -806,7 +866,7 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
         .join('')}
     </div>
 
-    <div class="facts${compact}">
+    <div class="facts${compact}${tight}">
       ${facts
         .map(
           ([key, value]) =>
@@ -817,7 +877,9 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
         .join('')}
     </div>
 
-    <div class="disclaimer${compact}">
+  `;
+  const tail = `
+    <div class="disclaimer${compact}${tight}">
       This document is AI-generated decision support, not a diagnosis. Every measurement, marking and
       impression requires radiologist verification before clinical use. Marked-box sizes are
       measured from DICOM pixel spacing around the AI's box and are upper bounds; AI size estimates
@@ -825,6 +887,7 @@ function renderCoverBody(options: ReportBuildOptions, draftId: string, totals: C
       "Verify" rather than removed.
     </div>
   `;
+  return { body, tail };
 }
 
 /** Severity as a compact dot + word, so it stays visible without owning a column. */
@@ -842,13 +905,38 @@ function occurrenceNote(finding: GroupedFinding) {
   return `<span class="occ">seen ${finding.occurrences}&times;</span>`;
 }
 
+// ai-analysis ends the description of a merged lesion with its other names.
+// An image page lists the first few: L. Durga's 25 names pushed the page's
+// footer onto a page of its own (1.6.45). The findings table lists them all.
+const ALSO_REPORTED = 'Also reported on neighbouring slices as: ';
+const ALSO_REPORTED_ON_IMAGE_PAGE = 6;
+
+function shortenAlsoReported(text: string, maxNames: number) {
+  const at = text.indexOf(ALSO_REPORTED);
+  if (at < 0) {
+    return text;
+  }
+  const names = text
+    .slice(at + ALSO_REPORTED.length)
+    .trim()
+    .replace(/\.$/, '')
+    .split(', ');
+  if (names.length <= maxNames) {
+    return text;
+  }
+  return `${text.slice(0, at)}${ALSO_REPORTED}${names.slice(0, maxNames).join(', ')} and ${
+    names.length - maxNames
+  } more.`;
+}
+
 /**
  * Status badge (CONFIRMED / PENDING VERIFICATION, with the short reasons) and
  * the finding's own description. The review's full reasons and HU numbers are
  * in the verification notes at the end (client requirement 2026-10-30).
  */
-function renderDescription(description: string, reviewTier?: string) {
-  const rest = plainDescription(description);
+function renderDescription(description: string, reviewTier?: string, maxAlsoNames?: number) {
+  const plain = plainDescription(description);
+  const rest = maxAlsoNames ? shortenAlsoReported(plain, maxAlsoNames) : plain;
   return `<div class="badge-line">${statusBadgeHtml({ description, reviewTier })}</div>${
     rest ? `<div class="sub">${escapeHtml(rest)}</div>` : ''
   }`;
@@ -1026,14 +1114,19 @@ function flowTables<T = GroupedFinding>(tables: TableSpec<T>[], budgetMm = SHEET
  * with several findings used to get a page per finding, repeating the same
  * pictures up to eleven times in one report.
  */
-function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string, imageNumber: number) {
+function renderEvidenceBody(
+  findings: GroupedFinding[],
+  studyInstanceUid: string,
+  imageNumber: number
+): { body: string; tail: string } {
   const lead = findings[0];
   // One lesion seen on several slices: its largest box, drawn on another
   // frame, is the second image (ai-analysis 1.6.33 groups the slices).
   const view = findings.length === 1 && lead.largestView?.originalImage ? lead.largestView : null;
   // Three panels drawn over the original frame (findingPanels.ts); results
   // without the original or a box fall back to the analysis service's marking.
-  const panelMm = view ? 40 : Math.max(46, 60 - Math.max(0, findings.length - 1) * 6);
+  // Two rows of panels (the largest extent) at 40 mm filled the page to 297 mm.
+  const panelMm = view ? 36 : Math.max(46, 60 - Math.max(0, findings.length - 1) * 6);
   const threePanels = renderFindingPanelsHtml(
     findings,
     lead.originalImage,
@@ -1074,7 +1167,7 @@ function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string
         <td class="id">${escapeHtml(finding.findingId || '—')}</td>
         <td><span class="sev ${severityClass(finding.severity)}">${escapeHtml(finding.severity)}</span>
           <b>${escapeHtml(finding.name)}</b>
-          ${renderDescription(finding.description, finding.reviewTier)}
+          ${renderDescription(finding.description, finding.reviewTier, ALSO_REPORTED_ON_IMAGE_PAGE)}
           ${
             finding.imageRegionName && finding.imageRegionName !== finding.name
               ? `<div class="sub">Marked as: ${escapeHtml(finding.imageRegionName)}</div>`
@@ -1122,7 +1215,7 @@ function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string
   // page to one sheet (2 findings on one image used to spill a blank page).
   const imageMm = Math.max(55, 88 - Math.max(0, findings.length - 1) * 16);
 
-  return `
+  const body = `
     <div class="evidence" style="--evidence-img:${imageMm}mm;--fp-img:${panelMm}mm">
     <h2 class="finding" id="ai-image-${imageNumber}">Image ${imageNumber} — ${escapeHtml(
       findings.length === 1 ? lead.name : `${findings.length} findings`
@@ -1148,8 +1241,10 @@ function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string
 
     ${threePanels || `<div class="panel-row">${panels.map(renderPanel).join('')}</div>`}
     ${largestPanels ? `${largestNote}${largestPanels}` : ''}
-
-    <table class="verify">
+    </div>
+  `;
+  const tail = `
+    <table class="verify signoff">
       <tbody>
         <tr>
           <th>Source frame</th><td>${escapeHtml(lead.frameKey || 'Not stated')}</td>
@@ -1167,8 +1262,8 @@ function renderEvidenceBody(findings: GroupedFinding[], studyInstanceUid: string
         </tr>
       </tbody>
     </table>
-    </div>
   `;
+  return { body, tail };
 }
 
 /** The study review's reasons in full, for every finding pending verification. */
@@ -1253,6 +1348,48 @@ function lowRatedRows(payload: AiCompletePayload): SetAsideRow[] {
       reasons: finding.tier === 'verify' ? verifyReasons(finding.description) : [],
     }))
   );
+}
+
+/**
+ * Head CT screen measurements with no head injury recorded (ai-analysis
+ * 1.6.43): their own list, after the findings, never counted as findings.
+ * Radiologist review 2026-11-19: 23 of the screen's 24 collections were bone
+ * partial volume at the skull base, but one was a true extradural haematoma,
+ * so they stay visible with their images.
+ */
+function renderCandidatesBody(candidates: GroupedFinding[], firstImage: number, pageOf: Map<GroupedFinding, number>) {
+  const rows = candidates
+    .map(
+      finding => `
+      <tr>
+        <td><b>${escapeHtml(finding.findingId || '')}</b></td>
+        <td><b>${escapeHtml(finding.name)}</b><div class="note" style="margin:0">${escapeHtml(
+          plainDescription(finding.description)
+        )}</div></td>
+        <td>${
+          pageOf.has(finding)
+            ? `<a class="img-ref" href="#ai-image-${pageOf.get(finding)}">Image ${pageOf.get(finding)}</a>`
+            : 'Not marked'
+        }</td>
+      </tr>`
+    )
+    .join('');
+  return `
+    ${sectionHeading('Head CT screen: measured candidates (not findings)')}
+    <p class="note" style="margin-top:0;margin-bottom:3.5mm">
+      No head injury is recorded for this study. The head CT screen measured these from the CT numbers:
+      possible blood along the skull, air or scalp swelling. The screen is not validated - most such
+      measurements at the level of the skull base have been bone averaged with brain - so they are not
+      findings and are not in the Impression. Check each image${
+        firstImage ? ` (from Image ${firstImage})` : ''
+      }; if there was a head injury, record it (clinical history or "Treat as head injury") and regenerate the report.
+    </p>
+    <table class="grid">
+      <thead>
+        <tr><th style="width:14%">ID</th><th style="width:70%">Candidate (measured)</th><th style="width:16%">Image</th></tr>
+      </thead>
+      <tbody>${rows}</tbody>
+    </table>`;
 }
 
 function renderSetAsideBody(rows: SetAsideRow[], part: number, partCount: number) {
@@ -1352,26 +1489,22 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
   const lowSeverityCount = anomalies.filter(finding => !isReportableFinding(finding)).length;
 
   const sheets: string[] = [];
-  const addSheet = (body: string, sectionLabel: string) => {
-    sheets.push(makeSheet(body, sectionLabel, header));
+  const addSheet = (body: string, sectionLabel: string, tail = '') => {
+    sheets.push(makeSheet(body, sectionLabel, header, tail));
   };
 
   // Cover carries its own brand band instead of the running header.
-  sheets.push(
-    `<section class="sheet sheet-cover">
-      <div class="sheet-body">${renderCoverBody(options, draftId, {
-        anomalies,
-        grouped,
-        measured,
-        reported,
-        excludedCount,
-        lowSeverityCount,
-        setAsideCount: setAsideRows(payload).length,
-        lowPendingCount: lowRatedRows(payload).filter(row => row.status === LOW_PENDING_STATUS).length,
-      })}</div>
-      ${sheetFooter(draftId)}
-    </section>`
-  );
+  const cover = renderCoverBody(options, draftId, {
+    anomalies,
+    grouped,
+    measured,
+    reported,
+    excludedCount,
+    lowSeverityCount,
+    setAsideCount: setAsideRows(payload).length,
+    lowPendingCount: lowRatedRows(payload).filter(row => row.status === LOW_PENDING_STATUS).length,
+  });
+  sheets.push(makeSheet(cover.body, draftId, '', cover.tail, ' sheet-cover'));
 
   const tables: TableSpec[] = [
     {
@@ -1430,11 +1563,43 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
         ),
       })
     );
+    const page = renderEvidenceBody(findings, study.studyInstanceUid, index + 1);
     addSheet(
-      renderEvidenceBody(findings, study.studyInstanceUid, index + 1),
-      `Image ${index + 1} · ${findings.map(finding => finding.findingId || finding.name).join(', ')}`
+      page.body,
+      `Image ${index + 1} · ${findings.map(finding => finding.findingId || finding.name).join(', ')}`,
+      page.tail
     );
   });
+
+  // Head CT screen candidates (ai-analysis 1.6.43): a list and image pages of
+  // their own, numbered after the findings' images.
+  const candidates = groupEvidenceFindings(
+    buildEvidenceFindings({ ...payload, findings_summary: payload.candidates_summary || [] }, { requireEvidence: false })
+  );
+  if (candidates.length) {
+    const candidateFrames = new Map<string, GroupedFinding[]>();
+    getTier(candidates, 'measured').forEach(finding => {
+      const key = (finding.frameKey && frameImageKey(finding)) || finding.findingId || finding.name;
+      candidateFrames.set(key, [...(candidateFrames.get(key) || []), finding]);
+    });
+    const firstImage = byFrame.size + 1;
+    const pageOf = new Map<GroupedFinding, number>();
+    Array.from(candidateFrames.values()).forEach((findings, index) =>
+      findings.forEach(finding => pageOf.set(finding, firstImage + index))
+    );
+    addSheet(
+      renderCandidatesBody(candidates, candidateFrames.size ? firstImage : 0, pageOf),
+      'Head CT screen candidates'
+    );
+    Array.from(candidateFrames.values()).forEach((findings, index) => {
+      const page = renderEvidenceBody(findings, study.studyInstanceUid, firstImage + index);
+      addSheet(
+        page.body,
+        `Image ${firstImage + index} · candidate ${findings.map(finding => finding.findingId || finding.name).join(', ')}`,
+        page.tail
+      );
+    });
+  }
 
   if (includeNarrative && payload.report?.report_text) {
     // One flowing sheet: a page per section printed one-sentence sections such

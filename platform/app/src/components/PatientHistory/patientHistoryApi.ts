@@ -81,13 +81,22 @@ const CURRENT_NOTES_DAYS = 30;
  * for this study, else the latest notes if entered in the last 30 days. Only
  * the current presentation - an old "fall" in the past history must not turn
  * the head-injury reading on - so the background fields are not sent.
+ *
+ * 1.6.43: another study's notes only when the history is this patient's (the
+ * stored name and the study's patient name both known and the same). Lab
+ * Patient IDs are reused: Gagan Babu's "Head injury, Fall down" (ID 012) was
+ * read into Y. Venkata Ramana's normal study (ID 012) as a head injury.
  */
-export function clinicalHistoryText(history: PatientHistory, studyId?: string): string {
+export function clinicalHistoryText(history: PatientHistory, studyId?: string, patientName?: string): string {
   const entries = (history?.entries || []).filter(entry => (entry.clinical_notes || '').trim());
   const own = entries.filter(entry => studyId && entry.study_id === studyId);
+  const storedName = history?.profile?.full_name;
+  const samePatient = Boolean(storedName && patientName && sameName(storedName, patientName));
   const latest = [...entries].sort((a, b) => Date.parse(b.created_at) - Date.parse(a.created_at))[0];
   const recent =
-    latest && Date.now() - Date.parse(latest.created_at) <= CURRENT_NOTES_DAYS * 24 * 3600 * 1000 ? [latest] : [];
+    samePatient && latest && Date.now() - Date.parse(latest.created_at) <= CURRENT_NOTES_DAYS * 24 * 3600 * 1000
+      ? [latest]
+      : [];
   return (own.length ? own : recent)
     .map(entry => (entry.clinical_notes || '').trim())
     .join(' ')

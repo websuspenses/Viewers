@@ -102,6 +102,11 @@ export type AiCompletePayload = {
   study_info?: Record<string, any>;
   series_with_findings?: any[];
   findings_summary?: AiFindingSummary[];
+  /** Head CT screen measurements with no head injury recorded (ai-analysis 1.6.43), listed apart. */
+  candidates_summary?: AiFindingSummary[];
+  /** Images the AI actually read, and the images of the analysed series (plugin 1.6.43). */
+  images_read?: number;
+  images_total?: number;
   total_series_analyzed?: number;
   /** Every series in the study (plugin 1.6.27); total_series_analyzed is the ones the AI read. */
   total_series_in_study?: number;
@@ -455,6 +460,16 @@ export function studyHeadline(
   payload: AiCompletePayload | null,
   grouped: { reviewTier?: string; keyFinding?: boolean }[]
 ) {
+  // Images the AI could not read (plugin 1.6.43) come first: a headline from
+  // part of the study must not read as the whole study.
+  const read = payload?.images_read;
+  const total = payload?.images_total;
+  const unread =
+    typeof read === 'number' && typeof total === 'number' && read < total
+      ? read === 0
+        ? `AI analysis failed: none of the ${total} images were read`
+        : `AI analysis incomplete: ${read} of ${total} images read`
+      : '';
   const keyed = (payload?.findings_summary || []).some(row => typeof row?.key_finding === 'boolean');
   const findingsOnly = grouped.filter(finding => !isPhysiological(finding));
   const stated = keyed ? findingsOnly.filter(finding => finding.keyFinding) : findingsOnly;
@@ -462,6 +477,7 @@ export function studyHeadline(
   const lowPriority = findingsOnly.length - stated.length;
   const physiological = grouped.length - findingsOnly.length;
   return [
+    unread,
     stated.length
       ? count(stated.length, 'finding stated in the Impression', 'findings stated in the Impression')
       : NO_FINDING_HEADLINE,
@@ -1201,7 +1217,10 @@ const RAISED_SEVERITIES = ['critical', 'high', 'medium'];
 export function summarizeStudySeverities<
   T extends { severity?: string; description?: string; reviewTier?: string }
 >(findings: T[]) {
-  const flagged = findings.filter(isFlaggedFinding);
+  // A physiological calcification not marked on an image keeps the review's
+  // "[Verify: not marked ...]" note, but it is not pending (1.6.45: Durga's
+  // cover counted 4 of them as flagged for verification).
+  const flagged = findings.filter(finding => isFlaggedFinding(finding) && !isPhysiological(finding));
   return {
     // Physiological calcifications are not findings (1.6.37): not counted.
     confirmed: summarizeSeverities(
