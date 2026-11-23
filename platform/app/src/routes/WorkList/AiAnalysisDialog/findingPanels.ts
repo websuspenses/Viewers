@@ -7,7 +7,11 @@
  *  2. AI marking & measurements — every box on the frame in its status colour
  *     (blue: passed the automated checks; amber: pending verification),
  *     crosshairs, and the box's width and height in mm on dark pills.
- *  3. Heatmap — a blue-to-red glow centred on each box, at 45 % opacity.
+ *  3. Heatmap — as in the client's reference (2026-11-20): one blob per box,
+ *     red at its centre through orange, yellow, green and cyan to blue,
+ *     fading to transparent, on the lesion measured inside the box when there
+ *     is one (heatBox); a "High / Low" colour bar; only the orientation
+ *     letters, no other text.
  *
  * Panels 2 and 3 are drawn here over the one original image: the box colour
  * follows the study review, which only exists after the marking images were
@@ -15,8 +19,9 @@
  *
  * Honest by construction (CLAUDE.md "Safety over completeness"): the mm values
  * are the AI's box measured from DICOM pixel spacing, an upper bound, not a
- * traced measurement; the heatmap is drawn from the box, not a model attention
- * map, which the models as deployed do not provide. The captions say so.
+ * traced measurement; the heatmap is drawn from the box or the CT pixels
+ * measured inside it, not a model attention map, which the models as deployed
+ * do not provide. The captions say so.
  */
 import { getImageSrc } from './aiReportModel';
 import { escapeHtml } from './reportMarkdown';
@@ -156,6 +161,14 @@ export type PanelFinding = {
   bbox: number[] | null;
   /** Width and height of the box in mm (DICOM pixel spacing), or null. */
   boxMm: number[] | null;
+  /**
+   * The lesion measured inside the box (ai-analysis 1.6.48: the blood-range
+   * patch or the calcium spot, aiReportModel heatBoxOf), normalised like
+   * bbox; null: the heatmap is drawn on the box.
+   */
+  heatBox?: number[] | null;
+  /** What heatBox is: "blood" or "calcium" ("" without one). */
+  heatBasis?: string;
 };
 
 export type PanelMeta = {
@@ -165,6 +178,8 @@ export type PanelMeta = {
 };
 
 const pct = (value: number) => `${(Math.max(0, Math.min(1, value)) * 100).toFixed(2)}%`;
+// Not clamped: a blob near the edge runs past the image (clipped by its frame).
+const pctFree = (value: number) => `${(value * 100).toFixed(2)}%`;
 const mm = (value: number) => (value >= 10 ? String(Math.round(value)) : String(Math.round(value * 10) / 10));
 
 function validBox(box: number[] | null): box is number[] {
@@ -236,16 +251,104 @@ function markingHtml(finding: PanelFinding, withSizes: boolean) {
   return parts.join('');
 }
 
+// The heatmap spec, shared with ai-analysis app/services/heat_style.py (the
+// doctor DOCX and the server image): keep the two in step.
+// - Where: heatBox when there is one, else the AI box.
+// - Size: radii HEAT_RADIUS_SCALE x half its width and height, at least
+//   HEAT_MIN_RADIUS_MM (1.5 cm across), or HEAT_MIN_RADIUS_FRACTION of the
+//   image without the box's size in mm.
+// - Strength at the elliptical distance d (1 at the radii): exp(-(d / HEAT_SIGMA)^2);
+//   colour HEAT_STOPS by strength; opacity HEAT_MAX_ALPHA x strength^HEAT_ALPHA_GAMMA,
+//   faded in from nothing at HEAT_MIN_STRENGTH to full at HEAT_FADE_STRENGTH.
+// - Overlapping blobs: the DOCX takes the stronger value; here they are drawn
+//   over each other, each in its own colours, so overlapping edges never turn
+//   red either.
+const HEAT_STOPS: [number, [number, number, number]][] = [
+  [0, [0, 0, 255]],
+  [0.25, [0, 255, 255]],
+  [0.45, [0, 255, 0]],
+  [0.62, [255, 255, 0]],
+  [0.8, [255, 140, 0]],
+  [1, [255, 0, 0]],
+];
+const HEAT_SIGMA = 0.55;
+const HEAT_MIN_STRENGTH = 0.06;
+const HEAT_FADE_STRENGTH = 0.12;
+const HEAT_MAX_ALPHA = 0.9;
+const HEAT_ALPHA_GAMMA = 0.6;
+const HEAT_RADIUS_SCALE = 1.2;
+const HEAT_MIN_RADIUS_MM = 7.5;
+const HEAT_MIN_RADIUS_FRACTION = 0.04;
+
+function heatColour(strength: number) {
+  const upper = HEAT_STOPS.findIndex(([stop]) => stop >= strength);
+  if (upper <= 0) {
+    return HEAT_STOPS[Math.max(0, upper)][1];
+  }
+  const [s0, c0] = HEAT_STOPS[upper - 1];
+  const [s1, c1] = HEAT_STOPS[upper];
+  const t = (strength - s0) / (s1 - s0);
+  return c0.map((value, channel) => Math.round(value + (c1[channel] - value) * t));
+}
+
+// The blob as a radial gradient over its ellipse (closest-side = the radii),
+// sampled every 5 % of the radius.
+const HEAT_GRADIENT = `radial-gradient(closest-side, ${Array.from({ length: 21 }, (_, step) => {
+  const d = step / 20;
+  const strength = Math.exp(-((d / HEAT_SIGMA) ** 2));
+  const fade = Math.min(1, Math.max(0, (strength - HEAT_MIN_STRENGTH) / (HEAT_FADE_STRENGTH - HEAT_MIN_STRENGTH)));
+  const alpha = HEAT_MAX_ALPHA * strength ** HEAT_ALPHA_GAMMA * fade;
+  return `rgba(${heatColour(strength).join(', ')}, ${alpha.toFixed(3)}) ${step * 5}%`;
+}).join(', ')})`;
+
+// The colour bar: red (High) at the top to blue (Low) at the bottom.
+const HEAT_BAR = `linear-gradient(to bottom, ${[...HEAT_STOPS]
+  .reverse()
+  .map(([stop, colour]) => `rgb(${colour.join(', ')}) ${Math.round((1 - stop) * 100)}%`)
+  .join(', ')})`;
+
 function heatHtml(finding: PanelFinding) {
-  const [y0, x0, y1, x1] = finding.bbox as number[];
-  // Twice the box (at least 8 % of the image), so the glow reaches past it.
-  const width = Math.max(0.08, (x1 - x0) * 2);
-  const height = Math.max(0.08, (y1 - y0) * 2);
+  const [b0, b1, b2, b3] = finding.bbox as number[];
+  const target = validBox(finding.heatBox || null) ? (finding.heatBox as number[]) : (finding.bbox as number[]);
+  const [y0, x0, y1, x1] = target;
+  const extent = (finding.boxMm || []).filter(value => typeof value === 'number' && value > 0);
+  // mm per image width and height, from the AI box and its size in mm.
+  const [minRx, minRy] =
+    extent.length === 2
+      ? [HEAT_MIN_RADIUS_MM / (extent[0] / (b3 - b1)), HEAT_MIN_RADIUS_MM / (extent[1] / (b2 - b0))]
+      : [HEAT_MIN_RADIUS_FRACTION, HEAT_MIN_RADIUS_FRACTION];
+  const rx = Math.max(minRx, ((x1 - x0) / 2) * HEAT_RADIUS_SCALE);
+  const ry = Math.max(minRy, ((y1 - y0) / 2) * HEAT_RADIUS_SCALE);
   const cx = (x0 + x1) / 2;
   const cy = (y0 + y1) / 2;
-  return `<span class="fp-heat" style="left:${pct(cx - width / 2)};top:${pct(cy - height / 2)};width:${pct(
-    width
-  )};height:${pct(height)}"></span>`;
+  return `<span class="fp-heat" style="left:${pctFree(cx - rx)};top:${pctFree(cy - ry)};width:${pctFree(
+    rx * 2
+  )};height:${pctFree(ry * 2)}"></span>`;
+}
+
+const BASIS_WORDS: Record<string, string> = {
+  blood: 'the blood-density pixels',
+  calcium: 'the calcium-dense spot',
+};
+
+/** What the heatmap panel shows; same text as ai-analysis heat_style.heat_caption. */
+export function heatCaption(bases: string[]) {
+  const measured = ['blood', 'calcium'].filter(basis => bases.includes(basis)).map(basis => BASIS_WORDS[basis]);
+  let where = 'the AI box';
+  if (measured.length) {
+    where = `${measured.join(' and ')} inside the AI box`;
+    if (bases.includes('')) {
+      where += ' (other findings: on the AI box)';
+    }
+  }
+  return (
+    `Heatmap centred on ${where}: red (High) at the centre, fading to blue (Low). ` +
+    'It shows where the AI marked the finding, not an AI probability.'
+  );
+}
+
+function heatBasisOf(finding: PanelFinding) {
+  return validBox(finding.heatBox || null) && finding.heatBasis ? finding.heatBasis : '';
 }
 
 /**
@@ -272,12 +375,17 @@ export function renderFindingPanelsHtml(
   }
   // Raw base64 from a stored result, or a data URL from the frame fetch.
   const image = `<img src="${escapeHtml(getImageSrc(originalImage))}" alt="${escapeHtml(altText)}" />`;
-  const frame = (overlay: string) =>
-    `<div class="fp-frame">${image}${overlay}${orientationHtml(meta)}${cornersHtml(meta)}</div>`;
-  const panel = (label: string, overlay: string, caption: string) => `
+  const frame = (overlay: string, corners = true) =>
+    `<div class="fp-frame">${image}${overlay}${orientationHtml(meta)}${corners ? cornersHtml(meta) : ''}</div>`;
+  // The heatmap panel (client reference): the blobs clipped to the image, no
+  // corner text, the colour bar beside the image.
+  const heatStage = (blobs: string) =>
+    `${frame(`<span class="fp-heat-layer">${blobs}</span>`, false)}` +
+    '<div class="fp-scale"><span>High</span><i></i><span>Low</span></div>';
+  const panel = (label: string, overlay: string, caption: string, heat = false) => `
     <div class="fp-panel">
       <div class="fp-label">${label}</div>
-      <div class="fp-stage">${frame(overlay)}</div>
+      <div class="fp-stage${heat ? ' fp-stage-heat' : ''}">${heat ? heatStage(overlay) : frame(overlay)}</div>
       <div class="fp-caption">${caption}</div>
     </div>`;
   const statuses = new Set(boxed.map(findingStatus));
@@ -303,11 +411,7 @@ export function renderFindingPanelsHtml(
         boxed.map((finding, index) => markingHtml(finding, index === 0)).join(''),
         `${legend}. Sizes are the AI's box from DICOM pixel spacing, not a traced measurement.`
       )}
-      ${panel(
-        '3. Heatmap',
-        boxed.map(heatHtml).join(''),
-        'Drawn from the AI box to show where it points; not a model attention map.'
-      )}
+      ${panel('3. Heatmap', boxed.map(heatHtml).join(''), heatCaption(boxed.map(heatBasisOf)), true)}
     </div>`;
 }
 
@@ -345,7 +449,11 @@ export const FINDING_PANEL_CSS = `
   .fp-cross-h { border-top-width: 1px; height: 0; }
   .fp-cross-v { border-left-width: 1px; width: 0; }
   .fp-pill { position: absolute; background: rgba(0, 0, 0, 0.7); color: #ffffff; font: bold 6.5pt/1.25 Arial, Helvetica, sans-serif; padding: 0.4mm 1.4mm; border-radius: 1.2mm; white-space: nowrap; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  .fp-heat { position: absolute; border-radius: 50%; opacity: 0.45; background: radial-gradient(closest-side, #ff0000 0%, #ffcc00 35%, #00d0ff 70%, rgba(0, 0, 255, 0) 100%); -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .fp-heat-layer { position: absolute; inset: 0; overflow: hidden; }
+  .fp-heat { position: absolute; border-radius: 50%; background: ${HEAT_GRADIENT}; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .fp-stage-heat .fp-frame { max-width: calc(100% - 7mm); }
+  .fp-scale { display: flex; flex-direction: column; align-items: center; height: calc(var(--fp-img, 58mm) * 0.6); max-height: 100%; margin-left: 1.5mm; color: #ffffff; font: bold 5.5pt/1 Arial, Helvetica, sans-serif; }
+  .fp-scale i { flex: 1 1 auto; width: 2.2mm; margin: 0.8mm 0; background: ${HEAT_BAR}; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .fp-orient { position: absolute; color: #ffffff; font: bold 7pt/1 Arial, Helvetica, sans-serif; background: rgba(0, 0, 0, 0.7); padding: 0.4mm 0.8mm; border-radius: 0.8mm; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .fp-orient-top { top: 1mm; left: 50%; transform: translateX(-50%); }
   .fp-orient-bottom { bottom: 1mm; left: 50%; transform: translateX(-50%); }

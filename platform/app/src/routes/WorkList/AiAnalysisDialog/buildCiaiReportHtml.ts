@@ -662,6 +662,9 @@ type CoverTotals = {
   setAsideCount: number;
   /** Low-rated findings pending verification: not in the table, listed at the end. */
   lowPendingCount: number;
+  /** Head CT screen candidates (not findings) and their image pages, numbered after the findings' images. */
+  candidateCount: number;
+  candidateImages: number[];
 };
 
 /** "1 finding" / "2 findings". */
@@ -693,13 +696,39 @@ function renderLimitations(payload: AiCompletePayload) {
     : '';
 }
 
+/**
+ * " · 3 head CT screen candidates (Images 2-4, not findings)" for the cover's
+ * count line, "" without candidates.
+ */
+function candidateNote(count: number, images: number[]) {
+  if (!count) {
+    return '';
+  }
+  const pages = images.length
+    ? `${images.length === 1 ? 'Image' : 'Images'} ${
+        images.length === 1 ? images[0] : `${images[0]}&ndash;${images[images.length - 1]}`
+      }, `
+    : '';
+  return ` &middot; <b>${count}</b> head CT screen ${count === 1 ? 'candidate' : 'candidates'} (${pages}not findings)`;
+}
+
 function renderCoverBody(
   options: ReportBuildOptions,
   draftId: string,
   totals: CoverTotals
 ): { body: string; tail: string } {
   const { payload, study, logoUrl } = options;
-  const { grouped, measured, reported, excludedCount, lowSeverityCount, setAsideCount, lowPendingCount } = totals;
+  const {
+    grouped,
+    measured,
+    reported,
+    excludedCount,
+    lowSeverityCount,
+    setAsideCount,
+    lowPendingCount,
+    candidateCount,
+    candidateImages,
+  } = totals;
   const patient = payload.patient_info || {};
   const studyInfo = payload.study_info || {};
   // Severity is reported over the findings that survive grouping, not over the
@@ -715,9 +744,15 @@ function renderCoverBody(
   const images = new Set(measured.filter(finding => finding.frameKey).map(frameImageKey)).size;
   const headline = studyHeadline(payload, grouped);
 
+  // The tiles count findings, not image pages: head CT screen candidates have
+  // image pages too (Durga 2026-11-21: "Marked on 1 image" beside four image
+  // pages read as a wrong count).
   const tiles: [string, string][] = [
-    [String(measured.length), `Marked on ${images} image${images === 1 ? '' : 's'}`],
-    [String(reported.length), 'Not marked on an image'],
+    [
+      String(measured.length),
+      `${measured.length === 1 ? 'Finding' : 'Findings'} marked on ${images} image${images === 1 ? '' : 's'}`,
+    ],
+    [String(reported.length), `${reported.length === 1 ? 'Finding' : 'Findings'} not marked on an image`],
     [getMeasurementRange(measured), 'Marked box sizes'],
     // Low-rated pending findings too: the Impression lists them under verification.
     [String(toVerify + lowPendingCount), 'Flagged for verification'],
@@ -737,7 +772,9 @@ function renderCoverBody(
     (payload.limitations || [])
       .filter(Boolean)
       .reduce((sum, line) => sum + Math.ceil(line.length / COVER_LINE_CHARS), 0) +
-    Math.ceil(verifyNames.map(finding => `${finding.name} (medium)`).join(', ').length / COVER_LINE_CHARS);
+    Math.ceil(verifyNames.map(finding => `${finding.name} (medium)`).join(', ').length / COVER_LINE_CHARS) +
+    // The count line runs to a second line with the screen candidates.
+    (candidateCount ? 1 : 0);
 
   const facts: [string, string][] = [
     ['Patient', patient.patient_name || study.patientName || 'Not available'],
@@ -807,7 +844,8 @@ function renderCoverBody(
       <div>
         <div class="headline">Study result: ${escapeHtml(headline)}</div>
         <div class="detail">
-          <b>${measured.length}</b> marked on image &middot; <b>${reported.length}</b> not marked
+          <b>${measured.length}</b> ${measured.length === 1 ? 'finding' : 'findings'} marked on an image &middot;
+          <b>${reported.length}</b> not marked${candidateNote(candidateCount, candidateImages)}
           &nbsp;|&nbsp; confirmed: ${counts.critical} critical &middot; ${counts.high} high &middot; ${counts.medium} medium
         </div>
         ${
@@ -1193,7 +1231,7 @@ function renderEvidenceBody(
 
   const largestPanels = view
     ? renderFindingPanelsHtml(
-        [{ ...lead, bbox: view.bbox, boxMm: view.boxMm }],
+        [{ ...lead, bbox: view.bbox, boxMm: view.boxMm, heatBox: view.heatBox, heatBasis: view.heatBasis }],
         view.originalImage,
         { orientation: view.orientation, sliceLabel: view.sliceLabel, seriesLabel: view.seriesLabel },
         `${lead.name} — largest extent`
@@ -1493,6 +1531,18 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
     sheets.push(makeSheet(body, sectionLabel, header, tail));
   };
 
+  // One image page per image of one series: the windows and the head CT
+  // screen share frame keys (frameImageKey).
+  const imageKey = (finding: GroupedFinding) =>
+    (finding.frameKey && frameImageKey(finding)) || finding.findingId || finding.name;
+  // Head CT screen candidates (ai-analysis 1.6.43): a list and image pages of
+  // their own, numbered after the findings' images.
+  const candidates = groupEvidenceFindings(
+    buildEvidenceFindings({ ...payload, findings_summary: payload.candidates_summary || [] }, { requireEvidence: false })
+  );
+  const findingImageCount = new Set(measured.map(imageKey)).size;
+  const candidateImageCount = new Set(getTier(candidates, 'measured').map(imageKey)).size;
+
   // Cover carries its own brand band instead of the running header.
   const cover = renderCoverBody(options, draftId, {
     anomalies,
@@ -1503,6 +1553,8 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
     lowSeverityCount,
     setAsideCount: setAsideRows(payload).length,
     lowPendingCount: lowRatedRows(payload).filter(row => row.status === LOW_PENDING_STATUS).length,
+    candidateCount: candidates.length,
+    candidateImages: Array.from({ length: candidateImageCount }, (_, index) => findingImageCount + 1 + index),
   });
   sheets.push(makeSheet(cover.body, draftId, '', cover.tail, ' sheet-cover'));
 
@@ -1541,9 +1593,7 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
   // One evidence page per image, in order of each image's most severe finding.
   const byFrame = new Map<string, GroupedFinding[]>();
   measured.forEach(finding => {
-    // One page per image of one series: the windows and the head CT screen
-    // share frame keys (frameImageKey).
-    const key = (finding.frameKey && frameImageKey(finding)) || finding.findingId || finding.name;
+    const key = imageKey(finding);
     byFrame.set(key, [...(byFrame.get(key) || []), finding]);
   });
   // The narrative's Findings and Impression point at these pages ("Image N")
@@ -1571,15 +1621,10 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
     );
   });
 
-  // Head CT screen candidates (ai-analysis 1.6.43): a list and image pages of
-  // their own, numbered after the findings' images.
-  const candidates = groupEvidenceFindings(
-    buildEvidenceFindings({ ...payload, findings_summary: payload.candidates_summary || [] }, { requireEvidence: false })
-  );
   if (candidates.length) {
     const candidateFrames = new Map<string, GroupedFinding[]>();
     getTier(candidates, 'measured').forEach(finding => {
-      const key = (finding.frameKey && frameImageKey(finding)) || finding.findingId || finding.name;
+      const key = imageKey(finding);
       candidateFrames.set(key, [...(candidateFrames.get(key) || []), finding]);
     });
     const firstImage = byFrame.size + 1;

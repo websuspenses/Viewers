@@ -25,6 +25,19 @@ export type AiAnomalyRegion = {
   /** Width x height of the marked box in mm, from DICOM pixel spacing (ai-analysis 1.6.5+). */
   extent_mm?: number[];
   extent_basis?: string;
+  /**
+   * CT numbers measured in the box by the PACS plugin. blood_box / spot_box
+   * (plugin 1.6.48): where the largest blood-range patch and the densest
+   * calcium spot lie, normalised like bbox.
+   */
+  density?: {
+    inside_fraction?: number;
+    blood_patch_mm2?: number | null;
+    inside_blood_patch_mm2?: number | null;
+    blood_box?: number[] | null;
+    spot_box?: number[] | null;
+    [key: string]: any;
+  };
 };
 
 export type AiHeatmap = {
@@ -69,6 +82,11 @@ export type AiFindingSummary = {
   tier?: string;
   /** Stated on its own in the Impression (ai-analysis 1.6.36): always gets a table row. */
   key_finding?: boolean;
+  /**
+   * Where its heatmap blob goes (ai-analysis 1.6.48): "blood" on the blood
+   * patch measured in the box, "calcium" on the dense spot, "" on the box.
+   */
+  heat_basis?: string;
   /** Head CT screen findings (ai-analysis 1.6.41): measured thickness and top-to-bottom extent in mm. */
   measured_thickness_mm?: number | null;
   measured_extent_mm?: number | null;
@@ -166,6 +184,10 @@ export type EvidenceFinding = {
   bbox: number[] | null;
   /** Width and height of the marked box in mm (DICOM pixel spacing), or null. */
   boxMm: number[] | null;
+  /** The lesion measured inside the box, for the heatmap (heatBoxOf), or null. */
+  heatBox: number[] | null;
+  /** "blood" / "calcium" when heatBox is set, else "". */
+  heatBasis: string;
   /** Patient direction at each image edge, or null when unknown or oblique. */
   orientation: { top?: string; bottom?: string; left?: string; right?: string } | null;
   /** "Image 128/257" (anatomical order), or "" when unknown. */
@@ -192,6 +214,8 @@ export type LargestView = {
   originalImage: string;
   bbox: number[];
   boxMm: number[] | null;
+  heatBox: number[] | null;
+  heatBasis: string;
   sliceLabel: string;
   orientation: { top?: string; bottom?: string; left?: string; right?: string } | null;
   /** The name the box was drawn for on that frame. */
@@ -206,16 +230,52 @@ function orientationOf(heatmap?: AiHeatmap) {
     : null;
 }
 
+// The smallest blood patch (mm2) the study review reads as blood (ai-analysis
+// consolidation _BLOOD_PATCH_MM2, heat_style HEAT_MIN_BLOOD_MM2).
+const HEAT_MIN_BLOOD_MM2 = 20;
+
+/**
+ * Where the heatmap blob goes inside a marked box (same rule as ai-analysis
+ * heat_style.hotspot_box): the blood patch for a blood reading, the calcium
+ * spot for a calcification, as the plugin measured them (1.6.48); null for
+ * the box itself.
+ */
+export function heatBoxOf(region: AiAnomalyRegion | undefined, basis?: string): number[] | null {
+  const density = region?.density;
+  const box = basis === 'blood' ? density?.blood_box : basis === 'calcium' ? density?.spot_box : null;
+  const ai = region?.bbox;
+  const valid = (b?: number[] | null): b is number[] =>
+    Array.isArray(b) && b.length === 4 && b.every(Number.isFinite) && b[2] > b[0] && b[3] > b[1];
+  if (!valid(box) || !valid(ai)) {
+    return null;
+  }
+  if (basis === 'blood') {
+    const patch =
+      typeof density?.inside_fraction === 'number' ? density.inside_blood_patch_mm2 : density?.blood_patch_mm2;
+    if (typeof patch !== 'number' || patch < HEAT_MIN_BLOOD_MM2) {
+      return null;
+    }
+  }
+  const overlaps = Math.min(box[2], ai[2]) > Math.max(box[0], ai[0]) && Math.min(box[3], ai[3]) > Math.max(box[1], ai[1]);
+  return overlaps ? box : null;
+}
+
 function largestViewOf(finding: AiFindingSummary, heatmapsByFrame: Map<string, AiHeatmap[]>): LargestView | null {
   const view = finding.largest_view;
   const heatmap = heatmapOf(heatmapsByFrame, view?.frame_key, { series_id: finding.series_id, name: view?.name });
   if (!view || !heatmap || !Array.isArray(view.bbox) || view.bbox.length !== 4) {
     return null;
   }
+  const region = (heatmap.anomaly_regions || []).find(
+    candidate => normalizeFindingKey(candidate.name) === normalizeFindingKey(view.name)
+  );
+  const heatBox = heatBoxOf(region, finding.heat_basis);
   return {
     originalImage: heatmap.original_image_b64 || '',
     bbox: view.bbox,
     boxMm: Array.isArray(view.extent_mm) && view.extent_mm.length === 2 ? view.extent_mm : null,
+    heatBox,
+    heatBasis: heatBox ? finding.heat_basis || '' : '',
     sliceLabel: view.slice_number && view.total_slices ? `Image ${view.slice_number}/${view.total_slices}` : '',
     orientation: orientationOf(heatmap),
     regionName: view.name || '',
@@ -1152,6 +1212,8 @@ export function buildEvidenceFindings(
       differenceMm,
       bbox: Array.isArray(region?.bbox) && region?.bbox.length === 4 ? region.bbox : null,
       boxMm: imageMeasurement.measurable ? (region?.extent_mm as number[]) : null,
+      heatBox: heatBoxOf(region, finding.heat_basis),
+      heatBasis: heatBoxOf(region, finding.heat_basis) ? finding.heat_basis || '' : '',
       orientation:
         heatmap?.orientation_labels &&
         ['top', 'bottom', 'left', 'right'].every(edge => heatmap.orientation_labels?.[edge])
