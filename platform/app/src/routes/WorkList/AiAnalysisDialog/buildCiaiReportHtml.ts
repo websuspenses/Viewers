@@ -26,6 +26,7 @@ import {
   getImageSrc,
   getMeasurementRange,
   getReportableFindings,
+  isPhysiological,
   isReportableFinding,
   getTier,
   groupEvidenceFindings,
@@ -44,8 +45,11 @@ import {
   FINDING_PANEL_CSS,
   findingStatus,
   plainDescription,
+  shortReasonLabels,
   renderFindingPanelsHtml,
   renderMarkingThumbHtml,
+  shortReasons,
+  STATUS_LABELS,
   statusBadgeHtml,
   verifyReasons,
 } from './findingPanels';
@@ -86,7 +90,9 @@ export type ReportBuildOptions = {
  * report replaces it with an anomaly-only table, so the section is dropped to
  * avoid printing ~200 rows of normal anatomy.
  */
-const REPLACED_NARRATIVE_SECTIONS = [/^all findings/i];
+// "AI Limitations" (ai-analysis 1.6.51): the same list as the cover's, printed
+// there once (plan B3); the report editor and the Word report keep the section.
+const REPLACED_NARRATIVE_SECTIONS = [/^all findings/i, /^ai limitations/i];
 
 /** A finding with an evidence page: its name, the page's image number, its marked frame. */
 type NarrativeImage = { name: string; number: number; thumb: string };
@@ -96,16 +102,24 @@ const BLOCK_START = '@@AIBLOCK@@';
 const BLOCK_END = '@@AIEND@@';
 const REF_TOKEN = /\s*@@AIREF(\d+)@@/g;
 
-function imageFor(text: string, images: NarrativeImage[]) {
+function imageFor(text: string, images: NarrativeImage[], used?: Set<NarrativeImage>) {
   // The longest name the text starts with ("Right frontal lobe mass" before
   // "Right frontal lobe"). A pending finding is written "Possible <name>"
   // (ai-analysis narrative): the word is left out on both sides (1.6.42; only
   // names that began with it, "Possible acute haemorrhage ...", were linked).
   const bare = (value: string) => value.trim().toLowerCase().replace(/^possible\s+/, '');
   const lower = bare(text);
-  return images
+  const matches = images
     .filter(image => image.name && lower.startsWith(bare(image.name)))
-    .sort((left, right) => right.name.length - left.name.length)[0];
+    .sort((left, right) => right.name.length - left.name.length);
+  // Two findings with one name each take their own image, in order (1.6.52:
+  // both of two same-named findings linked to the first one's image).
+  const longest = matches.filter(image => image.name.length === matches[0]?.name.length);
+  const pick = longest.find(image => !used?.has(image)) || longest[0];
+  if (pick) {
+    used?.add(pick);
+  }
+  return pick;
 }
 
 /**
@@ -119,6 +133,7 @@ function imageFor(text: string, images: NarrativeImage[]) {
 function markImageReferences(title: string, body: string, images: NarrativeImage[]) {
   if (/^findings$/i.test(title.trim())) {
     const out: string[] = [];
+    const used = new Set<NarrativeImage>();
     let pending: NarrativeImage | undefined;
     let open = false;
     const close = () => {
@@ -137,7 +152,7 @@ function markImageReferences(title: string, body: string, images: NarrativeImage
       const heading = line.match(/^###\s+(?:\[[^\]]*\]\s*)?(.+?)\s*$/);
       if (heading) {
         close();
-        pending = imageFor(heading[1], images);
+        pending = imageFor(heading[1], images, used);
         out.push('', BLOCK_START, '');
         open = true;
         out.push(heading[1] && pending ? `${line} @@AIREF${pending.number}@@` : line);
@@ -156,6 +171,7 @@ function markImageReferences(title: string, body: string, images: NarrativeImage
     return body;
   }
   if (/^impression/i.test(title.trim())) {
+    const used = new Set<NarrativeImage>();
     return body
       .split(/\r?\n/)
       .map(line => {
@@ -164,8 +180,15 @@ function markImageReferences(title: string, body: string, images: NarrativeImage
           return line;
         }
         const parts = item[2].split('; ').map(part => {
-          const name = part.replace(/^(Findings needing radiologist verification:\s*|and\s+)/i, '');
-          const image = imageFor(name, images);
+          // The first name of the low-priority line follows its lead-in (ai-analysis
+          // narrative_check._also_item: "Also listed for radiologist verification
+          // (low priority, see the findings table): Calcification - ..."); with the
+          // lead-in left on, that name was never linked to its image (1.6.54).
+          const name = part.replace(
+            /^((?:also\s+)?listed for radiologist verification[^:]*:\s*|Findings needing radiologist verification:\s*|and\s+)/i,
+            ''
+          );
+          const image = imageFor(name, images, used);
           if (!image) {
             return part;
           }
@@ -487,6 +510,10 @@ const REPORT_CSS = `
   table.grid .flag, .flag { color: #ad2d45; font-size: 7pt; font-weight: bold; }
   .evidence .panel .caption { padding: 1.5mm 2.5mm; font-size: 6.5pt; }
   table.verify.signoff { font-size: 7.5pt; }
+  h3.appendix-title { font-size: 9.5pt; color: #0b2a4a; margin: 4mm 0 1.5mm; }
+  p.note.appendix-note { margin: 0 0 2mm; }
+  table.grid.appendix { font-size: 7.5pt; }
+  table.grid.appendix td, table.grid.appendix th { padding: 1.2mm 2mm; }
   table.verify.signoff th, table.verify.signoff td { padding: 1.4mm 2.5mm; }
   .evidence .note { margin-top: 2.5mm; }
 
@@ -505,6 +532,10 @@ const REPORT_CSS = `
      footer, so the footer never lands on a page of its own (2026-10-31). */
   .keep-with-footer { page-break-inside: avoid; break-inside: avoid; }
   .keep-with-footer .sheet-footer { margin-top: 8mm; }
+  /* A sheet flowing over pages ends with its footer: its bottom padding came
+     after the footer and, when the text filled the last page, printed a blank
+     page of its own (1.6.53, Y. Venkata Ramana's narrative). */
+  .sheet-flow { padding-bottom: 0; }
   /* A sheet's last small block and its footer (makeSheet with a tail). */
   .sheet-body.has-tail { display: flex; flex-direction: column; }
   .sheet-tail { flex: 1 0 auto; display: flex; flex-direction: column; page-break-inside: avoid; break-inside: avoid; }
@@ -639,7 +670,7 @@ function makeSheet(body: string, sectionLabel: string, header: string, tail = ''
 function makeFlowingSheet(blocks: string[], sectionLabel: string, header: string) {
   const last = blocks[blocks.length - 1] || '';
   return `
-    <section class="sheet">
+    <section class="sheet sheet-flow">
       ${header}
       <div class="sheet-body">${blocks.slice(0, -1).join('')}
         <div class="keep-with-footer">${last}${sheetFooter(sectionLabel)}</div>
@@ -822,10 +853,11 @@ function renderCoverBody(
     </div>
     <p class="cover-tagline${compact}">AI evidence should never hide the diagnostic image.</p>
     <p class="cover-lede${compact}${tight}">
-      Each marked image is shown three times: the original frame as the AI read it, the AI's box
-      with its size, and a heatmap, with every finding on that image listed above them. The box and
-      the heatmap are drawn over the original from the AI's box: blue when the finding passed the
-      automated checks, amber when it is pending verification. Every finding still needs radiologist
+      Each marked image is shown three times, with every finding on it listed above: the original
+      frame as the AI read it; the AI's box with its size (blue: passed the automated checks, amber:
+      pending verification) - measured from DICOM pixel spacing, an upper bound, not a traced outline;
+      and a heatmap centred on the CT density measured inside the box, or on the box, which shows
+      where the AI marked the finding, not an AI probability. Every finding still needs radiologist
       verification; the radiologist remains the final decision-maker.
     </p>
 
@@ -970,7 +1002,7 @@ function shortenAlsoReported(text: string, maxNames: number) {
 /**
  * Status badge (CONFIRMED / PENDING VERIFICATION, with the short reasons) and
  * the finding's own description. The review's full reasons and HU numbers are
- * in the verification notes at the end (client requirement 2026-10-30).
+ * in the technical appendix (client requirement 2026-10-30; 1.6.51).
  */
 function renderDescription(description: string, reviewTier?: string, maxAlsoNames?: number) {
   const plain = plainDescription(description);
@@ -1018,7 +1050,7 @@ function renderFindingsTableBody(rows: GroupedFinding[], part: number, partCount
         ? `<p class="note" style="margin-top:0;margin-bottom:3.5mm">
              Most severe first. CONFIRMED: the finding passed the automated image checks; PENDING
              VERIFICATION: a check could not support it (short reason shown; full reasons in the
-             verification notes at the end). Every finding still needs radiologist verification.
+             technical appendix). Every finding still needs radiologist verification.
              "Marked on image" findings have a box on a source frame and an evidence page; the box is
              measured from the DICOM pixel spacing, so it is an upper bound, not a traced measurement.
              The AI size estimate is the model's own wording.
@@ -1053,15 +1085,22 @@ function estimateRowMm(finding: GroupedFinding, descriptionColumnChars: number) 
   // description width fits the bold 8pt name; the 7pt flag and description
   // lines are 3.2 mm; the wrapped source-frame id under the finding id is
   // ~11 characters per 2.8 mm line.
-  // The badge line replaces the review's long note (one line).
+  // The badge line replaces the review's long note: the status and its short
+  // reasons wrap onto a second line ("PENDING VERIFICATION measured: blood
+  // along the skull", 1.6.53).
   const rest = plainDescription(finding.description || '');
+  const status = findingStatus(finding);
+  const badge = [STATUS_LABELS[status], ...(status === 'pending' ? shortReasons(finding.description) : [])].join(' ');
   const text =
     Math.ceil((finding.name || '').length / (descriptionColumnChars * 0.7)) * 3.6 +
-    3.4 +
+    Math.ceil(badge.length / (descriptionColumnChars * 0.8)) * 3.4 +
     (rest ? Math.ceil(rest.length / descriptionColumnChars) * 3.2 : 0);
   const id = 3.5;
   const location = Math.ceil((finding.locations.join('; ') || '-').length / 16) * 3.6;
-  return Math.max(text, id, location, 4) + 5.5;
+  // The narrow marked-box column: "6.8 × 21 mm (largest of 2 boxes)" takes five
+  // lines (1.6.53: M. Pedda Narasamma's table pushed its footer onto a page of its own).
+  const box = finding.tier === 'measured' ? Math.ceil(finding.imageMeasurement.display.length / 7) * 3.6 : 3.6;
+  return Math.max(text, id, location, box, 4) + 5.5;
 }
 
 /** Heading, intro note and header row of one table block, plus the gap before it. */
@@ -1078,6 +1117,8 @@ type TableSpec<T = GroupedFinding> = {
   render: (rows: T[], part: number, partCount: number) => string;
   /** Printed row height in mm; required for rows that are not findings. */
   estimate?: (row: T) => number;
+  /** Heading, note and table header in mm (default TABLE_BLOCK_OVERHEAD_MM). */
+  overheadMm?: number;
 };
 
 /**
@@ -1103,7 +1144,7 @@ function flowTables<T = GroupedFinding>(tables: TableSpec<T>[], budgetMm = SHEET
     let index = 0;
     while (index < table.rows.length) {
       const rows: T[] = [];
-      let height = TABLE_BLOCK_OVERHEAD_MM;
+      let height = table.overheadMm ?? TABLE_BLOCK_OVERHEAD_MM;
       while (index < table.rows.length) {
         const rowMm = table.estimate
           ? table.estimate(table.rows[index])
@@ -1206,11 +1247,7 @@ function renderEvidenceBody(
         <td><span class="sev ${severityClass(finding.severity)}">${escapeHtml(finding.severity)}</span>
           <b>${escapeHtml(finding.name)}</b>
           ${renderDescription(finding.description, finding.reviewTier, ALSO_REPORTED_ON_IMAGE_PAGE)}
-          ${
-            finding.imageRegionName && finding.imageRegionName !== finding.name
-              ? `<div class="sub">Marked as: ${escapeHtml(finding.imageRegionName)}</div>`
-              : ''
-          }</td>
+          ${renderMeasuredPlace(finding)}</td>
         <td><b>${escapeHtml(finding.imageMeasurement.display)}</b></td>
         <td>${escapeHtml(finding.narrativeMeasurement.display)}</td>
         <td class="${
@@ -1231,7 +1268,7 @@ function renderEvidenceBody(
 
   const largestPanels = view
     ? renderFindingPanelsHtml(
-        [{ ...lead, bbox: view.bbox, boxMm: view.boxMm, heatBox: view.heatBox, heatBasis: view.heatBasis }],
+        [{ ...lead, bbox: view.bbox, boxMm: view.boxMm, heatBox: view.heatBox, heatBasis: view.heatBasis, extraBoxes: null }],
         view.originalImage,
         { orientation: view.orientation, sliceLabel: view.sliceLabel, seriesLabel: view.seriesLabel },
         `${lead.name} — largest extent`
@@ -1281,22 +1318,15 @@ function renderEvidenceBody(
     ${largestPanels ? `${largestNote}${largestPanels}` : ''}
     </div>
   `;
+  // One compact sign-off row (decision 2026-11-23); the frame and DICOM
+  // identifiers are in the technical appendix (plan B4).
   const tail = `
     <table class="verify signoff">
       <tbody>
         <tr>
-          <th>Source frame</th><td>${escapeHtml(lead.frameKey || 'Not stated')}</td>
-          <th>DICOM identifiers</th><td>Study ${escapeHtml(studyInstanceUid)}<br />Series ${escapeHtml(
-            lead.seriesId || 'Not stated'
-          )}</td>
-        </tr>
-        <tr>
-          <th>Radiologist confirmed value</th><td>_____________________</td>
-          <th>Radiologist action</th><td>Verify / Accept / Modify / Reject</td>
-        </tr>
-        <tr>
-          <th>Final report value</th><td>_____________________</td>
-          <th>Reported by</th><td>_____________________</td>
+          <th>Radiologist</th><td>Accept / Modify / Reject</td>
+          <th>Confirmed value</th><td>__________________</td>
+          <th>Initials</th><td>__________</td>
         </tr>
       </tbody>
     </table>
@@ -1304,42 +1334,26 @@ function renderEvidenceBody(
   return { body, tail };
 }
 
-/** The study review's reasons in full, for every finding pending verification. */
-function renderVerificationNotesBody(rows: GroupedFinding[], part: number, partCount: number) {
-  const body = rows
-    .map(
-      finding => `
-      <tr>
-        <td class="id">${escapeHtml(finding.findingId || '—')}</td>
-        <td><b>${escapeHtml(finding.name)}</b></td>
-        <td>${verifyReasons(finding.description)
-          .map(reason => `<div>${escapeHtml(reason)}</div>`)
-          .join('')}</td>
-      </tr>`
-    )
-    .join('');
-  return `
-    ${sectionHeading(`Verification notes${partCount > 1 ? ` (${part} of ${partCount})` : ''}`)}
-    ${
-      part === 1
-        ? `<p class="note" style="margin-top:0;margin-bottom:3.5mm">
-             Why each finding is PENDING VERIFICATION, as written by the automated study review. CT
-             densities are in Hounsfield units (HU) measured inside the AI's box.
-           </p>`
-        : ''
-    }
-    <table class="grid">
-      <thead>
-        <tr>
-          <th style="width:13%">ID</th>
-          <th style="width:27%">Finding</th>
-          <th style="width:60%">Reasons</th>
-        </tr>
-      </thead>
-      <tbody>${body}</tbody>
-    </table>
-  `;
+/** Where the focus lies (measured from the pixels) and the images it was reported on (1.6.51, plan B1 / B2). */
+/** The position words without their glosses ("near the surface (cortical / subcortical)"). */
+const plainPosition = (text: string) => text.replace(/\s*\([^)]*\)/g, '').trim().toLowerCase();
+
+function renderMeasuredPlace(finding: GroupedFinding) {
+  // A finding the study review placed by its measured position (1.6.52) has
+  // those words as its location: the line would only repeat them.
+  const repeated =
+    Boolean(finding.positionText) &&
+    plainPosition(finding.location || '').includes(plainPosition(finding.positionText || ''));
+  const parts = [
+    finding.positionText && !repeated ? `Position on the image (measured): ${finding.positionText}` : '',
+    finding.imageRange && finding.imageRange[1] > finding.imageRange[0]
+      ? `reported on images ${finding.imageRange[0]}-${finding.imageRange[1]}`
+      : '',
+  ].filter(Boolean);
+  const text = parts.join('; ');
+  return text ? `<div class="sub">${escapeHtml(text.charAt(0).toUpperCase() + text.slice(1))}</div>` : '';
 }
+
 
 /**
  * Findings the study review set aside (wrong sequence, one slice of one MRI
@@ -1347,12 +1361,17 @@ function renderVerificationNotesBody(rows: GroupedFinding[], part: number, partC
  * the report; the Impression counts them and this lists them with the reasons
  * (1.6.29). Findings merged into another one at the same spot are left out.
  */
+// Set aside without being listed (ai-analysis consolidation UNLISTED_FLAGS):
+// merged into another finding, a normal structure, or a physiological
+// calcification never shown on an image (1.6.50).
+const UNLISTED_FLAGS = ['same_spot', 'normal_structure', 'physiological_not_shown'];
+
 function setAsideRows(payload: AiCompletePayload): SetAsideRow[] {
   return (payload.series_with_findings || []).flatMap(series =>
     (series?.findings || [])
       .filter(
         (finding: { tier?: string; flags?: string[] }) =>
-          finding?.tier === 'suppressed' && !(finding.flags || []).includes('same_spot')
+          finding?.tier === 'suppressed' && !(finding.flags || []).some(flag => UNLISTED_FLAGS.includes(flag))
       )
       .map((finding: { name?: string; location?: string; description?: string }) => ({
         name: finding.name || 'Unnamed finding',
@@ -1430,43 +1449,124 @@ function renderCandidatesBody(candidates: GroupedFinding[], firstImage: number, 
     </table>`;
 }
 
-function renderSetAsideBody(rows: SetAsideRow[], part: number, partCount: number) {
-  const body = rows
-    .map(
-      row => `
-      <tr>
-        <td><b>${escapeHtml(row.name)}</b>${
-          row.location ? `<div class="note" style="margin:0">${escapeHtml(row.location)}</div>` : ''
-        }</td>
-        <td>${escapeHtml(row.series || '—')}</td>
-        <td>${escapeHtml(row.status)}</td>
-        <td>${row.reasons.map(reason => `<div>${escapeHtml(reason)}</div>`).join('') || '—'}</td>
-      </tr>`
-    )
-    .join('');
-  return `
-    ${sectionHeading(`AI reports not in the findings table${partCount > 1 ? ` (${part} of ${partCount})` : ''}`)}
-    ${
-      part === 1
-        ? `<p class="note" style="margin-top:0;margin-bottom:3.5mm">
-             Findings rated low (kept out of the findings table) and the AI reports the study review
-             set aside (not part of this report), listed so that nothing the AI reported is hidden.
-           </p>`
-        : ''
-    }
-    <table class="grid">
-      <thead>
-        <tr>
-          <th style="width:26%">Finding</th>
-          <th style="width:18%">Series</th>
-          <th style="width:16%">Status</th>
-          <th style="width:40%">Reasons</th>
-        </tr>
-      </thead>
-      <tbody>${body}</tbody>
-    </table>
-  `;
+type ImagePage = { number: number; finding: GroupedFinding };
+/** A row of the technical appendix: its cells (HTML) and printed height. */
+type AppendixRow = { cells: string[]; mm: number };
+
+const APPENDIX_LINE_MM = 3.2;
+const linesMm = (text: string, charsPerLine: number) =>
+  Math.max(1, Math.ceil((text || '').length / charsPerLine)) * APPENDIX_LINE_MM;
+
+function appendixTable(
+  title: string,
+  note: string,
+  headers: [string, number][],
+  rows: AppendixRow[],
+  first: boolean
+): TableSpec<AppendixRow> {
+  return {
+    rows,
+    descriptionColumnChars: 0,
+    label: 'Technical appendix',
+    estimate: row => row.mm + 3,
+    // Its own small heading and note; the section heading on the first table.
+    overheadMm: first ? 32 : 18,
+    render: (part, index) => `
+      ${first && index === 1 ? sectionHeading('Technical appendix') : ''}
+      <h3 class="appendix-title">${escapeHtml(title)}${index > 1 ? ' (continued)' : ''}</h3>
+      ${index === 1 && note ? `<p class="note appendix-note">${note}</p>` : ''}
+      <table class="grid appendix">
+        <thead><tr>${headers.map(([name, width]) => `<th style="width:${width}%">${name}</th>`).join('')}</tr></thead>
+        <tbody>${part.map(row => `<tr>${row.cells.map(cell => `<td>${cell}</td>`).join('')}</tr>`).join('')}</tbody>
+      </table>`,
+  };
 }
+
+/**
+ * The technical appendix (1.6.51, plan B4): what a radiologist may want to
+ * check but should not have to read through in the report itself.
+ */
+function technicalAppendix(
+  payload: AiCompletePayload,
+  grouped: GroupedFinding[],
+  imagePages: ImagePage[],
+  studyInstanceUid: string
+): TableSpec<AppendixRow>[] {
+  const tables: TableSpec<AppendixRow>[] = [];
+  const add = (title: string, note: string, headers: [string, number][], rows: AppendixRow[]) => {
+    if (rows.length) {
+      tables.push(appendixTable(title, note, headers, rows, tables.length === 0));
+    }
+  };
+
+  const pending = grouped.filter(finding => findingStatus(finding) === 'pending');
+  add(
+    'Why findings are pending verification',
+    'As written by the automated study review. CT densities in Hounsfield units (HU), measured inside the AI box.',
+    [['ID', 13], ['Finding', 27], ['Reasons', 60]],
+    pending.map(finding => {
+      const reasons = verifyReasons(finding.description);
+      return {
+        cells: [
+          escapeHtml(finding.findingId || '—'),
+          `<b>${escapeHtml(finding.name)}</b>`,
+          reasons.map(reason => `<div>${escapeHtml(reason)}</div>`).join(''),
+        ],
+        mm: Math.max(linesMm(finding.name, 30), reasons.reduce((mm, reason) => mm + linesMm(reason, 95), 0)),
+      };
+    })
+  );
+
+  const notStated = [...lowRatedRows(payload), ...setAsideRows(payload)];
+  add(
+    'AI reports not in the report',
+    'Rated low (left out of the findings table) or set aside by the automated checks, listed so that nothing the AI reported is hidden.',
+    [['AI report', 46], ['Status', 22], ['Reason', 32]],
+    notStated.map(row => {
+      const reasons = shortReasonLabels(row.reasons).join(', ') || '—';
+      return {
+        cells: [`<b>${escapeHtml(row.name)}</b>`, escapeHtml(row.status), escapeHtml(reasons)],
+        mm: Math.max(linesMm(row.name, 48), linesMm(reasons, 32)),
+      };
+    })
+  );
+
+  const worded = grouped.filter(
+    finding =>
+      (finding.aiName && finding.aiName !== finding.name) || finding.aiWords || (finding.mergedNames || []).length
+  );
+  add(
+    "The AI's own wording",
+    'The model\'s name and description of findings the report names and describes from the measurements, and the other names it gave the same finding on neighbouring slices.',
+    [['ID', 13], ["AI's name and description", 47], ['Also reported as', 40]],
+    worded.map(finding => {
+      const words = [finding.aiName, finding.aiWords].filter(Boolean).join(': ');
+      const names = finding.mergedNames || [];
+      const also = names.slice(0, 12).join(', ') + (names.length > 12 ? ` and ${names.length - 12} more` : '');
+      return {
+        cells: [escapeHtml(finding.findingId || '—'), escapeHtml(words || '—'), escapeHtml(also || '—')],
+        mm: Math.max(linesMm(words, 55), linesMm(also, 45)),
+      };
+    })
+  );
+
+  add(
+    'Image identifiers',
+    `Study ${escapeHtml(studyInstanceUid)}.`,
+    [['Image', 12], ['Slice', 18], ['Source frame', 35], ['Series', 35]],
+    imagePages.map(page => ({
+      cells: [
+        `<a class="img-ref" href="#ai-image-${page.number}">Image ${page.number}</a>`,
+        escapeHtml(page.finding.sliceLabel || '—'),
+        escapeHtml(page.finding.frameKey || '—'),
+        escapeHtml(page.finding.seriesId || '—'),
+      ],
+      mm: APPENDIX_LINE_MM * 2,
+    }))
+  );
+  return tables;
+}
+
 
 function renderWorkflowBody() {
   return `
@@ -1520,7 +1620,10 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
   // Low-severity findings are excluded from the report: they are two thirds of
   // a study and none of them has ever carried a measurement recoverable from
   // the image, so nothing verifiable is lost.
-  const grouped = getReportableFindings(groupEvidenceFindings(buildAllFindingRecords(payload)));
+  const allGrouped = getReportableFindings(groupEvidenceFindings(buildAllFindingRecords(payload)));
+  // Physiological calcifications: one Observations line in the narrative, no
+  // table row and no image page (decision 2026-11-23); the cover still counts them.
+  const grouped = allGrouped.filter(finding => !isPhysiological(finding));
   const measured = getTier(grouped, 'measured');
   const reported = getTier(grouped, 'reported');
   const excludedCount = allFindings.length - anomalies.length;
@@ -1538,7 +1641,15 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
   // Head CT screen candidates (ai-analysis 1.6.43): a list and image pages of
   // their own, numbered after the findings' images.
   const candidates = groupEvidenceFindings(
-    buildEvidenceFindings({ ...payload, findings_summary: payload.candidates_summary || [] }, { requireEvidence: false })
+    buildEvidenceFindings(
+      {
+        ...payload,
+        // Head CT screen candidates are shown only after a recorded head injury
+        // (1.6.50, radiologist 2026-11-23); older results listed them anyway.
+        findings_summary: payload.study_info?.head_injury === true ? payload.candidates_summary || [] : [],
+      },
+      { requireEvidence: false }
+    )
   );
   const findingImageCount = new Set(measured.map(imageKey)).size;
   const candidateImageCount = new Set(getTier(candidates, 'measured').map(imageKey)).size;
@@ -1546,7 +1657,7 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
   // Cover carries its own brand band instead of the running header.
   const cover = renderCoverBody(options, draftId, {
     anomalies,
-    grouped,
+    grouped: allGrouped,
     measured,
     reported,
     excludedCount,
@@ -1569,18 +1680,16 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
 
   const { sheets: tableSheets, lastSheetUsedMm } = flowTables(tables);
 
-  if (!measured.length) {
-    const note: SheetBlock = {
+  // Nothing marked: a note under the findings table when it fits there. Never
+  // a page of its own (1.6.52: Gagan Babu's PDF had an empty Evidence page);
+  // the cover already says no finding was marked.
+  if (!measured.length && tableSheets.length && lastSheetUsedMm + 30 <= SHEET_BODY_BUDGET_MM) {
+    tableSheets[tableSheets.length - 1].push({
       body: `${sectionHeading('Evidence')}
        <p class="note">No finding in this study was marked on an image, so there is no evidence
        section to verify.</p>`,
       label: 'Evidence',
-    };
-    if (tableSheets.length && lastSheetUsedMm + 30 <= SHEET_BODY_BUDGET_MM) {
-      tableSheets[tableSheets.length - 1].push(note);
-    } else {
-      tableSheets.push([note]);
-    }
+    });
   }
 
   tableSheets.forEach(blocks => {
@@ -1591,6 +1700,7 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
   });
 
   // One evidence page per image, in order of each image's most severe finding.
+  const imagePages: ImagePage[] = [];
   const byFrame = new Map<string, GroupedFinding[]>();
   measured.forEach(finding => {
     const key = imageKey(finding);
@@ -1613,6 +1723,7 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
         ),
       })
     );
+    imagePages.push({ number: index + 1, finding: findings[0] });
     const page = renderEvidenceBody(findings, study.studyInstanceUid, index + 1);
     addSheet(
       page.body,
@@ -1637,6 +1748,7 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
       'Head CT screen candidates'
     );
     Array.from(candidateFrames.values()).forEach((findings, index) => {
+      imagePages.push({ number: firstImage + index, finding: findings[0] });
       const page = renderEvidenceBody(findings, study.studyInstanceUid, firstImage + index);
       addSheet(
         page.body,
@@ -1677,54 +1789,14 @@ export function buildCiaiReportHtml(options: ReportBuildOptions) {
     }
   }
 
-  const pending = grouped.filter(finding => findingStatus(finding) === 'pending');
-  if (pending.length) {
-    flowTables([
-      {
-        rows: pending,
-        descriptionColumnChars: 70,
-        label: 'Verification notes',
-        render: renderVerificationNotesBody,
-        // One line per reason (~95 characters a line in the reasons column).
-        estimate: finding =>
-          Math.max(
-            Math.ceil((finding.name || '').length / 30) * 3.6,
-            verifyReasons(finding.description).reduce(
-              (mm, reason) => mm + Math.ceil(reason.length / 95) * 3.2,
-              0
-            ),
-            4
-          ) + 4.5,
-      },
-    ]).sheets.forEach(blocks => {
-      addSheet(
-        blocks.map(block => `<div class="block">${block.body}</div>`).join(''),
-        blocks.map(block => block.label).join(' · ')
-      );
-    });
-  }
-
-  const setAside = [...lowRatedRows(payload), ...setAsideRows(payload)];
-  if (setAside.length) {
-    flowTables<SetAsideRow>([
-      {
-        rows: setAside,
-        descriptionColumnChars: 58,
-        label: 'Not in the findings table',
-        render: renderSetAsideBody,
-        // One line per reason (~58 characters a line in the reasons column).
-        estimate: row =>
-          Math.max(
-            Math.ceil(row.name.length / 30) * 3.6 + (row.location ? Math.ceil(row.location.length / 34) * 3.2 : 0),
-            row.reasons.reduce((mm, reason) => mm + Math.ceil(reason.length / 58) * 3.2, 0),
-            4
-          ) + 4.5,
-      },
-    ]).sheets.forEach(blocks => {
-      addSheet(
-        blocks.map(block => `<div class="block">${block.body}</div>`).join(''),
-        blocks.map(block => block.label).join(' · ')
-      );
+  // One compact technical appendix (1.6.51, plan B4): why findings are
+  // pending, the AI reports not in the report, the AI's own wording, and the
+  // image identifiers - before, separate sheets of full sentences and
+  // identifiers on every image page.
+  const appendix = technicalAppendix(payload, grouped, imagePages, study.studyInstanceUid);
+  if (appendix.length) {
+    flowTables<AppendixRow>(appendix).sheets.forEach(blocks => {
+      addSheet(blocks.map(block => `<div class="block">${block.body}</div>`).join(''), 'Technical appendix');
     });
   }
 

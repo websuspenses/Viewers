@@ -75,6 +75,21 @@ export function plainDescription(description?: string): string {
 // One short phrase per review reason, in plain words, for the badge. Order
 // matters: the first pattern that matches a reason names it.
 const SHORT_REASONS: [RegExp, string][] = [
+  // 1.6.53: reasons that fell through to "needs checking" (bone-window readings).
+  [/not what this window is read for/i, 'not read in this window'],
+  [/fracture reading is for head injury/i, 'no injury recorded'],
+  [/no bone in the marked box/i, 'no bone in the box'],
+  [/no air in the marked box/i, 'no air in the box'],
+  [/no blood density against the skull/i, 'no blood in the box'],
+  [/possible fracture read in the bone window/i, 'possible fracture'],
+  [/larger than 20 mm both ways/i, 'box too large for a focus'],
+  [/dense spot is on this slice only/i, 'spot on one slice only'],
+  [/on DWI without restricted diffusion/i, 'DWI repeat of FLAIR/T2'],
+  // 1.6.50: bone partial volume, head CT screen trauma rules.
+  [/bone averaged with brain \(partial volume\), not a finding/i, 'bone partial volume'],
+  [/level of the skull base, where bone averaged/i, 'skull-base partial volume'],
+  [/both sides of one slice/i, 'paired on one slice'],
+  [/young child's skull \(open sutures\)/i, 'sutures, no sign on that side'],
   // 1.6.39: head CT screen findings, measured from the CT numbers (not a model reading).
   [/not read by a model: blood density/i, 'measured: blood along the skull'],
   [/not read by a model: air inside/i, 'measured: air inside the skull'],
@@ -109,6 +124,7 @@ const SHORT_REASONS: [RegExp, string][] = [
   [/likely bone|bone read as|bone-dense|touches the skull|on skull bone/i, 'possibly bone'],
   [/not located on the image/i, 'not found on the image'],
   [/not marked on any image/i, 'not marked on an image'],
+  [/40-49 years/i, 'age 40-49: check the history'],
   [/calcium-dense|calcium density \(no pixel/i, 'no calcium density'],
   [/likely a calcification/i, 'likely calcification'],
   [/single slice/i, 'one slice only'],
@@ -128,19 +144,32 @@ const SHORT_REASONS: [RegExp, string][] = [
 ];
 
 export function shortReasons(description?: string): string[] {
+  return shortReasonLabels(verifyReasons(description));
+}
+
+/** Short labels for the review's full reasons (technical appendix, 1.6.51). */
+export function shortReasonLabels(reasons: string[]): string[] {
   const out: string[] = [];
-  verifyReasons(description).forEach(reason => {
+  reasons.forEach(reason => {
     const match = SHORT_REASONS.find(([pattern]) => pattern.test(reason));
     const label = match ? match[1] : 'needs checking';
     if (!out.includes(label)) {
       out.push(label);
     }
   });
+  // "Never shown on an image" says it all: "not marked on an image" repeated it
+  // in the appendix (1.6.52).
+  const labels = out.includes('never shown on an image')
+    ? out.filter(label => label !== 'not marked on an image')
+    : out;
   // A possible haemorrhage already says there is no calcium density (results
   // before 1.6.24 wrote that reason in two parts).
-  return out.includes('possible haemorrhage')
-    ? ['possible haemorrhage', ...out.filter(label => label !== 'possible haemorrhage' && label !== 'no calcium density')]
-    : out;
+  return labels.includes('possible haemorrhage')
+    ? [
+        'possible haemorrhage',
+        ...labels.filter(label => label !== 'possible haemorrhage' && label !== 'no calcium density'),
+      ]
+    : labels;
 }
 
 /** Status badge plus, for a pending finding, its short reasons. */
@@ -169,7 +198,43 @@ export type PanelFinding = {
   heatBox?: number[] | null;
   /** What heatBox is: "blood" or "calcium" ("" without one). */
   heatBasis?: string;
+  /** The finding's other boxes on this image (1.6.52), drawn like its own. */
+  extraBoxes?: { bbox: number[]; boxMm: number[] | null; heatBox?: number[] | null; heatBasis?: string }[] | null;
 };
+
+/** One drawn box: a finding's own or one of its extra boxes. */
+type DrawnBox = PanelFinding & { owner: PanelFinding };
+
+/** The finding's boxes on the image: its own first, then its extra ones. */
+function boxesOf(finding: PanelFinding): DrawnBox[] {
+  return [
+    { ...finding, owner: finding },
+    ...(finding.extraBoxes || []).map(extra => ({ ...finding, ...extra, extraBoxes: null, owner: finding })),
+  ];
+}
+
+// Size pills on the first finding's boxes, on each box at least this far
+// (share of the image) from a box already labelled, so pills never stack.
+const PILL_MIN_DISTANCE = 0.15;
+
+function centre(box: number[]) {
+  return [(box[0] + box[2]) / 2, (box[1] + box[3]) / 2];
+}
+
+function pillFlags(boxes: DrawnBox[]) {
+  const labelled: number[][] = [];
+  return boxes.map(box => {
+    if (box.owner !== boxes[0]?.owner) {
+      return false;
+    }
+    const [cy, cx] = centre(box.bbox as number[]);
+    if (labelled.some(([y, x]) => Math.hypot(cy - y, cx - x) < PILL_MIN_DISTANCE)) {
+      return false;
+    }
+    labelled.push([cy, cx]);
+    return true;
+  });
+}
 
 export type PanelMeta = {
   orientation?: { top?: string; bottom?: string; left?: string; right?: string } | null;
@@ -338,7 +403,7 @@ export function heatCaption(bases: string[]) {
   if (measured.length) {
     where = `${measured.join(' and ')} inside the AI box`;
     if (bases.includes('')) {
-      where += ' (other findings: on the AI box)';
+      where += ' (other boxes: on the AI box)';
     }
   }
   return (
@@ -364,12 +429,14 @@ export function renderFindingPanelsHtml(
 ) {
   // One box per place: findings sharing a box (two names for one spot) are
   // drawn once, in the first one's status colour, so their pills do not stack.
-  const boxed: PanelFinding[] = [];
-  findings.forEach(finding => {
+  // Every box of a finding on the image is drawn (1.6.52: one box on each side).
+  const boxed: DrawnBox[] = [];
+  findings.flatMap(boxesOf).forEach(finding => {
     if (validBox(finding.bbox) && !boxed.some(drawn => overlap(drawn.bbox as number[], finding.bbox as number[]) >= 0.5)) {
       boxed.push(finding);
     }
   });
+  const pills = pillFlags(boxed);
   if (!originalImage || !boxed.length) {
     return '';
   }
@@ -386,7 +453,7 @@ export function renderFindingPanelsHtml(
     <div class="fp-panel">
       <div class="fp-label">${label}</div>
       <div class="fp-stage${heat ? ' fp-stage-heat' : ''}">${heat ? heatStage(overlay) : frame(overlay)}</div>
-      <div class="fp-caption">${caption}</div>
+      ${caption ? `<div class="fp-caption">${caption}</div>` : ''}
     </div>`;
   const statuses = new Set(boxed.map(findingStatus));
   const legendText = {
@@ -403,13 +470,15 @@ export function renderFindingPanelsHtml(
     .join(' &nbsp; ');
   return `
     <div class="fp-row">
-      ${panel('1. Original DICOM', '', 'The frame as the AI read it. No overlay.')}
+      ${panel('1. Original DICOM', '', '')}
       ${panel(
         '2. AI marking &amp; measurements',
-        // Sizes on the first finding's box only: pills of neighbouring boxes
-        // would cover each other (every size is in the table above).
-        boxed.map((finding, index) => markingHtml(finding, index === 0)).join(''),
-        `${legend}. Sizes are the AI's box from DICOM pixel spacing, not a traced measurement.`
+        // Sizes on the first finding's boxes only, apart from each other:
+        // pills of neighbouring boxes would cover each other (every size is in
+        // the table above). What the panels are and that sizes are the AI's
+        // box: once, on the cover (1.6.51, plan B4).
+        boxed.map((finding, index) => markingHtml(finding, pills[index])).join(''),
+        legend
       )}
       ${panel('3. Heatmap', boxed.map(heatHtml).join(''), heatCaption(boxed.map(heatBasisOf)), true)}
     </div>`;
@@ -429,9 +498,12 @@ export function renderMarkingThumbHtml(
     return '';
   }
   const image = `<img src="${escapeHtml(getImageSrc(originalImage))}" alt="${escapeHtml(altText)}" />`;
-  return `<div class="fp-thumb"><div class="fp-frame">${image}${markingHtml(finding, true)}${orientationHtml(
+  const boxes = boxesOf(finding).filter(box => validBox(box.bbox));
+  const pills = pillFlags(boxes);
+  const marking = boxes.map((box, index) => markingHtml(box, pills[index])).join('');
+  return `<div class="fp-thumb"><div class="fp-frame">${image}${marking}${orientationHtml(meta)}${cornersHtml(
     meta
-  )}${cornersHtml(meta)}</div></div>`;
+  )}</div></div>`;
 }
 
 /** Styles for the panels and badges (print and screen). */

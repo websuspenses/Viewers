@@ -12,6 +12,7 @@ import {
   HistoryEntry,
   PatientHistory,
   getPatientHistory,
+  markNoteEnteredInError,
   sameName,
   savePatientHistory,
 } from './patientHistoryApi';
@@ -58,7 +59,9 @@ function changesOf(entry: HistoryEntry, older?: HistoryEntry) {
  * Patient clinical history across studies: the background as it stands (past
  * medical history, comorbidities, allergies), every earlier entry and note, and
  * a form to update the background and add a note. Loads and saves through
- * teleapp (patientHistoryApi.ts) without blocking the page.
+ * teleapp (patientHistoryApi.ts) without blocking the page. A wrong note is
+ * marked as entered in error, with a reason (2026-11-24): kept, struck through,
+ * no longer sent to the AI.
  */
 export default function PatientHistoryPanel({
   api,
@@ -76,6 +79,10 @@ export default function PatientHistoryPanel({
   const [form, setForm] = useState<Form>(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState('');
+  // The entry whose note is being marked as entered in error, and why.
+  const [marking, setMarking] = useState<HistoryEntry['history_id'] | null>(null);
+  const [reason, setReason] = useState('');
+  const [markBusy, setMarkBusy] = useState(false);
 
   const resetForm = (data: PatientHistory | null) =>
     setForm({
@@ -112,6 +119,7 @@ export default function PatientHistoryPanel({
   useEffect(() => {
     const controller = new AbortController();
     setEditing(false);
+    setMarking(null);
     setMessage('');
     load(controller.signal);
     return () => controller.abort();
@@ -144,6 +152,23 @@ export default function PatientHistoryPanel({
       setError((err as Error).message || 'The history could not be saved.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const markError = async (historyId: HistoryEntry['history_id']) => {
+    setMarkBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      const data = await markNoteEnteredInError(api, patientId, historyId, reason.trim());
+      setHistory(data);
+      setMarking(null);
+      setReason('');
+      setMessage('Note marked as entered in error.');
+    } catch (err) {
+      setError((err as Error).message || 'The note could not be marked.');
+    } finally {
+      setMarkBusy(false);
     }
   };
 
@@ -268,7 +293,60 @@ export default function PatientHistoryPanel({
                 {entry.study_id && studyId && entry.study_id === studyId && <span className="ph-chip">this study</span>}
                 {entry.study_id && entry.study_id !== studyId && <span className="ph-chip ph-chip--muted">earlier study</span>}
               </div>
-              {entry.clinical_notes && <p className="ph-note">{entry.clinical_notes}</p>}
+              {entry.clinical_notes && (
+                <p className={entry.entered_in_error ? 'ph-note ph-note--error' : 'ph-note'}>{entry.clinical_notes}</p>
+              )}
+              {entry.clinical_notes && entry.entered_in_error && (
+                <p className="ph-error-mark">
+                  <b>Entered in error</b>
+                  {entry.entered_in_error.by_name ? ` by ${entry.entered_in_error.by_name}` : ''}
+                  {entry.entered_in_error.at ? `, ${formatWhen(entry.entered_in_error.at)}` : ''}:{' '}
+                  {entry.entered_in_error.reason}. Not sent to the AI.
+                </p>
+              )}
+              {!readOnly && entry.clinical_notes && !entry.entered_in_error && marking !== entry.history_id && (
+                <Button
+                  size="small"
+                  className="ph-error-btn"
+                  onClick={() => {
+                    setMarking(entry.history_id);
+                    setReason('');
+                    setMessage('');
+                  }}
+                  disabled={markBusy}
+                >
+                  Entered in error
+                </Button>
+              )}
+              {!readOnly && marking === entry.history_id && (
+                <div className="ph-form ph-error-form">
+                  <TextField
+                    label="Why is this note wrong?"
+                    placeholder="e.g. test note, wrong patient, wrong history"
+                    value={reason}
+                    onChange={event => setReason(event.target.value)}
+                    size="small"
+                    fullWidth
+                    autoFocus
+                    inputProps={{ maxLength: 1000 }}
+                    helperText="The note is kept and shown struck through, and is no longer sent to the AI. This cannot be undone."
+                  />
+                  <div className="ph-actions">
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="warning"
+                      onClick={() => markError(entry.history_id)}
+                      disabled={markBusy || !reason.trim()}
+                    >
+                      {markBusy ? <CircularProgress size={14} color="inherit" /> : 'Mark as entered in error'}
+                    </Button>
+                    <Button size="small" onClick={() => setMarking(null)} disabled={markBusy}>
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
               {changes.map(change => (
                 <p key={change.label} className="ph-change">
                   <b>{change.label}:</b> {change.text || <i>cleared</i>}

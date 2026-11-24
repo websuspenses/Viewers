@@ -87,6 +87,14 @@ export type AiFindingSummary = {
    * patch measured in the box, "calcium" on the dense spot, "" on the box.
    */
   heat_basis?: string;
+  /** Where the focus lies on its image, measured from the pixels (ai-analysis 1.6.51). */
+  position_text?: string;
+  /** First and last image the finding was reported on (plugin 1.6.51). */
+  image_range?: number[];
+  /** The model's own name and words, and its other names - technical appendix only (1.6.51). */
+  ai_name?: string;
+  ai_words?: string;
+  merged_names?: string[];
   /** Head CT screen findings (ai-analysis 1.6.41): measured thickness and top-to-bottom extent in mm. */
   measured_thickness_mm?: number | null;
   measured_extent_mm?: number | null;
@@ -200,6 +208,11 @@ export type EvidenceFinding = {
   isAnomaly: boolean;
   /** The same lesion's largest box, on another frame (second evidence image). */
   largestView?: LargestView | null;
+  /**
+   * The finding's other boxes on the same image (ai-analysis 1.6.52: one
+   * "Calcifications" box on each choroid plexus); bbox / boxMm are the largest.
+   */
+  extraBoxes?: MarkedBox[];
   /** Study review tier of the summary row (AiFindingSummary.tier). */
   reviewTier?: string;
   /** Stated in the Impression (AiFindingSummary.key_finding). */
@@ -208,6 +221,19 @@ export type EvidenceFinding = {
   measured?: boolean;
   /** Its measured thickness in mm (null for air, measured by its spread). */
   measuredMm?: number | null;
+  /** Measured position words, image span, and the model's words (technical appendix). */
+  positionText?: string;
+  imageRange?: number[] | null;
+  aiName?: string;
+  aiWords?: string;
+  mergedNames?: string[];
+};
+
+export type MarkedBox = {
+  bbox: number[];
+  boxMm: number[] | null;
+  heatBox: number[] | null;
+  heatBasis: string;
 };
 
 export type LargestView = {
@@ -258,6 +284,33 @@ export function heatBoxOf(region: AiAnomalyRegion | undefined, basis?: string): 
   }
   const overlaps = Math.min(box[2], ai[2]) > Math.max(box[0], ai[0]) && Math.min(box[3], ai[3]) > Math.max(box[1], ai[1]);
   return overlaps ? box : null;
+}
+
+function boxArea(region: AiAnomalyRegion) {
+  const extent = (region.extent_mm || []).filter(value => typeof value === 'number' && value > 0);
+  if (extent.length === 2) {
+    return extent[0] * extent[1];
+  }
+  const box = region.bbox || [];
+  return box.length === 4 ? (box[2] - box[0]) * (box[3] - box[1]) : 0;
+}
+
+/**
+ * Every box drawn on this image under the region's name, largest first
+ * (1.6.52): the largest is the finding's box and size, as ai-analysis
+ * narrative_check.marked_box_text gives it; the others are drawn too.
+ */
+function sameNameRegions(heatmap: AiHeatmap | undefined, region: AiAnomalyRegion | undefined) {
+  if (!heatmap || !region) {
+    return [];
+  }
+  const key = normalizeFindingKey(region.name);
+  return (heatmap.anomaly_regions || [])
+    .filter(
+      candidate =>
+        normalizeFindingKey(candidate.name) === key && Array.isArray(candidate.bbox) && candidate.bbox.length === 4
+    )
+    .sort((left, right) => boxArea(right) - boxArea(left));
 }
 
 function largestViewOf(finding: AiFindingSummary, heatmapsByFrame: Map<string, AiHeatmap[]>): LargestView | null {
@@ -1104,7 +1157,7 @@ export const CONSISTENCY_LABELS: Record<Consistency, string> = {
  * is the box drawn around the finding, so it bounds the lesion's in-plane
  * size from above rather than tracing it.
  */
-export function markedBoxMeasurement(region?: AiAnomalyRegion): Measurement {
+export function markedBoxMeasurement(region?: AiAnomalyRegion, boxes = 1): Measurement {
   const extent = (region?.extent_mm || []).filter(value => typeof value === 'number' && value > 0);
   if (extent.length !== 2) {
     return { raw: '', measurable: false, mm: null, mmMax: null, kind: 'none', display: 'Not measured' };
@@ -1118,7 +1171,7 @@ export function markedBoxMeasurement(region?: AiAnomalyRegion): Measurement {
     mm: roundTo(Math.min(width, height)),
     mmMax: roundTo(Math.max(width, height)),
     kind: 'product',
-    display: `${fmt(width)} × ${fmt(height)} mm${atDetector}`,
+    display: `${fmt(width)} × ${fmt(height)} mm${atDetector}${boxes > 1 ? ` (largest of ${boxes} boxes)` : ''}`,
   };
 }
 
@@ -1177,13 +1230,29 @@ export function buildEvidenceFindings(
       return;
     }
 
-    const region = findOwnRegion(heatmap, finding);
+    // One lesion on several slices (ai-analysis study review merge): its
+    // largest box is the single image shown (1.6.51, plan B2: the frame of the
+    // kept name and a second "largest extent" row showed one lesion twice);
+    // the text gives the span of images.
+    const view = finding.largest_view;
+    const viewHeatmap = view?.frame_key
+      ? heatmapOf(heatmapsByFrame, view.frame_key, { series_id: finding.series_id, name: view.name })
+      : undefined;
+    const viewRegion = (viewHeatmap?.anomaly_regions || []).find(
+      candidate => normalizeFindingKey(candidate.name) === normalizeFindingKey(view?.name)
+    );
+    const usesView = Boolean(viewHeatmap && Array.isArray(viewRegion?.bbox) && viewRegion?.bbox?.length === 4);
+    const shown = usesView ? (viewHeatmap as AiHeatmap) : heatmap;
+    const ownRegion = usesView ? viewRegion : findOwnRegion(heatmap, finding);
+    // Several boxes for the finding on its image: the largest leads, all are drawn.
+    const ownRegions = sameNameRegions(shown, ownRegion);
+    const region = ownRegions[0] || ownRegion;
 
     // Image measurement = the marked box measured from pixel spacing. Results
     // from before ai-analysis 1.6.5 carry no extent; their region size is
     // MedGemma's own text copied over, so comparing it with the estimate
     // would only compare the AI with itself — it is shown as not measured.
-    const imageMeasurement = markedBoxMeasurement(region);
+    const imageMeasurement = markedBoxMeasurement(region, ownRegions.length);
     const narrativeMeasurement = parseMeasurement(finding.size_estimate);
     const consistency = classifyAgainstBox(imageMeasurement, narrativeMeasurement);
     const differenceMm =
@@ -1197,12 +1266,12 @@ export function buildEvidenceFindings(
       name: finding.label || finding.name || 'Unnamed finding',
       region: finding.region || '',
       severity: (finding.severity || 'low').toLowerCase(),
-      modality: finding.modality || heatmap?.modality || '',
-      seriesLabel: finding.series || heatmap?.seriesLabel || '',
-      seriesId: heatmap?.seriesId || '',
+      modality: finding.modality || shown?.modality || '',
+      seriesLabel: finding.series || shown?.seriesLabel || '',
+      seriesId: shown?.seriesId || '',
       location: finding.location || '',
       description: finding.description || region?.description || '',
-      frameKey: finding.frame_key || '',
+      frameKey: (usesView ? view?.frame_key : finding.frame_key) || '',
       imageRegionName: region?.name || '',
       imageMeasurement,
       imageScore: region?.confidence ?? null,
@@ -1214,21 +1283,29 @@ export function buildEvidenceFindings(
       boxMm: imageMeasurement.measurable ? (region?.extent_mm as number[]) : null,
       heatBox: heatBoxOf(region, finding.heat_basis),
       heatBasis: heatBoxOf(region, finding.heat_basis) ? finding.heat_basis || '' : '',
-      orientation:
-        heatmap?.orientation_labels &&
-        ['top', 'bottom', 'left', 'right'].every(edge => heatmap.orientation_labels?.[edge])
-          ? heatmap.orientation_labels
-          : null,
-      sliceLabel:
-        heatmap?.slice_number && heatmap?.total_slices
-          ? `Image ${heatmap.slice_number}/${heatmap.total_slices}`
-          : '',
-      originalImage: heatmap?.original_image_b64 || '',
-      heatmapImage: heatmap?.heatmap_image_b64 || '',
-      annotatedImage: heatmap?.gemini_annotated_image_b64 || '',
-      summary: heatmap?.summary || '',
+      orientation: orientationOf(shown),
+      sliceLabel: shown?.slice_number && shown?.total_slices ? `Image ${shown.slice_number}/${shown.total_slices}` : '',
+      originalImage: shown?.original_image_b64 || '',
+      heatmapImage: shown?.heatmap_image_b64 || '',
+      annotatedImage: shown?.gemini_annotated_image_b64 || '',
+      summary: shown?.summary || '',
       isAnomaly: isAnomalyFinding(finding),
-      largestView: largestViewOf(finding, heatmapsByFrame),
+      largestView: usesView ? null : largestViewOf(finding, heatmapsByFrame),
+      extraBoxes: ownRegions.slice(1).map(other => {
+        const extent = (other.extent_mm || []).filter(value => typeof value === 'number' && value > 0);
+        const otherHeat = heatBoxOf(other, finding.heat_basis);
+        return {
+          bbox: other.bbox as number[],
+          boxMm: extent.length === 2 ? extent : null,
+          heatBox: otherHeat,
+          heatBasis: otherHeat ? finding.heat_basis || '' : '',
+        };
+      }),
+      positionText: finding.position_text || '',
+      imageRange: Array.isArray(finding.image_range) && finding.image_range.length === 2 ? finding.image_range : null,
+      aiName: finding.ai_name || '',
+      aiWords: finding.ai_words || '',
+      mergedNames: Array.isArray(finding.merged_names) ? finding.merged_names : [],
       reviewTier: finding.tier || '',
       keyFinding: finding.key_finding === true,
       measured:

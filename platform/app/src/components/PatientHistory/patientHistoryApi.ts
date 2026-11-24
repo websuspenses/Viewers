@@ -23,6 +23,8 @@ export type HistoryEntry = {
   created_by: string;
   created_by_name: string | null;
   created_at: string;
+  /** The note marked as entered in error (teleapp 2026-11-24): kept, struck through, not sent to the AI. */
+  entered_in_error?: { reason: string; by_name: string | null; at: string } | null;
 };
 
 export type PatientHistory = {
@@ -73,6 +75,28 @@ export async function savePatientHistory(api: ReviewApi, patientId: string, inpu
   return response.json();
 }
 
+/**
+ * Marks an entry's clinical note as entered in error (a test note, the wrong
+ * patient, a wrong history). Nothing is deleted: teleapp keeps the note and
+ * records who marked it, when and why. Returns the history.
+ */
+export async function markNoteEnteredInError(
+  api: ReviewApi,
+  patientId: string,
+  historyId: number,
+  reason: string
+): Promise<PatientHistory> {
+  const response = await fetch(`${url(api, patientId)}/${encodeURIComponent(String(historyId))}/entered-in-error`, {
+    method: 'POST',
+    headers: teleappHeaders(api),
+    body: JSON.stringify({ reason }),
+  });
+  if (!response.ok) {
+    throw new Error(`The note could not be marked (${await readError(response)})`);
+  }
+  return response.json();
+}
+
 /** Notes older than this are not the current presentation. */
 const CURRENT_NOTES_DAYS = 30;
 
@@ -86,9 +110,14 @@ const CURRENT_NOTES_DAYS = 30;
  * stored name and the study's patient name both known and the same). Lab
  * Patient IDs are reused: Gagan Babu's "Head injury, Fall down" (ID 012) was
  * read into Y. Venkata Ramana's normal study (ID 012) as a head injury.
+ *
+ * 2026-11-24: notes marked as entered in error are never sent (a test "head
+ * injury" note kept every later report of the study on the injury path).
  */
 export function clinicalHistoryText(history: PatientHistory, studyId?: string, patientName?: string): string {
-  const entries = (history?.entries || []).filter(entry => (entry.clinical_notes || '').trim());
+  const entries = (history?.entries || []).filter(
+    entry => (entry.clinical_notes || '').trim() && !entry.entered_in_error
+  );
   const own = entries.filter(entry => studyId && entry.study_id === studyId);
   const storedName = history?.profile?.full_name;
   const samePatient = Boolean(storedName && patientName && sameName(storedName, patientName));

@@ -19,6 +19,12 @@
 .ph-timeline li { padding: 8px 0 8px 10px; border-left: 2px solid rgba(10, 124, 108, 0.6); margin-bottom: 6px; }
 .ph-entry-head { font-size: 12px; }
 .ph-note { margin: 4px 0 0; white-space: pre-wrap; }
+/* A note marked as entered in error (2026-11-24): kept, struck through. */
+.ph-note--error { text-decoration: line-through; opacity: 0.55; }
+.ph-error-mark { margin: 3px 0 0; padding-left: 6px; border-left: 3px solid #f59e0b; font-size: 12px; white-space: pre-wrap; }
+.ph-error-btn.MuiButton-root { margin-top: 2px; padding: 0 4px; min-width: 0; font-size: 11.5px; text-transform: none; color: inherit; opacity: 0.7; }
+.ph-error-btn.MuiButton-root:hover { opacity: 1; }
+.ph-error-form { margin-top: 6px; }
 .ph-change { margin: 2px 0 0; font-size: 12px; white-space: pre-wrap; opacity: 0.9; }
 .ph-chip { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 8px; font-size: 10.5px; font-weight: 700; background: rgba(10, 124, 108, 0.18); color: #0a7c6c; }
 .ph-chip--muted { background: rgba(127, 140, 150, 0.2); color: inherit; opacity: 0.8; }
